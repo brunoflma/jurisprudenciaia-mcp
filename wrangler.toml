@@ -1,0 +1,9 @@
+name = "jurisprudenciaia-mcp"
+main = "src/worker.ts"
+compatibility_date = "2026-06-13"
+
+[vars]
+JURISPRUDENCIAIA_URL = "https://www.jurisprudenciaia.com.br/"
+REQUEST_TIMEOUT_MS = "120000"
+RATE_LIMIT_WINDOW_MS = "60000"
+RATE_LIMIT_MAX_REQUESTS = "4"

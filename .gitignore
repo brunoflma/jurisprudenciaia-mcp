@@ -1,0 +1,15 @@
+.worktrees/
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+.wrangler/
+*.log
+*.tmp
+*.bak
+tmp/
+.DS_Store
+coverage/

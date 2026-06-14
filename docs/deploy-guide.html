@@ -1,0 +1,1037 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Deploy do JurisprudenciaIA MCP</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --page: #111211;
+      --surface: #191a18;
+      --surface-2: #22241f;
+      --surface-3: #292720;
+      --ink: #f4f1e8;
+      --muted: #c8c1b2;
+      --soft: #918d82;
+      --line: #34342d;
+      --green: #78c89b;
+      --amber: #d7aa5b;
+      --red: #d98677;
+      --blue: #9db7df;
+      --code: #0d0e0d;
+      --shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background:
+        linear-gradient(180deg, rgba(215, 170, 91, 0.08), transparent 18rem),
+        linear-gradient(90deg, rgba(120, 200, 155, 0.05), transparent 42rem),
+        var(--page);
+      color: var(--ink);
+      font-family: Aptos, "Segoe UI", Arial, sans-serif;
+      line-height: 1.58;
+    }
+
+    a {
+      color: var(--blue);
+      text-underline-offset: 0.18em;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    code {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 5px;
+      padding: 0.08rem 0.28rem;
+      color: var(--ink);
+      font-family: "Cascadia Code", Consolas, monospace;
+      font-size: 0.92em;
+      overflow-wrap: anywhere;
+    }
+
+    pre {
+      margin: 0;
+      padding: 1rem;
+      overflow-x: auto;
+      background: var(--code);
+      color: #f8efd9;
+      border: 1px solid #303934;
+      border-radius: 8px;
+      font-family: "Cascadia Code", Consolas, monospace;
+      font-size: 0.92rem;
+    }
+
+    pre code {
+      display: block;
+      min-width: max-content;
+      border: 0;
+      background: transparent;
+      padding: 0;
+      overflow-wrap: normal;
+      white-space: pre;
+    }
+
+    .nowrap {
+      overflow-wrap: normal;
+      white-space: nowrap;
+    }
+
+    .wrap {
+      width: min(1300px, calc(100vw - 2rem));
+      margin: 0 auto;
+    }
+
+    header {
+      padding: 3rem 0 2.2rem;
+      border-bottom: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent),
+        linear-gradient(90deg, rgba(120, 200, 155, 0.08), transparent 58%);
+    }
+
+    .kicker {
+      margin: 0 0 0.75rem;
+      color: var(--amber);
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      letter-spacing: 0;
+      line-height: 1.12;
+    }
+
+    h1 {
+      max-width: 100%;
+      font-size: 3.15rem;
+    }
+
+    h2 {
+      font-size: 1.85rem;
+    }
+
+    h3 {
+      font-size: 1.08rem;
+    }
+
+    p {
+      margin: 0;
+    }
+
+    .lead {
+      max-width: 100%;
+      margin-top: 1rem;
+      color: var(--muted);
+      font-size: 1.08rem;
+    }
+
+    .route {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.75rem;
+      margin-top: 1.6rem;
+    }
+
+    .route-item {
+      border: 1px solid rgba(244, 241, 232, 0.12);
+      border-radius: 8px;
+      background: rgba(25, 26, 24, 0.72);
+      padding: 0.9rem;
+    }
+
+    .route-item span {
+      display: inline-grid;
+      place-items: center;
+      width: 1.7rem;
+      height: 1.7rem;
+      margin-bottom: 0.55rem;
+      border-radius: 50%;
+      background: rgba(215, 170, 91, 0.16);
+      color: var(--amber);
+      font-weight: 900;
+    }
+
+    .route-item strong {
+      display: block;
+      color: var(--ink);
+    }
+
+    .route-item p {
+      margin-top: 0.25rem;
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .quick-rules {
+      display: grid;
+      gap: 0.65rem;
+      margin-top: 1.4rem;
+      padding: 0;
+      list-style: none;
+    }
+
+    .quick-rules li {
+      display: flex;
+      gap: 0.65rem;
+      align-items: flex-start;
+      color: var(--muted);
+    }
+
+    .quick-rules li::before {
+      content: "";
+      flex: 0 0 auto;
+      width: 0.55rem;
+      height: 0.55rem;
+      margin-top: 0.48rem;
+      border-radius: 50%;
+      background: var(--amber);
+    }
+
+    .progress {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      border-bottom: 1px solid var(--line);
+      background: rgba(17, 18, 17, 0.92);
+      backdrop-filter: blur(12px);
+    }
+
+    .progress-inner {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 4rem;
+    }
+
+    .progress strong {
+      color: var(--ink);
+    }
+
+    .progress small {
+      color: var(--muted);
+    }
+
+    .bar {
+      flex: 1;
+      height: 0.55rem;
+      max-width: 360px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--code);
+    }
+
+    .bar span {
+      display: block;
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--amber), var(--green));
+      transition: width 180ms ease;
+    }
+
+    main {
+      padding: 2rem 0 4rem;
+    }
+
+    .intro,
+    .step,
+    .trouble {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(25, 26, 24, 0.96);
+      box-shadow: var(--shadow);
+    }
+
+    .intro {
+      padding: 1.3rem;
+      margin-bottom: 1rem;
+    }
+
+    .intro-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .plain-list {
+      margin: 0.7rem 0 0;
+      padding-left: 1.2rem;
+      color: var(--muted);
+    }
+
+    .plain-list li + li {
+      margin-top: 0.35rem;
+    }
+
+    .steps {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .step {
+      overflow: hidden;
+    }
+
+    .step-head {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 0.95rem;
+      align-items: start;
+      padding: 1.25rem 1.25rem 0.9rem;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(90deg, rgba(215, 170, 91, 0.12), transparent);
+    }
+
+    .number {
+      display: inline-grid;
+      place-items: center;
+      width: 2.35rem;
+      height: 2.35rem;
+      border-radius: 50%;
+      background: var(--amber);
+      color: #16120a;
+      font-weight: 900;
+    }
+
+    .step-head p {
+      margin-top: 0.35rem;
+      color: var(--muted);
+    }
+
+    .step-body {
+      padding: 1.25rem;
+    }
+
+    .literal {
+      display: grid;
+      gap: 0.8rem;
+      margin: 0;
+      padding-left: 1.35rem;
+      color: var(--ink);
+    }
+
+    .literal li::marker {
+      color: var(--amber);
+      font-weight: 800;
+    }
+
+    .note {
+      margin-top: 1rem;
+      border-left: 4px solid var(--amber);
+      padding: 0.8rem 0 0.8rem 0.9rem;
+      color: var(--muted);
+      background: rgba(240, 179, 90, 0.08);
+    }
+
+    .danger {
+      border-left-color: var(--red);
+      background: rgba(239, 123, 106, 0.08);
+    }
+
+    .success {
+      border-left-color: var(--green);
+      background: rgba(100, 195, 145, 0.08);
+    }
+
+    .copy-block {
+      margin-top: 0.9rem;
+    }
+
+    .copy-head {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.45rem;
+      color: var(--soft);
+      font-size: 0.92rem;
+    }
+
+    .copy {
+      min-width: 5.2rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface-2);
+      color: var(--ink);
+      padding: 0.42rem 0.7rem;
+      cursor: pointer;
+    }
+
+    .copy:hover {
+      border-color: var(--green);
+    }
+
+    .checkline {
+      display: flex;
+      gap: 0.65rem;
+      align-items: flex-start;
+      margin-top: 1rem;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .checkline input {
+      width: 1.15rem;
+      height: 1.15rem;
+      margin-top: 0.16rem;
+      accent-color: var(--green);
+    }
+
+    table {
+      width: 100%;
+      margin-top: 0.9rem;
+      border-collapse: collapse;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font-size: 0.95rem;
+    }
+
+    th,
+    td {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--ink);
+      background: var(--surface-2);
+    }
+
+    td {
+      color: var(--muted);
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .trouble {
+      margin-top: 1rem;
+      padding: 1.25rem;
+    }
+
+    .trouble-list {
+      display: grid;
+      gap: 0.85rem;
+      margin: 1rem 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .trouble-list li {
+      border-top: 1px solid var(--line);
+      padding-top: 0.85rem;
+      color: var(--muted);
+    }
+
+    .trouble-list strong {
+      display: block;
+      color: var(--ink);
+      margin-bottom: 0.2rem;
+    }
+
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 2rem 0 3rem;
+      color: var(--soft);
+      text-align: center;
+    }
+
+    @media (max-width: 760px) {
+      .wrap {
+        width: min(100% - 1rem, 980px);
+      }
+
+      header {
+        padding-top: 2rem;
+      }
+
+      h1 {
+        font-size: 2.25rem;
+      }
+
+      h2 {
+        font-size: 1.45rem;
+      }
+
+      .progress-inner {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.6rem;
+        padding: 0.7rem 0;
+      }
+
+      .bar {
+        width: 100%;
+        max-width: none;
+      }
+
+      .intro-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .route {
+        grid-template-columns: 1fr;
+      }
+
+      .step-head {
+        grid-template-columns: 1fr;
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <p class="kicker">Guia para iniciantes</p>
+      <h1>Guia de deploy do JurisprudenciaIA MCP</h1>
+      <p class="lead">
+        Um roteiro guiado para preparar os secrets, publicar o Worker e conectar o MCP
+        no Claude.ai com segurança e previsibilidade.
+      </p>
+      <div class="route" aria-label="Resumo do fluxo de deploy">
+        <div class="route-item">
+          <span>1</span>
+          <strong>Preparar</strong>
+          <p>Separe os valores temporários e gere os secrets do MCP.</p>
+        </div>
+        <div class="route-item">
+          <span>2</span>
+          <strong>Publicar</strong>
+          <p>Configure Cloudflare, GitHub Secrets e execute o workflow.</p>
+        </div>
+        <div class="route-item">
+          <span>3</span>
+          <strong>Conectar</strong>
+          <p>Teste o Worker e registre o conector no Claude.ai.</p>
+        </div>
+      </div>
+      <ul class="quick-rules">
+        <li>Quando o guia mostrar texto entre <code class="nowrap">&lt;assim&gt;</code>, substitua pelo valor correspondente.</li>
+        <li>Quando um campo pedir um secret, cole somente o valor, sem aspas e sem espaços extras.</li>
+        <li>Conclua a confirmação de cada etapa antes de seguir para a próxima.</li>
+      </ul>
+    </div>
+  </header>
+
+  <div class="progress" aria-live="polite">
+    <div class="wrap progress-inner">
+      <div>
+        <strong id="progressText">0 de 9 etapas concluídas</strong><br>
+        <small>Os marcadores ficam salvos apenas neste navegador.</small>
+      </div>
+      <div class="bar" aria-hidden="true"><span id="progressBar"></span></div>
+    </div>
+  </div>
+
+  <main>
+    <div class="wrap">
+      <section class="intro" aria-labelledby="before-title">
+        <h2 id="before-title">Antes de começar</h2>
+        <div class="intro-grid">
+          <div>
+            <h3>Você precisa ter aberto</h3>
+            <ul class="plain-list">
+              <li>GitHub, já logado na conta que possui o repositório.</li>
+              <li>Cloudflare Dashboard, já logado na conta que vai hospedar o Worker.</li>
+              <li>Claude.ai, já logado na conta onde o conector será usado.</li>
+              <li>Bloco de Notas, para guardar valores temporariamente durante o deploy.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Mantenha fora do repositório</h3>
+            <ul class="plain-list">
+              <li>Tokens da Cloudflare.</li>
+              <li>Secrets do MCP.</li>
+              <li>Anotações internas de desenvolvimento.</li>
+              <li>Consultas jurídicas reais ou respostas copiadas do JurisprudenciaIA.</li>
+              <li>Arquivos <code>.env</code> com valores reais.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <div class="steps">
+        <section class="step" aria-labelledby="step-1-title">
+          <div class="step-head">
+            <span class="number">1</span>
+            <div>
+              <h2 id="step-1-title">Crie sua folha de anotação temporária</h2>
+              <p>Esta folha serve apenas para copiar e colar durante o processo.</p>
+            </div>
+          </div>
+          <div class="step-body">
+            <ol class="literal">
+              <li>Abra o aplicativo <strong>Bloco de Notas</strong>.</li>
+              <li>Copie o modelo abaixo.</li>
+              <li>Cole no Bloco de Notas.</li>
+              <li>Preencha cada linha somente quando o guia pedir.</li>
+            </ol>
+            <div class="copy-block">
+              <div class="copy-head">
+                <span>Modelo para colar no Bloco de Notas</span>
+                <button class="copy" type="button">Copiar</button>
+              </div>
+              <pre><code>CLOUDFLARE_ACCOUNT_ID=
+CLOUDFLARE_API_TOKEN=
+MCP_OAUTH_CLIENT_ID=jurisprudenciaia-mcp-client
+MCP_OAUTH_CLIENT_SECRET=
+MCP_ACCESS_TOKEN_SECRET=
+URL_WORKER=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev
+URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</code></pre>
+            </div>
+            <p class="note danger">
+              Não salve esse arquivo dentro da pasta do projeto. Quando terminar e tudo estiver funcionando,
+              apague a anotação temporária.
+            </p>
+            <label class="checkline">
+              <input type="checkbox" data-check="1">
+              Já colei o modelo no Bloco de Notas.
+            </label>
+          </div>
+        </section>
+
+        <section class="step" aria-labelledby="step-2-title">
+          <div class="step-head">
+            <span class="number">2</span>
+            <div>
+              <h2 id="step-2-title">Gere os dois secrets do MCP</h2>
+              <p>Esses valores protegem a autenticação entre Claude.ai e o Worker.</p>
+            </div>
+          </div>
+          <div class="step-body">
+            <ol class="literal">
+              <li>No Windows, aperte a tecla <strong>Windows</strong>.</li>
+              <li>Digite <strong>PowerShell</strong>.</li>
+              <li>Abra o aplicativo <strong>Windows PowerShell</strong>.</li>
+              <li>Copie o primeiro comando abaixo, cole no PowerShell e aperte <strong>Enter</strong>.</li>
+              <li>Copie o resultado e cole na linha <code>MCP_OAUTH_CLIENT_SECRET=</code> da sua anotação.</li>
+              <li>Repita com o segundo comando e cole o resultado em <code>MCP_ACCESS_TOKEN_SECRET=</code>.</li>
+            </ol>
+            <div class="copy-block">
+              <div class="copy-head">
+                <span>Primeiro comando: Client Secret</span>
+                <button class="copy" type="button">Copiar</button>
+              </div>
+              <pre><code>node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"</code></pre>
+            </div>
+            <div class="copy-block">
+              <div class="copy-head">
+                <span>Segundo comando: Access Token Secret</span>
+                <button class="copy" type="button">Copiar</button>
+              </div>
+              <pre><code>node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"</code></pre>
+            </div>
+            <p class="note">
+              Resultado correto: cada comando mostra uma linha longa com letras e números. Se aparecer
+              <code>node não é reconhecido</code>, o Node.js não está instalado nesse computador.
+            </p>
+            <label class="checkline">
+              <input type="checkbox" data-check="2">
+              Já tenho os dois secrets do MCP anotados.
+            </label>
+          </div>
+        </section>
+
+        <section class="step" aria-labelledby="step-3-title">
+          <div class="step-head">
+            <span class="number">3</span>
+            <div>
+              <h2 id="step-3-title">Crie o token de deploy no Cloudflare</h2>
+              <p>Esse token deixa o GitHub publicar o Worker na sua conta Cloudflare.</p>
+            </div>
+          </div>
+          <div class="step-body">
+            <ol class="literal">
+              <li>Entre em <a href="https://dash.cloudflare.com/" target="_blank" rel="noreferrer">dash.cloudflare.com</a>.</li>
+              <li>Clique no ícone de perfil ou em <strong>Manage Account</strong>.</li>
+              <li>Entre em <strong>Account API Tokens</strong>.</li>
+              <li>Clique em <strong>Create Token</strong>.</li>
+              <li>Escolha o modelo <strong>Edit Cloudflare Workers</strong>. Se não aparecer, use <strong>Custom token</strong> com permissão de editar Workers.</li>
+              <li>Em <strong>Token name</strong>, digite exatamente <code>jurisprudenciaia-mcp</code>.</li>
+              <li>Em <strong>Account Resources</strong>, selecione <strong>Include</strong> e escolha a conta Cloudflare correta.</li>
+              <li>Se aparecer <strong>Zone Resources</strong>, deixe restrito ao menor escopo possível. Para URL <code>workers.dev</code>, não precisa permissão de DNS.</li>
+              <li>Clique em <strong>Continue to summary</strong>.</li>
+              <li>Clique em <strong>Create Token</strong>.</li>
+              <li>Copie o token mostrado e cole na linha <code>CLOUDFLARE_API_TOKEN=</code> da anotação.</li>
+            </ol>
+            <p class="note danger">
+              O Cloudflare mostra esse token uma única vez. Se fechar a página sem copiar, crie outro token.
+            </p>
+            <label class="checkline">
+              <input type="checkbox" data-check="3">
+              Já tenho o CLOUDFLARE_API_TOKEN anotado.
+            </label>
+          </div>
+        </section>
+
+        <section class="step" aria-labelledby="step-4-title">
+          <div class="step-head">
+            <span class="number">4</span>
+            <div>
+              <h2 id="step-4-title">Copie o Account ID do Cloudflare</h2>
+              <p>O Account ID identifica onde o Worker será publicado.</p>
+            </div>
+          </div>
+          <div class="step-body">
+            <ol class="literal">
+              <li>No Cloudflare Dashboard, abra a mesma conta escolhida no token.</li>
+              <li>Entre em <strong>Compute</strong>.</li>
+              <li>Entre em <strong>Workers &amp; Pages</strong>.</li>
+              <li>Procure o texto <strong>Account ID</strong> na página ou na lateral direita.</li>
+              <li>Copie o valor e cole na linha <code>CLOUDFLARE_ACCOUNT_ID=</code> da anotação.</li>
+            </ol>
+            <p class="note">
+              Resultado correto: o Account ID é uma sequência longa de letras e números. Não use o nome da conta.
+            </p>
+            <label class="checkline">
+              <input type="checkbox" data-check="4">
+              Já tenho o CLOUDFLARE_ACCOUNT_ID anotado.
+            </label>
+          </div>
+        </section>
+
+        <section class="step" aria-labelledby="step-5-title">
+          <div class="step-head">
+            <span class="number">5</span>
+            <div>
+              <h2 id="step-5-title">Cadastre os secrets no GitHub</h2>
+              <p>Crie um secret por vez. O nome precisa ser idêntico ao da tabela.</p>
+            </div>
+          </div>
+          <div class="step-body">
+            <ol class="literal">
+              <li>Abra o repositório <code>&lt;seu-usuario&gt;/jurisprudenciaia-mcp</code> no GitHub.</li>
+              <li>Clique em <strong>Settings</strong>.</li>
+              <li>No menu esquerdo, clique em <strong>Secrets and variables</strong>.</li>
+              <li>Clique em <strong>Actions</strong>.</li>
+              <li>Clique em <strong>New repository secret</strong>.</li>
+              <li>Preencha <strong>Name</strong> e <strong>Secret</strong> usando a tabela abaixo.</li>
+              <li>Clique em <strong>Add secret</strong>.</li>
+              <li>Repita até cadastrar todos os cinco secrets.</li>
+            </ol>
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Secret</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>CLOUDFLARE_ACCOUNT_ID</code></td>
+                  <td>Valor copiado no passo 4.</td>
+                </tr>
+                <tr>
+                  <td><code>CLOUDFLARE_API_TOKEN</code></td>
+                  <td>Token criado no passo 3.</td>
+                </tr>
+                <tr>
+                  <td><code>MCP_OAUTH_CLIENT_ID</code></td>
+                  <td><code>jurisprudenciaia-mcp-client</code></td>
+                </tr>
+                <tr>
+                  <td><code>MCP_OAUTH_CLIENT_SECRET</code></td>
+                  <td>Primeiro valor gerado no passo 2.</td>
+                </tr>
+                <tr>
+                  <td><code>MCP_ACCESS_TOKEN_SECRET</code></td>
+                  <td>Segundo valor gerado no passo 2.</td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="note">
+              Resultado correto: a tela de Actions secrets mostra os cinco nomes. O GitHub não mostra os valores depois de salvar.
+            </p>
+            <label class="checkline">
+              <input type="checkbox" data-check="5">
+              Já cadastrei os cinco secrets no GitHub.
+            </label>
+          </div>
+        </section>
+
+        <section class="step" aria-labelledby="step-6-title">
+          <div class="step-head">
+            <span class="number">6</span>
+            <div>
+              <h2 id="step-6-title">Rode o deploy pelo GitHub Actions</h2>
+              <p>O GitHub vai testar o projeto, gerar o build e publicar no Cloudflare Workers.</p>
+            </div>
+          </div>
+          <div class="step-body">
+            <ol class="literal">
+              <li>No repositório do GitHub, clique na aba <strong>Actions</strong>.</li>
+              <li>No menu esquerdo, clique em <strong>Deploy Worker</strong>.</li>
+              <li>Clique em <strong>Run workflow</strong>.</li>
+              <li>Na caixa que abrir, clique novamente em <strong>Run workflow</strong>.</li>
+              <li>Aguarde a execução aparecer na lista.</li>
+              <li>Clique na execução mais recente.</li>
+              <li>Espere todos os itens ficarem verdes.</li>
+              <li>Procure a URL publicada, parecida com <code>https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev</code>.</li>
+              <li>Copie essa URL e preencha as linhas <code>URL_WORKER=</code> e <code>URL_MCP=</code> na anotação.</li>
+            </ol>
+            <div class="copy-block">
+              <div class="copy-head">
+                <span>Formato correto das URLs</span>
+                <button class="copy" type="button">Copiar</button>
+              </div>
+              <pre><code>URL_WORKER=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev
+URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</code></pre>
+            </div>
+            <p class="note danger">
+              Se a execução ficar verde, mas aparecer aviso de deploy pulado por secrets ausentes,
+              volte ao passo 5. O deploy não foi publicado nesse caso.
+            </p>
+            <label class="checkline">
+              <input type="checkbox" data-check="6">
+              O workflow Deploy Worker terminou verde e eu anotei a URL.
+            </label>
+          </div>
+        </section>
+
+        <section class="step" aria-labelledby="step-7-title">
+          <div class="step-head">
+            <span class="number">7</span>
+            <div>
+              <h2 id="step-7-title">Teste se o Worker está online</h2>
+              <p>Este teste confirma que a URL publicada responde antes de configurar o Claude.ai.</p>
+            </div>
+          </div>
+          <div class="step-body">
+            <ol class="literal">
+              <li>Pegue sua <code>URL_WORKER</code>.</li>
+              <li>Adicione <code>/healthz</code> no final.</li>
+              <li>Abra essa URL no navegador.</li>
+            </ol>
+            <div class="copy-block">
+              <div class="copy-head">
+                <span>Exemplo do formato correto</span>
+                <button class="copy" type="button">Copiar</button>
+              </div>
+              <pre><code>https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/healthz</code></pre>
+            </div>
+            <div class="copy-block">
+              <div class="copy-head">
+                <span>Resposta esperada no navegador</span>
+                <button class="copy" type="button">Copiar</button>
+              </div>
+              <pre><code>{"ok":true,"service":"jurisprudenciaia-mcp","runtime":"cloudflare-workers"}</code></pre>
+            </div>
+            <p class="note success">
+              Se a resposta acima aparecer, o Worker está online. Se der erro 404, 500 ou página em branco,
+              volte ao passo 6 e abra o log do workflow.
+            </p>
+            <label class="checkline">
+              <input type="checkbox" data-check="7">
+              A página /healthz respondeu com ok true.
+            </label>
+          </div>
+        </section>
+
+        <section class="step" aria-labelledby="step-8-title">
+          <div class="step-head">
+            <span class="number">8</span>
+            <div>
+              <h2 id="step-8-title">Conecte o MCP no Claude.ai</h2>
+              <p>Use a URL com <code>/mcp</code> no final e o mesmo Client Secret do GitHub.</p>
+            </div>
+          </div>
+          <div class="step-body">
+            <ol class="literal">
+              <li>Entre em <a href="https://claude.ai/" target="_blank" rel="noreferrer">claude.ai</a>.</li>
+              <li>Abra <strong>Settings</strong>.</li>
+              <li>Entre em <strong>Connectors</strong>.</li>
+              <li>Clique para adicionar um conector personalizado.</li>
+              <li>No campo de URL, cole sua <code>URL_MCP</code>.</li>
+              <li>Abra <strong>Advanced settings</strong>, se existir.</li>
+              <li>Em <strong>OAuth Client ID</strong>, cole <code>jurisprudenciaia-mcp-client</code>.</li>
+              <li>Em <strong>OAuth Client Secret</strong>, cole o mesmo valor salvo em <code>MCP_OAUTH_CLIENT_SECRET</code>.</li>
+              <li>Salve ou conecte o conector.</li>
+              <li>Autorize a conexão quando o Claude.ai pedir.</li>
+            </ol>
+            <div class="copy-block">
+              <div class="copy-head">
+                <span>Valores que vão no Claude.ai</span>
+                <button class="copy" type="button">Copiar</button>
+              </div>
+              <pre><code>URL: https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp
+OAuth Client ID: jurisprudenciaia-mcp-client
+OAuth Client Secret: &lt;mesmo valor de MCP_OAUTH_CLIENT_SECRET&gt;</code></pre>
+            </div>
+            <p class="note danger">
+              Não cole <code>MCP_ACCESS_TOKEN_SECRET</code> no Claude.ai. Esse valor é somente do Worker.
+            </p>
+            <label class="checkline">
+              <input type="checkbox" data-check="8">
+              O Claude.ai conectou o MCP sem erro.
+            </label>
+          </div>
+        </section>
+
+        <section class="step" aria-labelledby="step-9-title">
+          <div class="step-head">
+            <span class="number">9</span>
+            <div>
+              <h2 id="step-9-title">Faça o primeiro teste no Claude.ai</h2>
+              <p>Agora confirme que as ferramentas aparecem e que a consulta retorna Markdown.</p>
+            </div>
+          </div>
+          <div class="step-body">
+            <ol class="literal">
+              <li>Abra uma conversa nova no Claude.ai.</li>
+              <li>Cole a mensagem abaixo.</li>
+              <li>Confirme que o Claude usa a ferramenta do MCP.</li>
+              <li>Confira se o resultado contém resposta, tese principal, precedentes e cautelas.</li>
+            </ol>
+            <div class="copy-block">
+              <div class="copy-head">
+                <span>Mensagem de teste</span>
+                <button class="copy" type="button">Copiar</button>
+              </div>
+              <pre><code>Use consultar_jurisprudenciaia para pesquisar responsabilidade civil por negativação indevida dano moral.</code></pre>
+            </div>
+            <div class="copy-block">
+              <div class="copy-head">
+                <span>Ferramentas esperadas</span>
+                <button class="copy" type="button">Copiar</button>
+              </div>
+              <pre><code>consultar_jurisprudenciaia
+pesquisar_jurisprudencia
+buscar_precedentes
+analisar_tese_juridica
+comparar_teses_juridicas</code></pre>
+            </div>
+            <p class="note success">
+              Resultado correto: a resposta deve começar com <code># Resultado JurisprudenciaIA</code>
+              e conter <code>## Precedentes citados</code>.
+            </p>
+            <label class="checkline">
+              <input type="checkbox" data-check="9">
+              Fiz o teste no Claude.ai e as ferramentas apareceram.
+            </label>
+          </div>
+        </section>
+      </div>
+
+      <section class="trouble" aria-labelledby="trouble-title">
+        <h2 id="trouble-title">Se algo der errado</h2>
+        <ul class="trouble-list">
+          <li>
+            <strong>GitHub Actions ficou verde, mas não publicou.</strong>
+            Abra o log. Se aparecer aviso de secrets ausentes, volte ao passo 5 e confira os cinco nomes.
+          </li>
+          <li>
+            <strong>Cloudflare recusou o deploy.</strong>
+            Confira se o token tem permissão para editar Workers e se o Account ID pertence à mesma conta.
+          </li>
+          <li>
+            <strong><code>/healthz</code> não abre.</strong>
+            Confira se você copiou a URL do Worker, não a URL do repositório GitHub.
+          </li>
+          <li>
+            <strong>Claude.ai mostra erro de autenticação.</strong>
+            O valor em OAuth Client Secret deve ser exatamente igual ao GitHub secret <code>MCP_OAUTH_CLIENT_SECRET</code>.
+          </li>
+          <li>
+            <strong>Claude.ai mostra apenas uma ferramenta ou schema antigo.</strong>
+            Desconecte o conector, conecte novamente e refaça o teste da etapa 9.
+          </li>
+        </ul>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      Desenvolvido por Bruno Ferreira
+    </div>
+  </footer>
+
+  <script>
+    const storageKey = "jurisprudenciaia-mcp-deploy-guide";
+    const checks = Array.from(document.querySelectorAll("[data-check]"));
+    const progressText = document.querySelector("#progressText");
+    const progressBar = document.querySelector("#progressBar");
+
+    function readState() {
+      try {
+        return JSON.parse(localStorage.getItem(storageKey) || "{}");
+      } catch {
+        return {};
+      }
+    }
+
+    function writeState(state) {
+      localStorage.setItem(storageKey, JSON.stringify(state));
+    }
+
+    function updateProgress() {
+      const completed = checks.filter((input) => input.checked).length;
+      progressText.textContent = `${completed} de ${checks.length} etapas concluidas`;
+      progressBar.style.width = `${(completed / checks.length) * 100}%`;
+    }
+
+    const state = readState();
+    checks.forEach((input) => {
+      input.checked = Boolean(state[input.dataset.check]);
+      input.addEventListener("change", () => {
+        state[input.dataset.check] = input.checked;
+        writeState(state);
+        updateProgress();
+      });
+    });
+    updateProgress();
+
+    document.querySelectorAll(".copy").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const block = button.closest(".copy-block");
+        const code = block ? block.querySelector("code") : null;
+        const text = code ? code.textContent.trim() : "";
+
+        try {
+          await navigator.clipboard.writeText(text);
+          button.textContent = "Copiado";
+          setTimeout(() => {
+            button.textContent = "Copiar";
+          }, 1400);
+        } catch {
+          button.textContent = "Selecione";
+          setTimeout(() => {
+            button.textContent = "Copiar";
+          }, 1400);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
