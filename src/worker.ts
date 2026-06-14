@@ -67,6 +67,10 @@ const FAVICON_SVG_PATH = "/favicon.svg";
 const FAVICON_ICO_BASE64 =
   "AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAAAAAAAQAQAAAAAAAAAAAAAAAAAAAAAAAAfIxAAHyMQAB8jEAAfIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQAB8jEAAfIxAAHyMQAB8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQAB8jEAAfIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEAAfIxD/HyMQ/x8jEP8fIxD/3PPY/9zz2P/c89j/3PPY/9zz2P/c89j/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/9zz2P/c89j/3PPY/9zz2P/c89j/3PPY/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/9zz2P/c89j/3PPY/9zz2P8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/3PPY/9zz2P/c89j/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/9zz2P/c89j/3PPY/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP/c89j/3PPY/9zz2P8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/3PPY/9zz2P/c89j/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP/c89j/3PPY/9zz2P/c89j/3PPY/9zz2P/c89j/QsX1/0LF9f9CxfX/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/3PPY/9zz2P/c89j/3PPY/9zz2P/c89j/QsX1/0LF9f9CxfX/QsX1/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP9CxfX/QsX1/0LF9f8fIxD/HyMQAB8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/0LF9f8fIxD/HyMQAB8jEAAfIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEAAfIxAAHyMQAB8jEAAfIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQAB8jEAAfIxAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";
 const OAUTH_SCOPE = "jurisprudenciaia:search";
+const MCP_SERVER_NAME = "jurisprudenciaia-mcp";
+const MCP_SERVER_TITLE = "JurisprudenciaIA MCP";
+const MCP_SERVER_DESCRIPTION =
+  "Conector MCP auto-hospedado para consultar jurisprudencia via JurisprudenciaIA.";
 const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 let limiter: FixedWindowRateLimiter | undefined;
@@ -87,7 +91,7 @@ export async function handleWorkerRequest(
   const origin = url.origin;
 
   if (request.method === "GET" && url.pathname === "/healthz") {
-    return json({ ok: true, service: "jurisprudenciaia-mcp", runtime: "cloudflare-workers" });
+    return json({ ok: true, service: MCP_SERVER_NAME, runtime: "cloudflare-workers" });
   }
 
   if (request.method === "GET" && url.pathname === "/") {
@@ -149,8 +153,8 @@ export async function handleWorkerRequest(
 
   const activeRunner = runner ?? createRunner(env);
   const responses = Array.isArray(payload)
-    ? await Promise.all(payload.map((item) => handleJsonRpc(item, activeRunner)))
-    : [await handleJsonRpc(payload, activeRunner)];
+    ? await Promise.all(payload.map((item) => handleJsonRpc(item, activeRunner, origin)))
+    : [await handleJsonRpc(payload, activeRunner, origin)];
   const visibleResponses = responses.filter((item): item is JsonRpcResponse => item !== null);
 
   if (visibleResponses.length === 0) {
@@ -169,7 +173,8 @@ function createRunner(env: WorkerEnv): JurisprudenciaIaRunner {
 
 async function handleJsonRpc(
   payload: unknown,
-  runner: JurisprudenciaIaRunner
+  runner: JurisprudenciaIaRunner,
+  origin: string
 ): Promise<JsonRpcResponse | null> {
   if (!isJsonRpcRequest(payload)) {
     return jsonRpcError(null, -32600, "Invalid Request");
@@ -181,17 +186,41 @@ async function handleJsonRpc(
   }
 
   switch (payload.method) {
-    case "initialize":
+    case "initialize": {
+      const svgIconUri = logoUri(origin);
+      const icoIconUri = `${origin}/favicon.ico`;
+
       return jsonRpcResult(id, {
         protocolVersion: "2025-11-25",
         capabilities: {
           tools: {}
         },
         serverInfo: {
-          name: "jurisprudenciaia-mcp",
-          version: "0.1.0"
+          name: MCP_SERVER_NAME,
+          title: MCP_SERVER_TITLE,
+          version: "0.1.0",
+          description: MCP_SERVER_DESCRIPTION,
+          icons: [
+            {
+              src: svgIconUri,
+              mimeType: "image/svg+xml",
+              sizes: ["any"]
+            },
+            {
+              src: icoIconUri,
+              mimeType: "image/x-icon",
+              sizes: ["16x16"]
+            }
+          ],
+          websiteUrl: `${origin}/`
+        },
+        _meta: {
+          "jurisprudenciaia-mcp/logo_uri": svgIconUri,
+          "jurisprudenciaia-mcp/icon_uri": svgIconUri,
+          "jurisprudenciaia-mcp/favicon_uri": icoIconUri
         }
       });
+    }
 
     case "tools/list":
       return jsonRpcResult(id, {
@@ -392,8 +421,9 @@ async function authorizeMcpRequest(
 function protectedResourceMetadata(origin: string): Record<string, unknown> {
   return {
     resource: mcpResource(origin),
-    resource_name: "JurisprudenciaIA MCP",
+    resource_name: MCP_SERVER_TITLE,
     logo_uri: logoUri(origin),
+    resource_documentation: `${origin}/`,
     authorization_servers: [origin],
     bearer_methods_supported: ["header"],
     scopes_supported: [OAUTH_SCOPE]

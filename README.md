@@ -71,7 +71,7 @@ https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
 
 No Claude.ai, use `Advanced settings` para informar o OAuth Client ID e o OAuth Client Secret configurados no Worker.
 
-O Worker expõe `/favicon.svg`, `/favicon.ico` e `logo_uri` nos metadados OAuth. Se o Claude.ai continuar exibindo o ícone genérico logo após uma publicação, remova e recrie o conector ou aguarde a expiração do cache do cliente.
+O Worker expõe `/favicon.svg`, `/favicon.ico`, `logo_uri` nos metadados OAuth e `serverInfo.icons` no `initialize` do MCP. Se o Claude.ai continuar exibindo o ícone genérico logo após uma publicação, remova e recrie o conector ou aguarde a expiração do cache do cliente.
 
 ## Ferramentas disponíveis
 

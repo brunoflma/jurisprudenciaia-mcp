@@ -97,6 +97,7 @@ describe("Cloudflare Worker MCP endpoint", () => {
       resource: "https://worker.test/mcp",
       resource_name: "JurisprudenciaIA MCP",
       logo_uri: "https://worker.test/favicon.svg",
+      resource_documentation: "https://worker.test/",
       authorization_servers: ["https://worker.test"]
     });
 
@@ -154,7 +155,27 @@ describe("Cloudflare Worker MCP endpoint", () => {
         },
         serverInfo: {
           name: "jurisprudenciaia-mcp",
-          version: "0.1.0"
+          title: "JurisprudenciaIA MCP",
+          version: "0.1.0",
+          description: expect.stringContaining("Conector MCP"),
+          icons: [
+            {
+              src: "https://worker.test/favicon.svg",
+              mimeType: "image/svg+xml",
+              sizes: ["any"]
+            },
+            {
+              src: "https://worker.test/favicon.ico",
+              mimeType: "image/x-icon",
+              sizes: ["16x16"]
+            }
+          ],
+          websiteUrl: "https://worker.test/"
+        },
+        _meta: {
+          "jurisprudenciaia-mcp/logo_uri": "https://worker.test/favicon.svg",
+          "jurisprudenciaia-mcp/icon_uri": "https://worker.test/favicon.svg",
+          "jurisprudenciaia-mcp/favicon_uri": "https://worker.test/favicon.ico"
         }
       }
     });
