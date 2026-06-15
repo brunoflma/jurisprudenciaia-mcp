@@ -64,8 +64,11 @@ const TOKEN_PATH = "/oauth/token";
 const PROTECTED_RESOURCE_METADATA_PATH = "/.well-known/oauth-protected-resource";
 const AUTHORIZATION_SERVER_METADATA_PATH = "/.well-known/oauth-authorization-server";
 const FAVICON_SVG_PATH = "/favicon.svg";
+const FAVICON_PNG_PATH = "/favicon.png";
+const FAVICON_PNG_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAyElEQVR42u3bvQ3CMBAG0BuBDSjYhN2zA0W2iKihokiUH0hMJPuepWsjfa9wXNwXsXUi4nK7vmqcOHJqDV0Eo7XwPyG0Gv4rhNbDryJkCT+LkC38FAFAaoCs4T8DAAAAAEU+9Bj6U+bZ3UeTCmAavgRCLQBL4Y8iAAAAwCXoN3jqw2MrYOsvQQAAAAAAAAAAAAAAAAAAAABArQB7gwAAACALwN4BAABA8gUJAAAA2BIDAACAjXF9AQB6Q5pjuoPao/rDmuT/Dv0GYWvUxjnJaBYAAAAASUVORK5CYII=";
 const FAVICON_ICO_BASE64 =
-  "AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAAAAAAAQAQAAAAAAAAAAAAAAAAAAAAAAAAfIxAAHyMQAB8jEAAfIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQAB8jEAAfIxAAHyMQAB8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQAB8jEAAfIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEAAfIxD/HyMQ/x8jEP8fIxD/3PPY/9zz2P/c89j/3PPY/9zz2P/c89j/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/9zz2P/c89j/3PPY/9zz2P/c89j/3PPY/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/9zz2P/c89j/3PPY/9zz2P8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/3PPY/9zz2P/c89j/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/9zz2P/c89j/3PPY/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP/c89j/3PPY/9zz2P8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/3PPY/9zz2P/c89j/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP/c89j/3PPY/9zz2P/c89j/3PPY/9zz2P/c89j/QsX1/0LF9f9CxfX/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/3PPY/9zz2P/c89j/3PPY/9zz2P/c89j/QsX1/0LF9f9CxfX/QsX1/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP9CxfX/QsX1/0LF9f8fIxD/HyMQAB8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/0LF9f8fIxD/HyMQAB8jEAAfIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEAAfIxAAHyMQAB8jEAAfIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQ/x8jEP8fIxD/HyMQAB8jEAAfIxAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";
+  "AAABAAEAQEAAAAEAIAABAQAAFgAAAIlQTkcNChoKAAAADUlIRFIAAABAAAAAQAgGAAAAqmlx3gAAAMhJREFUeNrt270NwjAQBtAbgQ0o2ITdswNFtoiooaJIlB9ITCT7nqVrI32vcFzcF7F1IuJyu75qnDhyag1dBKO18D8htBr+K4TWw68iZAk/i5At/BQBQGqArOE/AwAAAABFPvQY+lPm2d1HkwpgGr4EQi0AS+GPIgAAAMAl6Dd46sNjK2DrL0EAAAAAAAAAAAAAAAAAAAAAQK0Ae4MAAAAgC8DeAQAAQPIFCQAAANgSAwAAgI1xfQEAekOaY7qD2qP6w5rk/w79BmFr1MY5yWgWAAAAAElFTkSuQmCC";
 const OAUTH_SCOPE = "jurisprudenciaia:search";
 const MCP_SERVER_NAME = "jurisprudenciaia-mcp";
 const MCP_SERVER_TITLE = "JurisprudenciaIA MCP";
@@ -100,6 +103,10 @@ export async function handleWorkerRequest(
 
   if (request.method === "GET" && url.pathname === FAVICON_SVG_PATH) {
     return svg(faviconSvg());
+  }
+
+  if (request.method === "GET" && url.pathname === FAVICON_PNG_PATH) {
+    return png(faviconPngBytes());
   }
 
   if (request.method === "GET" && url.pathname === "/favicon.ico") {
@@ -187,7 +194,8 @@ async function handleJsonRpc(
 
   switch (payload.method) {
     case "initialize": {
-      const svgIconUri = logoUri(origin);
+      const pngIconUri = logoUri(origin);
+      const svgIconUri = `${origin}${FAVICON_SVG_PATH}`;
       const icoIconUri = `${origin}/favicon.ico`;
 
       return jsonRpcResult(id, {
@@ -202,21 +210,26 @@ async function handleJsonRpc(
           description: MCP_SERVER_DESCRIPTION,
           icons: [
             {
-              src: svgIconUri,
-              mimeType: "image/svg+xml",
-              sizes: ["any"]
+              src: pngIconUri,
+              mimeType: "image/png",
+              sizes: ["64x64"]
             },
             {
               src: icoIconUri,
               mimeType: "image/x-icon",
               sizes: ["16x16"]
+            },
+            {
+              src: svgIconUri,
+              mimeType: "image/svg+xml",
+              sizes: ["any"]
             }
           ],
           websiteUrl: `${origin}/`
         },
         _meta: {
-          "jurisprudenciaia-mcp/logo_uri": svgIconUri,
-          "jurisprudenciaia-mcp/icon_uri": svgIconUri,
+          "jurisprudenciaia-mcp/logo_uri": pngIconUri,
+          "jurisprudenciaia-mcp/icon_uri": pngIconUri,
           "jurisprudenciaia-mcp/favicon_uri": icoIconUri
         }
       });
@@ -632,7 +645,7 @@ function mcpResource(origin: string): string {
 }
 
 function logoUri(origin: string): string {
-  return `${origin}${FAVICON_SVG_PATH}`;
+  return `${origin}${FAVICON_PNG_PATH}`;
 }
 
 function randomId(): string {
@@ -757,6 +770,19 @@ function svg(body: string, status = 200): Response {
   });
 }
 
+function png(body: Uint8Array, status = 200): Response {
+  const buffer = body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) as ArrayBuffer;
+
+  return new Response(buffer, {
+    status,
+    headers: {
+      "content-type": "image/png",
+      "cache-control": "public, max-age=86400, immutable",
+      "x-content-type-options": "nosniff"
+    }
+  });
+}
+
 function ico(body: Uint8Array, status = 200): Response {
   const buffer = body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) as ArrayBuffer;
 
@@ -778,6 +804,7 @@ function landingPage(origin: string): string {
     '<meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
     "<title>JurisprudenciaIA MCP</title>",
+    `<link rel="icon" href="${FAVICON_PNG_PATH}" type="image/png">`,
     `<link rel="icon" href="${FAVICON_SVG_PATH}" type="image/svg+xml">`,
     '<link rel="alternate icon" href="/favicon.ico" type="image/x-icon">',
     "</head>",
@@ -803,7 +830,15 @@ function faviconSvg(): string {
 }
 
 function faviconIcoBytes(): Uint8Array {
-  const binary = atob(FAVICON_ICO_BASE64);
+  return decodeBase64Bytes(FAVICON_ICO_BASE64);
+}
+
+function faviconPngBytes(): Uint8Array {
+  return decodeBase64Bytes(FAVICON_PNG_BASE64);
+}
+
+function decodeBase64Bytes(value: string): Uint8Array {
+  const binary = atob(value);
   const bytes = new Uint8Array(binary.length);
 
   for (let index = 0; index < binary.length; index += 1) {

@@ -71,6 +71,17 @@ describe("Cloudflare Worker MCP endpoint", () => {
     expect(await response.text()).toContain("<svg");
   });
 
+  it("serves a PNG favicon for connector clients that prefer raster icons", async () => {
+    const response = await handleWorkerRequest(
+      new Request("https://worker.test/favicon.png"),
+      {}
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("image/png");
+    expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(0);
+  });
+
   it("serves a classic ICO favicon without redirect", async () => {
     const response = await handleWorkerRequest(
       new Request("https://worker.test/favicon.ico"),
@@ -96,7 +107,7 @@ describe("Cloudflare Worker MCP endpoint", () => {
     expect(await json(resourceResponse)).toMatchObject({
       resource: "https://worker.test/mcp",
       resource_name: "JurisprudenciaIA MCP",
-      logo_uri: "https://worker.test/favicon.svg",
+      logo_uri: "https://worker.test/favicon.png",
       resource_documentation: "https://worker.test/",
       authorization_servers: ["https://worker.test"]
     });
@@ -107,7 +118,7 @@ describe("Cloudflare Worker MCP endpoint", () => {
       authorization_endpoint: "https://worker.test/oauth/authorize",
       token_endpoint: "https://worker.test/oauth/token",
       service_documentation: "https://worker.test/",
-      logo_uri: "https://worker.test/favicon.svg"
+      logo_uri: "https://worker.test/favicon.png"
     });
   });
 
@@ -160,21 +171,26 @@ describe("Cloudflare Worker MCP endpoint", () => {
           description: expect.stringContaining("Conector MCP"),
           icons: [
             {
-              src: "https://worker.test/favicon.svg",
-              mimeType: "image/svg+xml",
-              sizes: ["any"]
+              src: "https://worker.test/favicon.png",
+              mimeType: "image/png",
+              sizes: ["64x64"]
             },
             {
               src: "https://worker.test/favicon.ico",
               mimeType: "image/x-icon",
               sizes: ["16x16"]
+            },
+            {
+              src: "https://worker.test/favicon.svg",
+              mimeType: "image/svg+xml",
+              sizes: ["any"]
             }
           ],
           websiteUrl: "https://worker.test/"
         },
         _meta: {
-          "jurisprudenciaia-mcp/logo_uri": "https://worker.test/favicon.svg",
-          "jurisprudenciaia-mcp/icon_uri": "https://worker.test/favicon.svg",
+          "jurisprudenciaia-mcp/logo_uri": "https://worker.test/favicon.png",
+          "jurisprudenciaia-mcp/icon_uri": "https://worker.test/favicon.png",
           "jurisprudenciaia-mcp/favicon_uri": "https://worker.test/favicon.ico"
         }
       }
