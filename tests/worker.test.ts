@@ -7,10 +7,13 @@ const env = {
   MCP_OAUTH_CLIENT_ID: "claude-test-client",
   MCP_OAUTH_CLIENT_SECRET: "client-secret-12345678901234567890",
   MCP_ACCESS_TOKEN_SECRET: "access-token-secret-12345678901234567890",
+  MCP_BEARER_TOKEN: "codex-static-bearer-token-12345678901234567890",
   RATE_LIMIT_MAX_REQUESTS: "100"
 };
 
 const redirectUri = "https://claude.test/oauth/callback";
+const chatGptRedirectUri = "https://chatgpt.com/connector/oauth/test-callback";
+const invalidStaticBearerToken = "wrong-codex-static-bearer-token-12345678901234567890";
 
 async function mcpRequest(body: unknown) {
   return new Request("https://worker.test/mcp", {
@@ -104,6 +107,10 @@ describe("Cloudflare Worker MCP endpoint", () => {
       new Request("https://worker.test/.well-known/oauth-authorization-server"),
       {}
     );
+    const serverAtResourceResponse = await handleWorkerRequest(
+      new Request("https://worker.test/.well-known/oauth-authorization-server/mcp"),
+      {}
+    );
 
     expect(resourceResponse.status).toBe(200);
     expect(await json(resourceResponse)).toMatchObject({
@@ -122,6 +129,7 @@ describe("Cloudflare Worker MCP endpoint", () => {
       service_documentation: "https://worker.test/",
       logo_uri: "https://worker.test/favicon.png"
     });
+    expect(serverAtResourceResponse.status).toBe(200);
   });
 
   it("allows an HTTPS external icon URL in OAuth metadata", async () => {
@@ -157,6 +165,78 @@ describe("Cloudflare Worker MCP endpoint", () => {
     expect(response.headers.get("www-authenticate")).toContain(
       'resource_metadata="https://worker.test/.well-known/oauth-protected-resource"'
     );
+    expect(response.headers.get("www-authenticate")).toContain('scope="jurisprudenciaia:search"');
+  });
+
+  it("accepts a static bearer token for Codex HTTP MCP", async () => {
+    const response = await handleWorkerRequest(
+      new Request("https://worker.test/mcp", {
+        method: "POST",
+        headers: {
+          "authorization": `Bearer ${env.MCP_BEARER_TOKEN}`,
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/list"
+        })
+      }),
+      env,
+      runner("# Resultado JurisprudenciaIA\n\nTexto.")
+    );
+
+    expect(response.status).toBe(200);
+    expect(await json(response)).toMatchObject({
+      result: {
+        tools: expect.arrayContaining([
+          expect.objectContaining({ name: "consultar_jurisprudenciaia" })
+        ])
+      }
+    });
+  });
+
+  it("rejects an invalid static bearer token", async () => {
+    const response = await handleWorkerRequest(
+      new Request("https://worker.test/mcp", {
+        method: "POST",
+        headers: {
+          "authorization": `Bearer ${invalidStaticBearerToken}`,
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/list"
+        })
+      }),
+      env,
+      runner("# Resultado JurisprudenciaIA\n\nTexto.")
+    );
+
+    expect(response.status).toBe(401);
+  });
+
+  it("supports confidential OAuth clients without PKCE for ChatGPT custom apps", async () => {
+    const token = await accessTokenWithoutPkce(chatGptRedirectUri);
+    const response = await handleWorkerRequest(
+      new Request("https://worker.test/mcp", {
+        method: "POST",
+        headers: {
+          "authorization": `Bearer ${token}`,
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/list"
+        })
+      }),
+      env,
+      runner("# Resultado JurisprudenciaIA\n\nTexto.")
+    );
+
+    expect(response.status).toBe(200);
   });
 
   it("handles MCP initialize", async () => {
@@ -420,6 +500,54 @@ async function accessToken(): Promise<string> {
         code: code ?? "",
         redirect_uri: redirectUri,
         code_verifier: verifier
+      })
+    }),
+    env
+  );
+
+  expect(tokenResponse.status).toBe(200);
+
+  const tokenBody = await json(tokenResponse);
+  expect(tokenBody.token_type).toBe("Bearer");
+  expect(typeof tokenBody.access_token).toBe("string");
+
+  return tokenBody.access_token as string;
+}
+
+async function accessTokenWithoutPkce(callbackUrl: string): Promise<string> {
+  const state = "chatgpt-test-state";
+  const authorizeUrl = new URL("https://worker.test/oauth/authorize");
+
+  authorizeUrl.searchParams.set("response_type", "code");
+  authorizeUrl.searchParams.set("client_id", env.MCP_OAUTH_CLIENT_ID);
+  authorizeUrl.searchParams.set("redirect_uri", callbackUrl);
+  authorizeUrl.searchParams.set("state", state);
+  authorizeUrl.searchParams.set("resource", "https://worker.test/mcp");
+
+  const authorizeResponse = await handleWorkerRequest(new Request(authorizeUrl), env);
+  expect(authorizeResponse.status).toBe(302);
+
+  const location = authorizeResponse.headers.get("location");
+  expect(location).toBeTruthy();
+
+  const redirectedUrl = new URL(location ?? callbackUrl);
+  expect(redirectedUrl.searchParams.get("state")).toBe(state);
+
+  const code = redirectedUrl.searchParams.get("code");
+  expect(code).toBeTruthy();
+
+  const tokenResponse = await handleWorkerRequest(
+    new Request("https://worker.test/oauth/token", {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded"
+      },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code: code ?? "",
+        redirect_uri: callbackUrl,
+        client_id: env.MCP_OAUTH_CLIENT_ID,
+        client_secret: env.MCP_OAUTH_CLIENT_SECRET
       })
     }),
     env

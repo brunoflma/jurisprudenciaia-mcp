@@ -1,6 +1,6 @@
 # jurisprudenciaia-mcp
 
-Conector MCP auto-hospedado para consultar o JurisprudenciaIA pelo Claude.ai ou Codex.
+Conector MCP auto-hospedado para consultar o JurisprudenciaIA pelo Claude.ai, ChatGPT ou Codex.
 
 O projeto usa Cloudflare Workers Free e chamadas HTTP diretas para os endpoints usados pelo site. Ele não exige navegador remoto, senha ou login no JurisprudenciaIA.
 
@@ -16,6 +16,7 @@ Para usar a solução de ponta a ponta, você precisa ter:
 - Cloudflare API Token com permissão para editar Workers, preferencialmente pelo modelo `Edit Cloudflare Workers` ou por token customizado equivalente.
 - Repositório GitHub com acesso para configurar Actions e Repository Secrets, caso use a publicação automática.
 - Conta Claude.ai com acesso à configuração de conectores MCP remotos e aos campos avançados de OAuth, caso use Claude.
+- ChatGPT com modo desenvolvedor de aplicativos habilitado, caso use ChatGPT.
 - Codex CLI ou extensão/IDE com suporte a MCP, caso use Codex.
 - Acesso de rede ao site `https://www.jurisprudenciaia.com.br/`, pois o Worker consulta essa fonte em tempo de execução.
 
@@ -35,7 +36,7 @@ Este projeto pode ser aberto no GitHub como código auto-hospedado, mas a sua in
 A solução foi mantida compatível com o plano gratuito da Cloudflare:
 
 - Workers: execução serverless do endpoint MCP, OAuth e consultas HTTP ao JurisprudenciaIA.
-- Workers Secrets: armazenamento dos valores `MCP_OAUTH_CLIENT_ID`, `MCP_OAUTH_CLIENT_SECRET` e `MCP_ACCESS_TOKEN_SECRET`.
+- Workers Secrets: armazenamento dos valores `MCP_OAUTH_CLIENT_ID`, `MCP_OAUTH_CLIENT_SECRET`, `MCP_ACCESS_TOKEN_SECRET` e, se usar Codex por Bearer, `MCP_BEARER_TOKEN`.
 - Workers Logs e Analytics: úteis para acompanhar erros, volume de chamadas e latência sem registrar secrets no código.
 - `workers.dev`, SSL/TLS automático e proteção DDoS: suficientes para publicar o conector auto-hospedado com HTTPS.
 - Favicon, landing page mínima e metadados OAuth: servidos diretamente pelo Worker com cache público curto.
@@ -61,6 +62,7 @@ npx wrangler login
 npx wrangler secret put MCP_OAUTH_CLIENT_ID
 npx wrangler secret put MCP_OAUTH_CLIENT_SECRET
 npx wrangler secret put MCP_ACCESS_TOKEN_SECRET
+npx wrangler secret put MCP_BEARER_TOKEN # opcional, recomendado para Codex HTTP
 npm run deploy:worker
 ```
 
@@ -72,6 +74,8 @@ https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
 
 No Claude.ai, use `Advanced settings` para informar o OAuth Client ID e o OAuth Client Secret configurados no Worker.
 
+No ChatGPT, crie um app em modo desenvolvedor com a mesma URL `/mcp`, selecione autenticação OAuth, use `Cliente OAuth definido pelo usuário`, informe o mesmo `MCP_OAUTH_CLIENT_ID` e `MCP_OAUTH_CLIENT_SECRET`, e mantenha o método de token como `client_secret_post`. Avisos de DCR/CIMD indisponível são esperados nesta configuração: o Worker não oferece registro dinâmico aberto porque isso enfraqueceria a proteção da instância privada.
+
 O Worker expõe `/favicon.png`, `/favicon.svg`, `/favicon.ico`, `logo_uri` nos metadados OAuth e `serverInfo.icons` no `initialize` do MCP. O PNG é anunciado em `96x96` como ícone principal porque alguns clientes de conector ignoram SVG ou priorizam recursos raster/cacheáveis.
 
 Se quiser hospedar o ícone em Cloudflare Pages, GitHub Pages ou outro host estático HTTPS, defina `MCP_ICON_URL` com a URL absoluta do PNG. Essa variável altera o `logo_uri` e o ícone principal anunciado no `initialize`. URLs sem HTTPS são ignoradas. O valor pode ser configurado como variável de ambiente do Worker ou como Cloudflare Secret, já que não contém dado sensível.
@@ -80,7 +84,7 @@ Observação sobre o Claude.ai: quando a URL usa `workers.dev`, o Claude pode re
 
 ## Uso no Codex
 
-O caminho recomendado no Codex é usar o Worker por HTTP com streaming, reaproveitando OAuth, rate limit e HTTPS. Também existe um entrypoint local STDIO para uso em ambiente de desenvolvimento.
+O caminho recomendado no Codex é usar o Worker por `HTTP com streaming` e preencher o campo `Variável de ambiente de token do portador` com `MCP_BEARER_TOKEN`. O valor real desse token deve existir como secret no Worker e como variável de ambiente local do Codex. Também existe um entrypoint local STDIO para uso em ambiente de desenvolvimento.
 
 O passo a passo está em `docs/codex.md`.
 
@@ -108,7 +112,13 @@ MCP_OAUTH_CLIENT_SECRET
 MCP_ACCESS_TOKEN_SECRET
 ```
 
-Enquanto esses secrets não existirem, o workflow valida o projeto, mas pula a publicação do Worker.
+Para Codex por HTTP, adicione também o secret opcional:
+
+```text
+MCP_BEARER_TOKEN
+```
+
+Enquanto os secrets obrigatórios não existirem, o workflow valida o projeto, mas pula a publicação do Worker. Se `MCP_BEARER_TOKEN` não existir, o Worker continua publicando, mas o acesso por Bearer no Codex fica desativado.
 
 Em repositórios públicos e forks, o CI consegue rodar sem acesso a secrets. O workflow `Deploy Worker` só publica quando os cinco secrets foram configurados no repositório que executa o workflow.
 

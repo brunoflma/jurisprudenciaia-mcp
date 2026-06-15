@@ -9,12 +9,21 @@ O Codex aceita MCP por dois caminhos:
 
 Use esta opção quando o Worker já estiver publicado.
 
-Na tela `Conectar a um MCP personalizado`:
+Antes de abrir o Codex, defina no ambiente local o mesmo token configurado no Worker como `MCP_BEARER_TOKEN`.
+
+PowerShell:
+
+```powershell
+$env:MCP_BEARER_TOKEN="<mesmo valor do Cloudflare/GitHub secret MCP_BEARER_TOKEN>"
+```
+
+Na tela `Conectar a um MCP personalizado` ou `Atualizar MCP`:
 
 ```text
 Nome: jurisprudenciaia-mcp
 Tipo: HTTP com streaming
 URL: https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
+Variável de ambiente de token do portador: MCP_BEARER_TOKEN
 ```
 
 Se você configurou domínio customizado para resolver o favicon com mais previsibilidade:
@@ -23,27 +32,20 @@ Se você configurou domínio customizado para resolver o favicon com mais previs
 URL: https://mcp.<seu-dominio>/mcp
 ```
 
-O Worker exige OAuth para `/mcp`. No Codex CLI, depois de adicionar o servidor, execute:
-
-```powershell
-codex mcp login jurisprudenciaia-mcp
-```
-
 Você também pode configurar o servidor diretamente em `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.jurisprudenciaia-mcp]
 url = "https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp"
+bearer_token_env_var = "MCP_BEARER_TOKEN"
 enabled = true
 tool_timeout_sec = 120
 default_tools_approval_mode = "prompt"
 ```
 
-Depois rode:
+O Codex lê `MCP_BEARER_TOKEN` do ambiente local e envia `Authorization: Bearer <token>` para o Worker. Não coloque o token na URL nem em `http_headers` fixos no arquivo de configuração.
 
-```powershell
-codex mcp login jurisprudenciaia-mcp
-```
+O Worker também expõe OAuth para clientes como Claude.ai e ChatGPT. Se uma versão do Codex oferecer login OAuth no seu ambiente, ele pode ser usado como alternativa; para a tela mostrada atualmente, o campo correto é `Variável de ambiente de token do portador`.
 
 O Codex usa as instruções MCP retornadas no `initialize`, então este servidor já anuncia que as ferramentas devem preservar ementa, inteiro teor, links e cautelas de validação.
 
@@ -85,6 +87,6 @@ Diretório de trabalho: <caminho-do-clone>
 
 ## Privacidade
 
-O modo HTTP usa OAuth e rate limit do Worker. O modo STDIO roda localmente e não usa os secrets OAuth do Worker.
+O modo HTTP usa Bearer token no Codex, OAuth no Claude/ChatGPT e rate limit no Worker. O modo STDIO roda localmente e não usa os secrets OAuth do Worker.
 
 Nos dois modos, consultas jurídicas podem conter dados sensíveis. Evite registrar consultas, nomes de partes, CPF, e-mails, números de processo sigilosos ou trechos de casos concretos em logs públicos.

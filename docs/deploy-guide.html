@@ -384,7 +384,7 @@
 
     .client-options {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 1px;
       margin-top: 1rem;
       overflow: hidden;
@@ -572,7 +572,7 @@
       <h1>Guia de deploy do JurisprudenciaIA MCP</h1>
       <p class="lead">
         Um roteiro guiado para preparar os secrets, publicar o Worker e conectar o MCP
-        no Claude.ai ou no Codex com segurança e previsibilidade.
+        no Claude.ai, ChatGPT ou Codex com segurança e previsibilidade.
       </p>
       <div class="route" aria-label="Resumo do fluxo de deploy">
         <div class="route-item">
@@ -588,7 +588,7 @@
         <div class="route-item">
           <span>3</span>
           <strong>Conectar</strong>
-          <p>Teste o Worker e registre o conector no Claude.ai ou no Codex.</p>
+          <p>Teste o Worker e registre o conector no Claude.ai, ChatGPT ou Codex.</p>
         </div>
       </div>
       <ul class="quick-rules">
@@ -619,7 +619,7 @@
             <ul class="plain-list">
               <li>GitHub, já logado na conta que possui o repositório.</li>
               <li>Cloudflare Dashboard, já logado na conta que vai hospedar o Worker.</li>
-              <li>Claude.ai ou Codex, conforme o cliente onde o conector será usado.</li>
+              <li>Claude.ai, ChatGPT ou Codex, conforme o cliente onde o conector será usado.</li>
               <li>Bloco de Notas, para guardar valores temporariamente durante o deploy.</li>
             </ul>
           </div>
@@ -662,6 +662,7 @@ CLOUDFLARE_API_TOKEN=
 MCP_OAUTH_CLIENT_ID=jurisprudenciaia-mcp-client
 MCP_OAUTH_CLIENT_SECRET=
 MCP_ACCESS_TOKEN_SECRET=
+MCP_BEARER_TOKEN=
 URL_WORKER=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev
 URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</code></pre>
             </div>
@@ -680,8 +681,8 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
           <div class="step-head">
             <span class="number">2</span>
             <div>
-              <h2 id="step-2-title">Gere os dois secrets do MCP</h2>
-              <p>Esses valores protegem a autenticação entre Claude.ai e o Worker.</p>
+              <h2 id="step-2-title">Gere os secrets do MCP</h2>
+              <p>Esses valores protegem OAuth no Claude/ChatGPT e Bearer no Codex.</p>
             </div>
           </div>
           <div class="step-body">
@@ -692,6 +693,7 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
               <li>Copie o primeiro comando abaixo, cole no PowerShell e aperte <strong>Enter</strong>.</li>
               <li>Copie o resultado e cole na linha <code>MCP_OAUTH_CLIENT_SECRET=</code> da sua anotação.</li>
               <li>Repita com o segundo comando e cole o resultado em <code>MCP_ACCESS_TOKEN_SECRET=</code>.</li>
+              <li>Se for usar Codex HTTP, repita com o terceiro comando e cole em <code>MCP_BEARER_TOKEN=</code>.</li>
             </ol>
             <div class="copy-block">
               <div class="copy-head">
@@ -707,13 +709,20 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
               </div>
               <pre><code>node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"</code></pre>
             </div>
+            <div class="copy-block">
+              <div class="copy-head">
+                <span>Terceiro comando: Bearer Token para Codex</span>
+                <button class="copy" type="button">Copiar</button>
+              </div>
+              <pre><code>node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"</code></pre>
+            </div>
             <p class="note">
               Resultado correto: cada comando mostra uma linha longa com letras e números. Se aparecer
               <code>node não é reconhecido</code>, o Node.js não está instalado nesse computador.
             </p>
             <label class="checkline">
               <input type="checkbox" data-check="2">
-              Já tenho os dois secrets do MCP anotados.
+              Já tenho os secrets do MCP anotados.
             </label>
           </div>
         </section>
@@ -793,7 +802,7 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
               <li>Clique em <strong>New repository secret</strong>.</li>
               <li>Preencha <strong>Name</strong> e <strong>Secret</strong> usando a tabela abaixo.</li>
               <li>Clique em <strong>Add secret</strong>.</li>
-              <li>Repita até cadastrar todos os cinco secrets.</li>
+              <li>Repita até cadastrar os cinco secrets obrigatórios. Se for usar Codex, cadastre também o sexto secret.</li>
             </ol>
             <table>
               <thead>
@@ -823,14 +832,18 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
                   <td><code>MCP_ACCESS_TOKEN_SECRET</code></td>
                   <td>Segundo valor gerado no passo 2.</td>
                 </tr>
+                <tr>
+                  <td><code>MCP_BEARER_TOKEN</code></td>
+                  <td>Terceiro valor gerado no passo 2, se for usar Codex HTTP.</td>
+                </tr>
               </tbody>
             </table>
             <p class="note">
-              Resultado correto: a tela de Actions secrets mostra os cinco nomes. O GitHub não mostra os valores depois de salvar.
+              Resultado correto: a tela de Actions secrets mostra os cinco nomes obrigatórios e, para Codex, também <code>MCP_BEARER_TOKEN</code>. O GitHub não mostra os valores depois de salvar.
             </p>
             <label class="checkline">
               <input type="checkbox" data-check="5">
-              Já cadastrei os cinco secrets no GitHub.
+              Já cadastrei os secrets necessários no GitHub.
             </label>
           </div>
         </section>
@@ -923,8 +936,8 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
           <div class="step-head">
             <span class="number">8</span>
             <div>
-              <h2 id="step-8-title">Conecte o MCP no Claude.ai ou no Codex</h2>
-              <p>Use a URL com <code>/mcp</code> no final. No Claude.ai, informe OAuth manualmente; no Codex, selecione HTTP com streaming.</p>
+              <h2 id="step-8-title">Conecte o MCP no cliente</h2>
+              <p>Use a URL com <code>/mcp</code> no final. Claude.ai e ChatGPT usam OAuth; Codex usa Bearer por variável de ambiente.</p>
             </div>
           </div>
           <div class="step-body">
@@ -942,6 +955,19 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
                 </ul>
               </div>
               <div class="client-option">
+                <h3>ChatGPT <span>App</span></h3>
+                <p>Use este caminho quando o conector for usado como app em modo desenvolvedor.</p>
+                <ul>
+                  <li>Abra <strong>Configurações</strong> e depois <strong>Aplicativos</strong>.</li>
+                  <li>Ative o <strong>Modo desenvolvedor</strong> e crie um novo app.</li>
+                  <li>Em <strong>Conexão</strong>, escolha <strong>URL do servidor</strong> e cole sua <code>URL_MCP</code>.</li>
+                  <li>Em <strong>Autenticação</strong>, escolha <strong>OAuth</strong>.</li>
+                  <li>Use <strong>Cliente OAuth definido pelo usuário</strong> com <code>client_secret_post</code>.</li>
+                  <li>Informe o mesmo Client ID e Client Secret do Worker.</li>
+                  <li>Se aparecer aviso de DCR ou CIMD indisponível, continue com o cliente definido pelo usuário.</li>
+                </ul>
+              </div>
+              <div class="client-option">
                 <h3>Codex <span>HTTP</span></h3>
                 <p>Use este caminho quando o conector for usado no Codex com o Worker publicado.</p>
                 <ul>
@@ -949,19 +975,21 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
                   <li>Em <strong>Nome</strong>, informe <code>jurisprudenciaia-mcp</code>.</li>
                   <li>Selecione <strong>HTTP com streaming</strong>.</li>
                   <li>No campo de URL, cole sua <code>URL_MCP</code>.</li>
-                  <li>Salve e conclua o login OAuth quando o Codex solicitar.</li>
+                  <li>No campo <strong>Variável de ambiente de token do portador</strong>, informe <code>MCP_BEARER_TOKEN</code>.</li>
+                  <li>Garanta que o Codex local tenha essa variável com o mesmo valor do Worker.</li>
                   <li>Para desenvolvimento local via STDIO, use o arquivo <code>docs/codex.md</code>.</li>
                 </ul>
               </div>
             </div>
             <div class="copy-block">
               <div class="copy-head">
-                <span>Valores para Claude.ai</span>
+                <span>Valores para Claude.ai ou ChatGPT</span>
                 <button class="copy" type="button">Copiar</button>
               </div>
               <pre><code>URL: https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp
-OAuth Client ID: jurisprudenciaia-mcp-client
-OAuth Client Secret: &lt;mesmo valor de MCP_OAUTH_CLIENT_SECRET&gt;</code></pre>
+OAuth Client ID: &lt;mesmo valor de MCP_OAUTH_CLIENT_ID&gt;
+OAuth Client Secret: &lt;mesmo valor de MCP_OAUTH_CLIENT_SECRET&gt;
+ChatGPT token auth method: client_secret_post</code></pre>
             </div>
             <div class="copy-block">
               <div class="copy-head">
@@ -970,10 +998,11 @@ OAuth Client Secret: &lt;mesmo valor de MCP_OAUTH_CLIENT_SECRET&gt;</code></pre>
               </div>
               <pre><code>Nome: jurisprudenciaia-mcp
 Tipo: HTTP com streaming
-URL: https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</code></pre>
+URL: https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp
+Variável de ambiente de token do portador: MCP_BEARER_TOKEN</code></pre>
             </div>
             <p class="note danger">
-              Não cole <code>MCP_ACCESS_TOKEN_SECRET</code> no Claude.ai nem no Codex. Esse valor é somente do Worker.
+              Não cole <code>MCP_ACCESS_TOKEN_SECRET</code> em nenhum cliente. O <code>MCP_BEARER_TOKEN</code> deve ficar somente no Worker e no ambiente local do Codex.
             </p>
             <label class="checkline">
               <input type="checkbox" data-check="8">
@@ -992,7 +1021,7 @@ URL: https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</code><
           </div>
           <div class="step-body">
             <ol class="literal">
-              <li>Abra uma conversa nova no Claude.ai ou no Codex.</li>
+              <li>Abra uma conversa nova no Claude.ai, ChatGPT ou Codex.</li>
               <li>Cole a mensagem abaixo.</li>
               <li>Confirme que o cliente usa a ferramenta do MCP.</li>
               <li>Confira se o resultado contém resposta, tese principal, precedentes e cautelas.</li>
@@ -1032,7 +1061,7 @@ comparar_teses_juridicas</code></pre>
         <ul class="trouble-list">
           <li>
             <strong>GitHub Actions ficou verde, mas não publicou.</strong>
-            Abra o log. Se aparecer aviso de secrets ausentes, volte ao passo 5 e confira os cinco nomes.
+            Abra o log. Se aparecer aviso de secrets ausentes, volte ao passo 5 e confira os cinco nomes obrigatórios.
           </li>
           <li>
             <strong>Cloudflare recusou o deploy.</strong>
@@ -1044,11 +1073,11 @@ comparar_teses_juridicas</code></pre>
           </li>
           <li>
             <strong>O cliente mostra erro de autenticação.</strong>
-            O valor em OAuth Client Secret deve ser exatamente igual ao GitHub secret <code>MCP_OAUTH_CLIENT_SECRET</code>.
+            No Claude.ai ou ChatGPT, confira Client ID e Client Secret. No Codex, confira se <code>MCP_BEARER_TOKEN</code> existe no Worker e no ambiente local.
           </li>
           <li>
             <strong>Codex não conecta no HTTP com streaming.</strong>
-            Confira se a opção <strong>HTTP com streaming</strong> está selecionada, se a URL termina em <code>/mcp</code> e se o login OAuth foi concluído.
+            Confira se a opção <strong>HTTP com streaming</strong> está selecionada, se a URL termina em <code>/mcp</code> e se o campo de token do portador aponta para <code>MCP_BEARER_TOKEN</code>.
           </li>
           <li>
             <strong>O cliente mostra apenas uma ferramenta ou schema antigo.</strong>

@@ -12,6 +12,7 @@ type WorkerEnv = {
   MCP_OAUTH_CLIENT_ID?: string;
   MCP_OAUTH_CLIENT_SECRET?: string;
   MCP_ACCESS_TOKEN_SECRET?: string;
+  MCP_BEARER_TOKEN?: string;
   MCP_ACCESS_TOKEN_TTL_SECONDS?: string;
   JURISPRUDENCIAIA_URL?: string;
   REQUEST_TIMEOUT_MS?: string;
@@ -123,7 +124,11 @@ export async function handleWorkerRequest(
     return json(protectedResourceMetadata(origin, env));
   }
 
-  if (request.method === "GET" && url.pathname === AUTHORIZATION_SERVER_METADATA_PATH) {
+  if (
+    request.method === "GET" &&
+    (url.pathname === AUTHORIZATION_SERVER_METADATA_PATH ||
+      url.pathname === `${AUTHORIZATION_SERVER_METADATA_PATH}${MCP_PATH}`)
+  ) {
     return json(authorizationServerMetadata(origin, env));
   }
 
@@ -316,9 +321,19 @@ async function handleAuthorize(request: Request, env: WorkerEnv, origin: string)
     return fail("invalid_target", "Invalid resource.");
   }
 
-  const codeChallenge = url.searchParams.get("code_challenge");
-  if (!codeChallenge || url.searchParams.get("code_challenge_method") !== "S256") {
-    return fail("invalid_request", "PKCE S256 is required.");
+  const codeChallenge = url.searchParams.get("code_challenge") ?? undefined;
+  const codeChallengeMethod = url.searchParams.get("code_challenge_method") ?? undefined;
+  if (codeChallenge && codeChallengeMethod !== "S256") {
+    return fail("invalid_request", "Only PKCE S256 is supported.");
+  }
+  if (!codeChallenge && codeChallengeMethod) {
+    return fail("invalid_request", "code_challenge_method requires code_challenge.");
+  }
+
+  const requestedScope = url.searchParams.get("scope")?.trim();
+  const scope = requestedScope || OAUTH_SCOPE;
+  if (!scope.split(/\s+/).every((item) => item === OAUTH_SCOPE)) {
+    return fail("invalid_scope", `Only ${OAUTH_SCOPE} is supported.`);
   }
 
   const now = epochSeconds();
@@ -328,8 +343,9 @@ async function handleAuthorize(request: Request, env: WorkerEnv, origin: string)
       client_id: settings.clientId,
       redirect_uri: redirectUri,
       code_challenge: codeChallenge,
-      code_challenge_method: "S256",
+      code_challenge_method: codeChallenge ? "S256" : undefined,
       aud: resource,
+      scope,
       iat: now,
       exp: now + 300,
       nonce: randomId()
@@ -368,8 +384,8 @@ async function handleToken(request: Request, env: WorkerEnv, origin: string): Pr
   const code = formValue(form, "code");
   const redirectUri = formValue(form, "redirect_uri");
   const codeVerifier = formValue(form, "code_verifier");
-  if (!code || !redirectUri || !codeVerifier) {
-    return oauthTokenError("invalid_request", "Missing authorization code, redirect_uri, or code_verifier.");
+  if (!code || !redirectUri) {
+    return oauthTokenError("invalid_request", "Missing authorization code or redirect_uri.");
   }
 
   const payload = await verifyToken<SignedTokenPayload>(code, settings.signingSecret);
@@ -383,9 +399,15 @@ async function handleToken(request: Request, env: WorkerEnv, origin: string): Pr
     return oauthTokenError("invalid_grant", "Invalid authorization code.");
   }
 
-  const expectedChallenge = await pkceChallenge(codeVerifier);
-  if (payload.code_challenge !== expectedChallenge) {
-    return oauthTokenError("invalid_grant", "Invalid PKCE verifier.");
+  if (payload.code_challenge) {
+    if (!codeVerifier) {
+      return oauthTokenError("invalid_request", "Missing code_verifier.");
+    }
+
+    const expectedChallenge = await pkceChallenge(codeVerifier);
+    if (payload.code_challenge !== expectedChallenge) {
+      return oauthTokenError("invalid_grant", "Invalid PKCE verifier.");
+    }
   }
 
   const ttl = positiveInteger(env.MCP_ACCESS_TOKEN_TTL_SECONDS, DEFAULT_ACCESS_TOKEN_TTL_SECONDS);
@@ -395,7 +417,7 @@ async function handleToken(request: Request, env: WorkerEnv, origin: string): Pr
       typ: "access_token",
       client_id: settings.clientId,
       aud: mcpResource(origin),
-      scope: OAUTH_SCOPE,
+      scope: payload.scope ?? OAUTH_SCOPE,
       iat: now,
       exp: now + ttl
     },
@@ -406,7 +428,7 @@ async function handleToken(request: Request, env: WorkerEnv, origin: string): Pr
     access_token: accessToken,
     token_type: "Bearer",
     expires_in: ttl,
-    scope: OAUTH_SCOPE
+    scope: payload.scope ?? OAUTH_SCOPE
   });
 }
 
@@ -415,14 +437,24 @@ async function authorizeMcpRequest(
   env: WorkerEnv,
   origin: string
 ): Promise<Response | null> {
-  const settings = oauthSettings(env);
   const authorization = request.headers.get("authorization") ?? "";
   const match = /^Bearer\s+(.+)$/i.exec(authorization);
   if (!match) {
     return unauthorized(origin);
   }
 
-  const payload = await verifyToken<SignedTokenPayload>(match[1], settings.signingSecret);
+  const bearerToken = match[1].trim();
+  if (!bearerToken) {
+    return unauthorized(origin);
+  }
+
+  const staticBearerToken = configuredBearerToken(env);
+  if (staticBearerToken && constantTimeEqual(bearerToken, staticBearerToken)) {
+    return null;
+  }
+
+  const settings = oauthSettings(env);
+  const payload = await verifyToken<SignedTokenPayload>(bearerToken, settings.signingSecret);
   if (
     !payload ||
     payload.typ !== "access_token" ||
@@ -482,6 +514,19 @@ function oauthSettings(env: WorkerEnv): OAuthSettings {
   return { clientId, clientSecret, signingSecret };
 }
 
+function configuredBearerToken(env: WorkerEnv): string | undefined {
+  const token = env.MCP_BEARER_TOKEN?.trim();
+  if (!token) {
+    return undefined;
+  }
+
+  if (token.length < 32) {
+    throw new Error("MCP_BEARER_TOKEN must have at least 32 characters");
+  }
+
+  return token;
+}
+
 function oauthClientCredentials(request: Request, form: FormData): { id?: string; secret?: string } {
   const authorization = request.headers.get("authorization") ?? "";
   const match = /^Basic\s+(.+)$/i.exec(authorization);
@@ -535,7 +580,9 @@ function unauthorized(origin: string): Response {
   return json(
     { error: "unauthorized" },
     401,
-    { "WWW-Authenticate": `Bearer resource_metadata="${origin}${PROTECTED_RESOURCE_METADATA_PATH}"` }
+    {
+      "WWW-Authenticate": `Bearer resource_metadata="${origin}${PROTECTED_RESOURCE_METADATA_PATH}", scope="${OAUTH_SCOPE}"`
+    }
   );
 }
 
@@ -650,6 +697,19 @@ function mcpResource(origin: string): string {
 
 function logoUri(origin: string, env: WorkerEnv): string {
   return externalIconUri(env) ?? `${origin}${FAVICON_PNG_PATH}`;
+}
+
+function constantTimeEqual(left: string, right: string): boolean {
+  const leftBytes = new TextEncoder().encode(left);
+  const rightBytes = new TextEncoder().encode(right);
+  const maxLength = Math.max(leftBytes.length, rightBytes.length);
+  let diff = leftBytes.length ^ rightBytes.length;
+
+  for (let index = 0; index < maxLength; index += 1) {
+    diff |= (leftBytes[index] ?? 0) ^ (rightBytes[index] ?? 0);
+  }
+
+  return diff === 0;
 }
 
 function externalIconUri(env: WorkerEnv): string | undefined {

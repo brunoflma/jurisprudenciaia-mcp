@@ -1,6 +1,6 @@
 # Configuracao e publicacao
 
-Este projeto e um conector MCP auto-hospedado para Claude.ai ou Codex. Ele roda em Cloudflare Workers Free e consulta o JurisprudenciaIA por HTTP, sem navegador remoto, login ou senha.
+Este projeto e um conector MCP auto-hospedado para Claude.ai, ChatGPT ou Codex. Ele roda em Cloudflare Workers Free e consulta o JurisprudenciaIA por HTTP, sem navegador remoto, login ou senha.
 
 O repositorio publico deve conter apenas codigo, testes e documentacao. Cada usuario cria a propria instancia do Worker, os proprios GitHub Secrets e o proprio conector no Claude.ai.
 
@@ -11,11 +11,11 @@ O fluxo recomendado e:
 1. Criar um token de deploy no Cloudflare.
 2. Colocar esse token e os segredos OAuth no GitHub Secrets.
 3. Rodar o workflow `Deploy Worker`.
-4. Cadastrar a URL final no Claude.ai ou no Codex.
+4. Cadastrar a URL final no Claude.ai, ChatGPT ou Codex.
 
 ## 1. Gerar os segredos do MCP
 
-Voce precisa de tres valores para o MCP:
+Voce precisa de tres valores obrigatorios para OAuth:
 
 ```text
 MCP_OAUTH_CLIENT_ID
@@ -49,10 +49,23 @@ MCP_OAUTH_CLIENT_SECRET=<resultado do primeiro comando>
 MCP_ACCESS_TOKEN_SECRET=<resultado do segundo comando>
 ```
 
+Se for usar o Codex por `HTTP com streaming`, gere tambem um Bearer token estatico:
+
+```powershell
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+```
+
+Guarde como:
+
+```text
+MCP_BEARER_TOKEN=<resultado do terceiro comando>
+```
+
 Importante:
 
 - `MCP_OAUTH_CLIENT_SECRET` sera usado no GitHub e no Claude.ai.
 - `MCP_ACCESS_TOKEN_SECRET` sera usado somente no GitHub/Cloudflare Worker.
+- `MCP_BEARER_TOKEN` sera usado no GitHub/Cloudflare Worker e no ambiente local do Codex.
 - Nenhum desses valores deve entrar no codigo ou em arquivos do repositorio.
 - Nao publique consultas juridicas reais, resultados do JurisprudenciaIA, nomes de partes, CPFs, e-mails ou outros dados pessoais em logs, issues ou exemplos.
 
@@ -116,7 +129,7 @@ No GitHub:
 3. Entre em `Secrets and variables`.
 4. Clique em `Actions`.
 5. Clique em `New repository secret`.
-6. Crie estes cinco secrets:
+6. Crie estes cinco secrets obrigatorios:
 
 ```text
 CLOUDFLARE_ACCOUNT_ID
@@ -124,6 +137,12 @@ CLOUDFLARE_API_TOKEN
 MCP_OAUTH_CLIENT_ID
 MCP_OAUTH_CLIENT_SECRET
 MCP_ACCESS_TOKEN_SECRET
+```
+
+Para Codex por HTTP, crie tambem este secret opcional:
+
+```text
+MCP_BEARER_TOKEN
 ```
 
 Valores:
@@ -134,6 +153,7 @@ CLOUDFLARE_API_TOKEN=<API token criado no Cloudflare>
 MCP_OAUTH_CLIENT_ID=jurisprudenciaia-mcp-client
 MCP_OAUTH_CLIENT_SECRET=<Client Secret gerado no passo 1>
 MCP_ACCESS_TOKEN_SECRET=<segredo de assinatura gerado no passo 1>
+MCP_BEARER_TOKEN=<Bearer token gerado no passo 1, se for usar Codex>
 ```
 
 ## 5. Publicar o Worker pelo GitHub Actions
@@ -153,9 +173,9 @@ Quando os cinco secrets estiverem configurados, o workflow vai:
 3. Rodar testes.
 4. Gerar build.
 5. Publicar o Worker com `wrangler deploy`.
-6. Sincronizar os secrets OAuth no Worker.
+6. Sincronizar os secrets OAuth no Worker e, se existir, o Bearer token do Codex.
 
-Se algum secret estiver faltando, o workflow fica verde, mas mostra aviso dizendo que pulou o deploy.
+Se algum secret obrigatorio estiver faltando, o workflow fica verde, mas mostra aviso dizendo que pulou o deploy. Se apenas `MCP_BEARER_TOKEN` estiver ausente, o deploy acontece e somente o acesso Codex por Bearer fica desativado.
 
 ## 6. Descobrir a URL final do Worker
 
@@ -165,7 +185,7 @@ Depois do deploy, a URL deve ficar parecida com:
 https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev
 ```
 
-O endpoint MCP que vai para o Claude.ai e:
+O endpoint MCP que vai para o Claude.ai, ChatGPT ou Codex e:
 
 ```text
 https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
@@ -226,7 +246,7 @@ https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
 6. Informe:
 
 ```text
-OAuth Client ID: jurisprudenciaia-mcp-client
+OAuth Client ID: <mesmo valor de MCP_OAUTH_CLIENT_ID>
 OAuth Client Secret: <mesmo valor de MCP_OAUTH_CLIENT_SECRET>
 ```
 
@@ -244,17 +264,51 @@ O Claude deve executar o fluxo OAuth, receber um Bearer token e listar estas fer
 
 O Codex pode usar o Worker por `HTTP com streaming` ou rodar o servidor local por `STDIO`.
 
+Para `HTTP com streaming`, use:
+
+```text
+Nome: jurisprudenciaia-mcp
+URL: https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
+Variavel de ambiente de token do portador: MCP_BEARER_TOKEN
+```
+
+O valor local de `MCP_BEARER_TOKEN` precisa ser exatamente o mesmo secret configurado no Worker. Nao coloque esse token em URL, README, issue, print publico ou `config.toml`.
+
 Use o guia especifico:
 
 ```text
 docs/codex.md
 ```
 
-Se o Claude continuar mostrando apenas uma ferramenta depois de um deploy novo, desconecte e conecte o MCP novamente para forcar a atualizacao do schema.
+## 10. Configurar no ChatGPT
 
-## 9. Teste no Claude.ai
+No ChatGPT:
 
-Depois de conectar, envie uma mensagem como:
+1. Habilite o modo desenvolvedor em `Configuracoes > Aplicativos`.
+2. Crie um app novo.
+3. Em `Conexao`, escolha `URL do servidor` e informe:
+
+```text
+https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
+```
+
+4. Em `Autenticacao`, escolha `OAuth`.
+5. Em configuracoes avancadas, escolha `Cliente OAuth definido pelo usuario`.
+6. Informe:
+
+```text
+Client ID: <mesmo valor de MCP_OAUTH_CLIENT_ID>
+Client Secret: <mesmo valor de MCP_OAUTH_CLIENT_SECRET>
+Token endpoint auth method: client_secret_post
+```
+
+O aviso sobre DCR ou CIMD indica apenas que o Worker nao oferece registro dinamico de cliente. Use o cliente OAuth definido pelo usuario.
+
+Se o Claude, ChatGPT ou Codex continuar mostrando apenas uma ferramenta depois de um deploy novo, desconecte e conecte o MCP novamente para forcar a atualizacao do schema.
+
+## 11. Teste no cliente escolhido
+
+Depois de conectar no Claude.ai, ChatGPT ou Codex, envie uma mensagem como:
 
 ```text
 Use consultar_jurisprudenciaia para pesquisar responsabilidade civil por negativacao indevida dano moral.
@@ -277,9 +331,11 @@ O resultado esperado deve comecar com:
 - A URL do MCP nao contem segredo.
 - O Worker exige `Authorization: Bearer <access-token>` para `POST /mcp`.
 - O access token e emitido pelo fluxo OAuth Authorization Code com PKCE.
-- O Claude.ai recebe apenas `MCP_OAUTH_CLIENT_ID` e `MCP_OAUTH_CLIENT_SECRET`.
+- O access token OAuth e emitido pelo fluxo Authorization Code com PKCE quando o cliente envia PKCE; clientes confidenciais com `client_secret_post` tambem sao aceitos.
+- Claude.ai e ChatGPT recebem apenas `MCP_OAUTH_CLIENT_ID` e `MCP_OAUTH_CLIENT_SECRET`.
+- O Codex recebe somente o nome da variavel local `MCP_BEARER_TOKEN`; o valor real deve ficar no ambiente local e no Worker.
 - `MCP_ACCESS_TOKEN_SECRET` fica somente no Worker/GitHub.
-- Para revogar o acesso, troque `MCP_OAUTH_CLIENT_SECRET` e `MCP_ACCESS_TOKEN_SECRET` no GitHub Secrets e rode o workflow novamente.
+- Para revogar OAuth, troque `MCP_OAUTH_CLIENT_SECRET` e `MCP_ACCESS_TOKEN_SECRET` no GitHub Secrets e rode o workflow novamente. Para revogar Codex Bearer, troque `MCP_BEARER_TOKEN`.
 - O repositorio nao deve conter chaves Cloudflare, GitHub, Browserless ou tokens reais.
 - O repositorio tambem nao deve conter URL operacional privada do seu Worker, dumps de testes do Claude ou respostas reais de consultas juridicas.
 - Em repositorios publicos e forks, o CI pode validar o projeto sem secrets. O workflow `Deploy Worker` so publica quando os cinco secrets existem no repositorio que executa o workflow.
@@ -300,5 +356,6 @@ npx wrangler login
 npx wrangler secret put MCP_OAUTH_CLIENT_ID
 npx wrangler secret put MCP_OAUTH_CLIENT_SECRET
 npx wrangler secret put MCP_ACCESS_TOKEN_SECRET
+npx wrangler secret put MCP_BEARER_TOKEN # opcional para Codex
 npm run deploy:worker
 ```
