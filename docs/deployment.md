@@ -65,7 +65,7 @@ Importante:
 
 - `MCP_OAUTH_CLIENT_SECRET` sera usado no GitHub e no Claude.ai.
 - `MCP_ACCESS_TOKEN_SECRET` sera usado somente no GitHub/Cloudflare Worker.
-- `MCP_BEARER_TOKEN` sera usado no GitHub/Cloudflare Worker e no ambiente local do Codex.
+- `MCP_BEARER_TOKEN` sera usado no Cloudflare Worker e no ambiente local do Codex. No workflow publico atual, configure esse token diretamente no Worker depois do deploy.
 - Nenhum desses valores deve entrar no codigo ou em arquivos do repositorio.
 - Nao publique consultas juridicas reais, resultados do JurisprudenciaIA, nomes de partes, CPFs, e-mails ou outros dados pessoais em logs, issues ou exemplos.
 
@@ -139,12 +139,6 @@ MCP_OAUTH_CLIENT_SECRET
 MCP_ACCESS_TOKEN_SECRET
 ```
 
-Para Codex por HTTP, crie tambem este secret opcional:
-
-```text
-MCP_BEARER_TOKEN
-```
-
 Valores:
 
 ```text
@@ -153,8 +147,9 @@ CLOUDFLARE_API_TOKEN=<API token criado no Cloudflare>
 MCP_OAUTH_CLIENT_ID=jurisprudenciaia-mcp-client
 MCP_OAUTH_CLIENT_SECRET=<Client Secret gerado no passo 1>
 MCP_ACCESS_TOKEN_SECRET=<segredo de assinatura gerado no passo 1>
-MCP_BEARER_TOKEN=<Bearer token gerado no passo 1, se for usar Codex>
 ```
+
+Nao coloque `MCP_BEARER_TOKEN` nos GitHub Secrets no fluxo padrao. Ele sera configurado diretamente como Cloudflare Worker Secret no passo seguinte, caso voce use Codex por HTTP.
 
 ## 5. Publicar o Worker pelo GitHub Actions
 
@@ -173,9 +168,20 @@ Quando os cinco secrets estiverem configurados, o workflow vai:
 3. Rodar testes.
 4. Gerar build.
 5. Publicar o Worker com `wrangler deploy`.
-6. Sincronizar os secrets OAuth no Worker e, se existir, o Bearer token do Codex.
+6. Sincronizar os secrets OAuth no Worker.
 
-Se algum secret obrigatorio estiver faltando, o workflow fica verde, mas mostra aviso dizendo que pulou o deploy. Se apenas `MCP_BEARER_TOKEN` estiver ausente, o deploy acontece e somente o acesso Codex por Bearer fica desativado.
+Se algum secret obrigatorio estiver faltando, o workflow fica verde, mas mostra aviso dizendo que pulou o deploy.
+
+### Opcional para Codex: configurar Bearer no Worker
+
+Se voce for usar o Codex por `HTTP com streaming`, configure o Bearer token diretamente no Worker depois do primeiro deploy:
+
+```powershell
+npx wrangler login
+npx wrangler secret put MCP_BEARER_TOKEN
+```
+
+Quando o Wrangler pedir o valor, cole o `MCP_BEARER_TOKEN` gerado no passo 1. O mesmo valor deve existir no ambiente local do Codex.
 
 ## 6. Descobrir a URL final do Worker
 

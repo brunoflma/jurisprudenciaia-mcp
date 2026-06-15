@@ -802,7 +802,7 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
               <li>Clique em <strong>New repository secret</strong>.</li>
               <li>Preencha <strong>Name</strong> e <strong>Secret</strong> usando a tabela abaixo.</li>
               <li>Clique em <strong>Add secret</strong>.</li>
-              <li>Repita até cadastrar os cinco secrets obrigatórios. Se for usar Codex, cadastre também o sexto secret.</li>
+              <li>Repita até cadastrar os cinco secrets obrigatórios.</li>
             </ol>
             <table>
               <thead>
@@ -832,14 +832,13 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
                   <td><code>MCP_ACCESS_TOKEN_SECRET</code></td>
                   <td>Segundo valor gerado no passo 2.</td>
                 </tr>
-                <tr>
-                  <td><code>MCP_BEARER_TOKEN</code></td>
-                  <td>Terceiro valor gerado no passo 2, se for usar Codex HTTP.</td>
-                </tr>
               </tbody>
             </table>
             <p class="note">
-              Resultado correto: a tela de Actions secrets mostra os cinco nomes obrigatórios e, para Codex, também <code>MCP_BEARER_TOKEN</code>. O GitHub não mostra os valores depois de salvar.
+              Resultado correto: a tela de Actions secrets mostra os cinco nomes obrigatórios. O GitHub não mostra os valores depois de salvar.
+            </p>
+            <p class="note">
+              Se for usar Codex HTTP, não coloque <code>MCP_BEARER_TOKEN</code> nos GitHub Secrets neste fluxo. Ele será salvo diretamente no Worker como Cloudflare Secret depois do deploy.
             </p>
             <label class="checkline">
               <input type="checkbox" data-check="5">
@@ -881,6 +880,11 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
               <code>http://&lt;seu-subdominio&gt;.workers.dev</code>, sem o nome do Worker. Para que o ícone apareça de forma confiável na lista
               de conectores, configure um domínio customizado no Cloudflare Workers, como <code>https://mcp.&lt;seu-dominio&gt;/mcp</code>,
               e use essa URL no Claude.ai.
+            </p>
+            <p class="note">
+              Se for usar Codex HTTP, abra o Worker no painel da Cloudflare depois do deploy, entre em
+              <strong>Settings</strong> &gt; <strong>Variables and Secrets</strong>, adicione um Secret chamado
+              <code>MCP_BEARER_TOKEN</code> e cole o terceiro valor gerado no passo 2. Esse mesmo valor deve existir no ambiente local do Codex.
             </p>
             <p class="note danger">
               Se a execução ficar verde, mas aparecer aviso de deploy pulado por secrets ausentes,

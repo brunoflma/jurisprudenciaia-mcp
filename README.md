@@ -86,6 +86,8 @@ Observação sobre o Claude.ai: quando a URL usa `workers.dev`, o Claude pode re
 
 O caminho recomendado no Codex é usar o Worker por `HTTP com streaming` e preencher o campo `Variável de ambiente de token do portador` com `MCP_BEARER_TOKEN`. O valor real desse token deve existir como secret no Worker e como variável de ambiente local do Codex. Também existe um entrypoint local STDIO para uso em ambiente de desenvolvimento.
 
+Se você publicar pelo workflow atual do GitHub Actions, configure `MCP_BEARER_TOKEN` diretamente como Cloudflare Worker Secret depois do primeiro deploy. O workflow público sincroniza os secrets OAuth, mas não sincroniza esse token opcional sem uma alteração adicional no arquivo de workflow.
+
 O passo a passo está em `docs/codex.md`.
 
 ## Ferramentas disponíveis
@@ -112,13 +114,13 @@ MCP_OAUTH_CLIENT_SECRET
 MCP_ACCESS_TOKEN_SECRET
 ```
 
-Para Codex por HTTP, adicione também o secret opcional:
+O workflow atual sincroniza os secrets OAuth no Worker. Para ativar Codex por HTTP, grave o Bearer token diretamente no Worker depois do primeiro deploy:
 
-```text
-MCP_BEARER_TOKEN
+```powershell
+npx wrangler secret put MCP_BEARER_TOKEN
 ```
 
-Enquanto os secrets obrigatórios não existirem, o workflow valida o projeto, mas pula a publicação do Worker. Se `MCP_BEARER_TOKEN` não existir, o Worker continua publicando, mas o acesso por Bearer no Codex fica desativado.
+Enquanto os secrets obrigatórios não existirem, o workflow valida o projeto, mas pula a publicação do Worker. Se `MCP_BEARER_TOKEN` não existir no Worker, Claude.ai e ChatGPT continuam funcionando por OAuth, mas o acesso por Bearer no Codex fica desativado.
 
 Em repositórios públicos e forks, o CI consegue rodar sem acesso a secrets. O workflow `Deploy Worker` só publica quando os cinco secrets foram configurados no repositório que executa o workflow.
 

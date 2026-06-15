@@ -9,12 +9,20 @@ O Codex aceita MCP por dois caminhos:
 
 Use esta opção quando o Worker já estiver publicado.
 
-Antes de abrir o Codex, defina no ambiente local o mesmo token configurado no Worker como `MCP_BEARER_TOKEN`.
+Antes de abrir o Codex, configure no Worker um Cloudflare Secret chamado `MCP_BEARER_TOKEN` e defina no ambiente local do Codex o mesmo valor.
+
+No projeto publicado:
+
+```powershell
+npx wrangler secret put MCP_BEARER_TOKEN
+```
+
+Cole o Bearer token gerado para o Codex quando o Wrangler pedir o valor. O workflow público atual sincroniza os secrets OAuth, mas não sincroniza esse token opcional automaticamente.
 
 PowerShell:
 
 ```powershell
-$env:MCP_BEARER_TOKEN="<mesmo valor do Cloudflare/GitHub secret MCP_BEARER_TOKEN>"
+$env:MCP_BEARER_TOKEN="<mesmo valor do Cloudflare Worker Secret MCP_BEARER_TOKEN>"
 ```
 
 Na tela `Conectar a um MCP personalizado` ou `Atualizar MCP`:
