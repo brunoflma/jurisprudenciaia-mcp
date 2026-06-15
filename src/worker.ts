@@ -66,9 +66,9 @@ const AUTHORIZATION_SERVER_METADATA_PATH = "/.well-known/oauth-authorization-ser
 const FAVICON_SVG_PATH = "/favicon.svg";
 const FAVICON_PNG_PATH = "/favicon.png";
 const FAVICON_PNG_BASE64 =
-  "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAyElEQVR42u3bvQ3CMBAG0BuBDSjYhN2zA0W2iKihokiUH0hMJPuepWsjfa9wXNwXsXUi4nK7vmqcOHJqDV0Eo7XwPyG0Gv4rhNbDryJkCT+LkC38FAFAaoCs4T8DAAAAAEU+9Bj6U+bZ3UeTCmAavgRCLQBL4Y8iAAAAwCXoN3jqw2MrYOsvQQAAAAAAAAAAAAAAAAAAAABArQB7gwAAACALwN4BAABA8gUJAAAA2BIDAACAjXF9AQB6Q5pjuoPao/rDmuT/Dv0GYWvUxjnJaBYAAAAASUVORK5CYII=";
+  "iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAMAAADVRocKAAAASFBMVEUHHBkMLyr0xlJS4NPNnDUYU0oAAAD/664npJoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACohWHKAAAAAXRSTlMAQObYZgAAAiRJREFUeNrt2umWwiAMBWBSovL+TzxdbGVJQsIyo2fkd3o/LdAK6O5Zc50NsuaGplcANyE/ApybC7jJQFRz62jAAWPieSCNH3iDnkAcP7YHDiDKH93FCTAlfwOu/PFjNAZu04C5X+ACBuT/FWDIX9jG51uAZZEFCdAMoWWRBZCBzvxV6ASWavsM4PH4Av8ZgMkATAZgMgDjAcWbYCAAbwf4rVmB/SId4H0pSMArnxAIwHtCqAHXRXXAd7Yv8AHAU0BEU+5Zr54H6wWqYXoGPQH9TG4DDM+iBsD2sFMCMAkIk4EQwlQgXADM+wZhOhDSV5kVQEyFvJNzYK83AIiZkA/TQ0jzV0H1LFIDAXKAeBrRAGIuFBMtEa56H3KBBBALoZzJERDVDwR24UizAoilwAB7XlKv6ANEQiAAOICQ1cMwYM3emxVA5IULcC+gqK8AiIJwAvtjyG+CJ+obAVfs3pzvbhOAWBdcBJD1AoAoCeVPaqZeAMglGFJbIsccputZAJlFJD5vTQ6w9RywGNp2tWJZ/suAs+WzgjBMjQBU1+XMG615B037Th6W/7aAmCmNIiUAwvIp+wjc1rIMSAs0EiB+2jXlr0J+F/ndd/sNooHKAQW5zz4QYPbxLX1QOSRiDiIMo6h+zLVkC7/q3ErngfmgDmzNftTYDiiFBsB03AstgOXAug0wHLk3Auo/DUArcHdTBqn5jxvQAaiIPkBB9AI1w54PPyctM9v+Hp0eAAAAAElFTkSuQmCC";
 const FAVICON_ICO_BASE64 =
-  "AAABAAEAQEAAAAEAIAABAQAAFgAAAIlQTkcNChoKAAAADUlIRFIAAABAAAAAQAgGAAAAqmlx3gAAAMhJREFUeNrt270NwjAQBtAbgQ0o2ITdswNFtoiooaJIlB9ITCT7nqVrI32vcFzcF7F1IuJyu75qnDhyag1dBKO18D8htBr+K4TWw68iZAk/i5At/BQBQGqArOE/AwAAAABFPvQY+lPm2d1HkwpgGr4EQi0AS+GPIgAAAMAl6Dd46sNjK2DrL0EAAAAAAAAAAAAAAAAAAAAAQK0Ae4MAAAAgC8DeAQAAQPIFCQAAANgSAwAAgI1xfQEAekOaY7qD2qP6w5rk/w79BmFr1MY5yWgWAAAAAElFTkSuQmCC";
+  "AAABAAEAYGAAAAEAIAC+AgAAFgAAAIlQTkcNChoKAAAADUlIRFIAAABgAAAAYAgDAAAA1UaHCgAAAEhQTFRFBxwZDC8q9MZSUuDTzZw1GFNKAAAA/+uuJ6SaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAqIVhygAAAAF0Uk5TAEDm2GYAAAIkSURBVHja7drplsIgDAVgUqLy/k88XWxlSULCMqNn5Hd6Py3QCujuWXOdDbLmhqZXADchPwKcmwu4yUBUc+towAFj4nkgjR94g55AHD+2Bw4gyh/dxQkwJX8DrvzxYzQGbtOAuV/gAgbk/xVgyF/YxudbgGWRBQnQDKFlkQWQgc78VegElmr7DODx+AL/GYDJAEwGYDIA4wHFm2AgAG8H+K1Zgf0iHeB9KUjAK58QCMB7QqgB10V1wHe2L/ABwFNARFPuWa+eB+sFqmF6Bj0B/UxuAwzPogbA9rBTAjAJCJOBEMJUIFwAzPsGYToQ0leZFUBMhbyTc2CvNwCImZAP00NI81dB9SxSAwFygHga0QBiLhQTLRGueh9ygQQQC6GcyREQ1Q8EduFIswKIpcAAe15Sr+gDREIgADiAkNXDMGDN3psVQOSFC3AvoKivAIiCcAL7Y8hvgifqGwFX7N6c724TgFgXXASQ9QKAKAnlT2qmXgDIJRhSWyLHHKbrWQCZRSQ+b00OsPUcsBjadrViWf7LgLPls4IwTI0AVNflzButeQdN+04elv+2gJgpjSIlAMLyKfsI3NayDEgLNBIgfto15a9Cfhf53Xf7DaKBygEFuc8+EGD28S19UDkkYg4iDKOofsy1ZAu/6txK54H5oA5szX7U2A4ohQbAdNwLLYDlwLoNMBy5NwLqPw1AK3B3Uwap+Y8b0AGoiD5AQfQCNcOeDz8nLTPb/h6dHgAAAABJRU5ErkJggg==";
 const OAUTH_SCOPE = "jurisprudenciaia:search";
 const MCP_SERVER_NAME = "jurisprudenciaia-mcp";
 const MCP_SERVER_TITLE = "JurisprudenciaIA MCP";
@@ -212,7 +212,7 @@ async function handleJsonRpc(
             {
               src: pngIconUri,
               mimeType: "image/png",
-              sizes: ["64x64"]
+              sizes: ["96x96"]
             },
             {
               src: icoIconUri,
@@ -804,7 +804,7 @@ function landingPage(origin: string): string {
     '<meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
     "<title>JurisprudenciaIA MCP</title>",
-    `<link rel="icon" href="${FAVICON_PNG_PATH}" type="image/png">`,
+    `<link rel="icon" href="${FAVICON_PNG_PATH}" type="image/png" sizes="96x96">`,
     `<link rel="icon" href="${FAVICON_SVG_PATH}" type="image/svg+xml">`,
     '<link rel="alternate icon" href="/favicon.ico" type="image/x-icon">',
     "</head>",
@@ -821,10 +821,23 @@ function landingPage(origin: string): string {
 
 function faviconSvg(): string {
   return [
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">',
-    '<rect width="64" height="64" rx="12" fill="#10231f"/>',
-    '<path d="M18 14h28v8H34v24c0 8-5 12-13 12-3 0-6-1-8-2l2-8c2 1 4 1 6 1 4 0 6-2 6-6V22h-9z" fill="#d8f3dc"/>',
-    '<circle cx="46" cy="18" r="4" fill="#f5c542"/>',
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">',
+    '<rect width="96" height="96" rx="20" fill="#071c19"/>',
+    '<path d="M96 0v96H45L80 0z" fill="#0c2f2a"/>',
+    '<rect x="5" y="5" width="86" height="86" rx="17" fill="none" stroke="#18534a" stroke-width="2"/>',
+    '<path d="M40 16h31a6 6 0 0 1 6 6v2a6 6 0 0 1-6 6H55v34a18 18 0 0 1-18 18H23a5 5 0 0 1-5-5v-5a5 5 0 0 1 5-5h15a3 3 0 0 0 3-3V16z" fill="#f4c652"/>',
+    '<path d="M46 22v40" stroke="#ffebae" stroke-width="2" stroke-linecap="round"/>',
+    '<path d="M22 39h53" stroke="#52e0d3" stroke-width="6" stroke-linecap="round"/>',
+    '<circle cx="22" cy="39" r="5" fill="#52e0d3"/>',
+    '<circle cx="75" cy="39" r="5" fill="#52e0d3"/>',
+    '<path d="M25 42v7M73 42v7" stroke="#d1972d" stroke-width="3" stroke-linecap="round"/>',
+    '<path d="M25 49 13 67h24zM73 49 61 67h24z" fill="#cd9d36"/>',
+    '<path d="M13 67h24M61 67h24" stroke="#f4c652" stroke-width="5" stroke-linecap="round"/>',
+    '<path d="M53 48 62 61l17-5" fill="none" stroke="#27a49a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>',
+    '<circle cx="62" cy="61" r="4" fill="#52e0d3"/>',
+    '<circle cx="79" cy="56" r="3" fill="#52e0d3"/>',
+    '<path d="M52 79h26" stroke="#52e0d3" stroke-width="6" stroke-linecap="round"/>',
+    '<circle cx="84" cy="79" r="4" fill="#f4c652"/>',
     "</svg>"
   ].join("");
 }

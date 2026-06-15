@@ -808,6 +808,12 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
               <pre><code>URL_WORKER=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev
 URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</code></pre>
             </div>
+            <p class="note">
+              A URL <code>workers.dev</code> funciona para o MCP. Porém o Claude.ai pode buscar o ícone pelo Google Favicon usando apenas
+              <code>http://&lt;seu-subdominio&gt;.workers.dev</code>, sem o nome do Worker. Para que o ícone apareça de forma confiável na lista
+              de conectores, configure um domínio customizado no Cloudflare Workers, como <code>https://mcp.&lt;seu-dominio&gt;/mcp</code>,
+              e use essa URL no Claude.ai.
+            </p>
             <p class="note danger">
               Se a execução ficar verde, mas aparecer aviso de deploy pulado por secrets ausentes,
               volte ao passo 5. O deploy não foi publicado nesse caso.

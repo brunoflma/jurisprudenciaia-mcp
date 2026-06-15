@@ -173,6 +173,18 @@ https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
 
 Nao coloque token na URL.
 
+### Opcional recomendado: dominio customizado para icone no Claude.ai
+
+A URL `workers.dev` funciona para o MCP. Porem o Claude.ai pode carregar o icone pelo Google Favicon (`t1.gstatic.com/faviconV2`) usando apenas `http://<seu-subdominio>.workers.dev`, sem o nome do Worker. Como esse endereco nao e o mesmo host de `jurisprudenciaia-mcp.<seu-subdominio>.workers.dev`, o icone pode continuar ausente na lista de conectores mesmo quando `/favicon.png`, `/favicon.svg` e `/favicon.ico` respondem corretamente.
+
+Para exibicao confiavel do icone, configure uma rota ou dominio customizado no Cloudflare Workers, por exemplo:
+
+```text
+https://mcp.<seu-dominio>/mcp
+```
+
+Depois use esse endpoint no Claude.ai.
+
 ## 7. Testar o Worker
 
 Abra no navegador:

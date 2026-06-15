@@ -71,7 +71,9 @@ https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
 
 No Claude.ai, use `Advanced settings` para informar o OAuth Client ID e o OAuth Client Secret configurados no Worker.
 
-O Worker expõe `/favicon.png`, `/favicon.svg`, `/favicon.ico`, `logo_uri` nos metadados OAuth e `serverInfo.icons` no `initialize` do MCP. O PNG é anunciado como ícone principal porque alguns clientes de conector ignoram SVG ou priorizam recursos raster/cacheáveis. Se o Claude.ai continuar exibindo um ícone antigo logo após uma publicação, remova e recrie o conector ou aguarde a expiração do cache do cliente.
+O Worker expõe `/favicon.png`, `/favicon.svg`, `/favicon.ico`, `logo_uri` nos metadados OAuth e `serverInfo.icons` no `initialize` do MCP. O PNG é anunciado em `96x96` como ícone principal porque alguns clientes de conector ignoram SVG ou priorizam recursos raster/cacheáveis.
+
+Observação sobre o Claude.ai: quando a URL usa `workers.dev`, o Claude pode resolver o ícone via Google Favicon (`t1.gstatic.com/faviconV2`) usando apenas o domínio base, como `http://<seu-subdominio>.workers.dev`, e não o hostname completo `https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev`. Nesse cenário, o favicon do Worker está correto, mas a lista de conectores pode continuar sem exibir o ícone. Para exibição confiável, publique o Worker em um domínio customizado seu, por exemplo `https://mcp.<seu-dominio>/mcp`, e cadastre essa URL no Claude.ai.
 
 ## Ferramentas disponíveis
 

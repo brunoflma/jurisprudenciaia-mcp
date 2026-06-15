@@ -173,7 +173,7 @@ describe("Cloudflare Worker MCP endpoint", () => {
             {
               src: "https://worker.test/favicon.png",
               mimeType: "image/png",
-              sizes: ["64x64"]
+              sizes: ["96x96"]
             },
             {
               src: "https://worker.test/favicon.ico",
