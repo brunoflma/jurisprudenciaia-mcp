@@ -122,6 +122,24 @@ describe("Cloudflare Worker MCP endpoint", () => {
     });
   });
 
+  it("allows an HTTPS external icon URL in OAuth metadata", async () => {
+    const resourceResponse = await handleWorkerRequest(
+      new Request("https://worker.test/.well-known/oauth-protected-resource"),
+      { MCP_ICON_URL: "https://assets.example.test/jurisprudenciaia-mcp.png" }
+    );
+    const serverResponse = await handleWorkerRequest(
+      new Request("https://worker.test/.well-known/oauth-authorization-server"),
+      { MCP_ICON_URL: "http://assets.example.test/insecure.png" }
+    );
+
+    expect(await json(resourceResponse)).toMatchObject({
+      logo_uri: "https://assets.example.test/jurisprudenciaia-mcp.png"
+    });
+    expect(await json(serverResponse)).toMatchObject({
+      logo_uri: "https://worker.test/favicon.png"
+    });
+  });
+
   it("rejects MCP requests without a bearer token", async () => {
     const response = await handleWorkerRequest(
       post("/mcp", {
@@ -164,6 +182,7 @@ describe("Cloudflare Worker MCP endpoint", () => {
         capabilities: {
           tools: {}
         },
+        instructions: expect.stringContaining("inteiro teor"),
         serverInfo: {
           name: "jurisprudenciaia-mcp",
           title: "JurisprudenciaIA MCP",
@@ -303,7 +322,7 @@ describe("Cloudflare Worker MCP endpoint", () => {
         "Analise a tese juridica a seguir com base na jurisprudencia: autofianca e juridicamente impossivel em contrato de locacao.",
         "Contexto do caso: fiador de si mesmo.",
         "Separe precedentes favoraveis, contrarios, distincoes possiveis e ressalvas relevantes.",
-        "Estruture a resposta com tese principal, precedentes citados por referencia, tribunal, tipo/numero, data de julgamento, ementa, link quando disponivel e pontos de cautela."
+        "Estruture a resposta com tese principal, precedentes citados por referencia, tribunal, tipo/numero, data de julgamento, ementa, inteiro teor ou transcricao integral disponibilizada pela fonte, link quando disponivel e pontos de cautela. Nao substitua o inteiro teor por resumo, recorte ou excerto; quando a fonte nao disponibilizar inteiro teor, informe isso explicitamente."
       ].join(" "),
       maxWaitSeconds: 60,
       includeDebug: false

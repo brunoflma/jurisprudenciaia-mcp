@@ -31,6 +31,16 @@ type RegistryUpdate = {
   titulo?: string;
   precedente?: {
     texto_ementa?: string;
+    texto_inteiro_teor?: string | null;
+    inteiro_teor?: string | null;
+    textoInteiroTeor?: string | null;
+    inteiroTeor?: string | null;
+    full_text?: string | null;
+    fullText?: string | null;
+    teor?: string | null;
+    texto?: string | null;
+    conteudo?: string | null;
+    content?: string | null;
     data_julgamento?: string | null;
     link_pdf?: string | null;
     link?: string | null;
@@ -283,6 +293,42 @@ function referenceLink(reference: RegistryUpdate | undefined): string | undefine
   return reference?.precedente?.link_pdf ?? reference?.precedente?.link ?? undefined;
 }
 
+function referenceFullText(reference: RegistryUpdate): string | undefined {
+  const precedente = reference.precedente;
+  if (!precedente) {
+    return undefined;
+  }
+
+  const ementaFingerprint = comparableLongText(precedente.texto_ementa);
+  const candidates = [
+    precedente.texto_inteiro_teor,
+    precedente.inteiro_teor,
+    precedente.textoInteiroTeor,
+    precedente.inteiroTeor,
+    precedente.full_text,
+    precedente.fullText,
+    precedente.teor,
+    precedente.texto,
+    precedente.conteudo,
+    precedente.content
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeLongText(candidate);
+    if (!normalized) {
+      continue;
+    }
+
+    if (ementaFingerprint && comparableLongText(normalized) === ementaFingerprint) {
+      continue;
+    }
+
+    return normalized;
+  }
+
+  return undefined;
+}
+
 function formatJurisprudenciaIaMarkdown(input: {
   query: string;
   sourceUrl: string;
@@ -316,8 +362,9 @@ function formatJurisprudenciaIaMarkdown(input: {
     "",
     "## Pontos de cautela",
     "",
-    "- Confira a integra dos precedentes antes de usar em peca, parecer ou minuta.",
-    "- Verifique se tribunal, data, ementa e link correspondem ao caso concreto.",
+    "- Confira o inteiro teor dos precedentes antes de usar em peca, parecer ou minuta.",
+    "- Quando o campo \"Inteiro teor\" estiver ausente, valide a fonte no JurisprudenciaIA ou no site oficial do tribunal.",
+    "- Verifique se tribunal, data, ementa, inteiro teor e link correspondem ao caso concreto.",
     "- Quando algum metadado estiver ausente, valide a fonte no JurisprudenciaIA ou no site oficial do tribunal."
   ].join("\n");
 }
@@ -368,6 +415,7 @@ function formatReferences(references: RegistryUpdate[]): string[] {
       const date = formatDate(reference.precedente?.data_julgamento);
       const link = referenceLink(reference);
       const ementa = reference.precedente?.texto_ementa?.trim();
+      const inteiroTeor = referenceFullText(reference);
       const missingMetadata: string[] = [];
       const lines = [`### Precedente ${ref}`];
 
@@ -387,6 +435,10 @@ function formatReferences(references: RegistryUpdate[]): string[] {
         missingMetadata.push("ementa");
       }
 
+      if (!inteiroTeor) {
+        missingMetadata.push("inteiro teor");
+      }
+
       lines.push(
         `- Tribunal: ${tribunal ?? "nao informado"}`,
         `- Tipo/numero: ${title ?? "nao informado"}`,
@@ -394,6 +446,12 @@ function formatReferences(references: RegistryUpdate[]): string[] {
         `- Link: ${link ?? "nao informado"}`,
         `- Ementa: ${ementa ?? "nao informada"}`
       );
+
+      if (inteiroTeor) {
+        lines.push("", "#### Inteiro teor", "", inteiroTeor);
+      } else {
+        lines.push("- Inteiro teor: nao informado pela fonte consultada");
+      }
 
       if (missingMetadata.length > 0) {
         lines.push(`- Metadados ausentes: ${missingMetadata.join(", ")}`);
@@ -415,4 +473,22 @@ function formatDate(value: string | null | undefined): string | undefined {
   }
 
   return date.toISOString().slice(0, 10);
+}
+
+function normalizeLongText(value: string | null | undefined): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const normalized = value
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  return normalized || undefined;
+}
+
+function comparableLongText(value: string | null | undefined): string | undefined {
+  return normalizeLongText(value)?.replace(/\s+/g, " ").toLowerCase();
 }

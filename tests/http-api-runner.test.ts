@@ -13,7 +13,7 @@ const session = {
 const stream = [
   'data: {"type":"start"}',
   "",
-  'data: {"type":"data-registry-update","data":{"ref":"J1","tribunal":"stj","titulo":"AgInt no AREsp 1234567","precedente":{"texto_ementa":"EMENTA: responsabilidade civil e dano moral.","data_julgamento":"2025-03-24T00:00:00.000Z","link_pdf":"https://example.test/acordao.pdf"}}}',
+  'data: {"type":"data-registry-update","data":{"ref":"J1","tribunal":"stj","titulo":"AgInt no AREsp 1234567","precedente":{"texto_ementa":"EMENTA: responsabilidade civil e dano moral.","texto_inteiro_teor":"INTEIRO TEOR: acordam os ministros em reconhecer a necessidade de demonstracao do dano, do nexo causal e da conduta ilicita. O voto condutor examina a prova dos autos e fixa os limites da responsabilidade civil no caso concreto.","data_julgamento":"2025-03-24T00:00:00.000Z","link_pdf":"https://example.test/acordao.pdf"}}}',
   "",
   'data: {"type":"text-delta","delta":"O STJ reconhece que a responsabilidade civil depende da demonstracao do dano, do nexo causal e da conduta ilicita "}',
   "",
@@ -124,6 +124,10 @@ describe("HttpApiJurisprudenciaIaRunner", () => {
     expect(result.markdown).toContain("- Data de julgamento: 2025-03-24");
     expect(result.markdown).toContain("- Link: https://example.test/acordao.pdf");
     expect(result.markdown).toContain("- Ementa: EMENTA: responsabilidade civil e dano moral.");
+    expect(result.markdown).toContain("#### Inteiro teor");
+    expect(result.markdown).toContain(
+      "INTEIRO TEOR: acordam os ministros em reconhecer a necessidade de demonstracao do dano"
+    );
     expect(result.markdown).toContain("## Pontos de cautela");
   });
 
@@ -167,8 +171,9 @@ describe("HttpApiJurisprudenciaIaRunner", () => {
     expect(result.markdown).toContain("- Data de julgamento: nao informada");
     expect(result.markdown).toContain("- Link: nao informado");
     expect(result.markdown).toContain("- Ementa: EMENTA: acordo e sub-rogacao.");
+    expect(result.markdown).toContain("- Inteiro teor: nao informado pela fonte consultada");
     expect(result.markdown).toContain(
-      "- Metadados ausentes: tipo/numero, data de julgamento, link"
+      "- Metadados ausentes: tipo/numero, data de julgamento, link, inteiro teor"
     );
   });
 

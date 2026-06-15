@@ -5,7 +5,7 @@ const QUERY_DESCRIPTION = "Consulta juridica a ser pesquisada no JurisprudenciaI
 const MAX_WAIT_DESCRIPTION = "Tempo maximo de espera pelo resultado, limitado a 120 segundos.";
 const INCLUDE_DEBUG_DESCRIPTION = "Inclui texto bruto extraido da fonte quando verdadeiro.";
 const STRUCTURED_RESULT_INSTRUCTION =
-  "Estruture a resposta com tese principal, precedentes citados por referencia, tribunal, tipo/numero, data de julgamento, ementa, link quando disponivel e pontos de cautela.";
+  "Estruture a resposta com tese principal, precedentes citados por referencia, tribunal, tipo/numero, data de julgamento, ementa, inteiro teor ou transcricao integral disponibilizada pela fonte, link quando disponivel e pontos de cautela. Nao substitua o inteiro teor por resumo, recorte ou excerto; quando a fonte nao disponibilizar inteiro teor, informe isso explicitamente.";
 const DIRECT_ANSWER_INSTRUCTION = "Responda diretamente, sem pedir esclarecimentos.";
 const BROAD_THEME_INSTRUCTION =
   "Se o tema for amplo, escolha o recorte jurídico mais provável e indique essa escolha nos pontos de cautela.";

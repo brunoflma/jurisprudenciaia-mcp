@@ -47,7 +47,7 @@ describe("normalizeToolInput", () => {
         "Pesquise jurisprudência sobre: responsabilidade civil por dano moral.",
         "Responda diretamente, sem pedir esclarecimentos.",
         "Se o tema for amplo, escolha o recorte jurídico mais provável e indique essa escolha nos pontos de cautela.",
-        "Estruture a resposta com tese principal, precedentes citados por referencia, tribunal, tipo/numero, data de julgamento, ementa, link quando disponivel e pontos de cautela."
+        "Estruture a resposta com tese principal, precedentes citados por referencia, tribunal, tipo/numero, data de julgamento, ementa, inteiro teor ou transcricao integral disponibilizada pela fonte, link quando disponivel e pontos de cautela. Nao substitua o inteiro teor por resumo, recorte ou excerto; quando a fonte nao disponibilizar inteiro teor, informe isso explicitamente."
       ].join(" "),
       maxWaitSeconds: 60,
       includeDebug: true
@@ -64,7 +64,7 @@ describe("normalizeToolInput", () => {
         "Pesquise jurisprudência sobre: ressarcimento de danos após condenação em processo criminal.",
         "Responda diretamente, sem pedir esclarecimentos.",
         "Se o tema for amplo, escolha o recorte jurídico mais provável e indique essa escolha nos pontos de cautela.",
-        "Estruture a resposta com tese principal, precedentes citados por referencia, tribunal, tipo/numero, data de julgamento, ementa, link quando disponivel e pontos de cautela."
+        "Estruture a resposta com tese principal, precedentes citados por referencia, tribunal, tipo/numero, data de julgamento, ementa, inteiro teor ou transcricao integral disponibilizada pela fonte, link quando disponivel e pontos de cautela. Nao substitua o inteiro teor por resumo, recorte ou excerto; quando a fonte nao disponibilizar inteiro teor, informe isso explicitamente."
       ].join(" "),
       maxWaitSeconds: 120,
       includeDebug: false
@@ -90,6 +90,20 @@ describe("normalizeToolInput", () => {
 });
 
 describe("createJurisprudenciaIaMcpServer", () => {
+  it("publishes server instructions for Codex and other MCP clients", async () => {
+    await withMcpClient(
+      {
+        async search() {
+          return { markdown: "# Resultado JurisprudenciaIA\n\nTexto consolidado." };
+        }
+      },
+      async (client) => {
+        expect(client.getInstructions()).toContain("inteiro teor");
+        expect(client.getInstructions()).toContain("fonte oficial");
+      }
+    );
+  });
+
   it("registers the query tool and returns Markdown with debug text", async () => {
     let receivedInput: Required<JurisprudenciaIaQuery> | undefined;
 
@@ -135,7 +149,7 @@ describe("createJurisprudenciaIaMcpServer", () => {
             "Pesquise jurisprudência sobre: responsabilidade civil por dano moral.",
             "Responda diretamente, sem pedir esclarecimentos.",
             "Se o tema for amplo, escolha o recorte jurídico mais provável e indique essa escolha nos pontos de cautela.",
-            "Estruture a resposta com tese principal, precedentes citados por referencia, tribunal, tipo/numero, data de julgamento, ementa, link quando disponivel e pontos de cautela."
+            "Estruture a resposta com tese principal, precedentes citados por referencia, tribunal, tipo/numero, data de julgamento, ementa, inteiro teor ou transcricao integral disponibilizada pela fonte, link quando disponivel e pontos de cautela. Nao substitua o inteiro teor por resumo, recorte ou excerto; quando a fonte nao disponibilizar inteiro teor, informe isso explicitamente."
           ].join(" "),
           maxWaitSeconds: 60,
           includeDebug: true
@@ -176,7 +190,7 @@ describe("createJurisprudenciaIaMcpServer", () => {
             "Busque precedentes jurisprudenciais sobre: autofianca em contrato de locacao.",
             "Priorize decisoes diretamente relacionadas ao tema.",
             "Responda diretamente, sem pedir esclarecimentos.",
-            "Estruture a resposta com tese principal, precedentes citados por referencia, tribunal, tipo/numero, data de julgamento, ementa, link quando disponivel e pontos de cautela.",
+            "Estruture a resposta com tese principal, precedentes citados por referencia, tribunal, tipo/numero, data de julgamento, ementa, inteiro teor ou transcricao integral disponibilizada pela fonte, link quando disponivel e pontos de cautela. Nao substitua o inteiro teor por resumo, recorte ou excerto; quando a fonte nao disponibilizar inteiro teor, informe isso explicitamente.",
             "Tribunais de interesse: STJ, TJSP."
           ].join(" "),
           maxWaitSeconds: 60,
@@ -214,7 +228,7 @@ describe("createJurisprudenciaIaMcpServer", () => {
             "Pesquise jurisprudência sobre: ressarcimento de danos após condenação em processo criminal.",
             "Responda diretamente, sem pedir esclarecimentos.",
             "Se o tema for amplo, escolha o recorte jurídico mais provável e indique essa escolha nos pontos de cautela.",
-            "Estruture a resposta com tese principal, precedentes citados por referencia, tribunal, tipo/numero, data de julgamento, ementa, link quando disponivel e pontos de cautela."
+            "Estruture a resposta com tese principal, precedentes citados por referencia, tribunal, tipo/numero, data de julgamento, ementa, inteiro teor ou transcricao integral disponibilizada pela fonte, link quando disponivel e pontos de cautela. Nao substitua o inteiro teor por resumo, recorte ou excerto; quando a fonte nao disponibilizar inteiro teor, informe isso explicitamente."
           ].join(" "),
           maxWaitSeconds: 60,
           includeDebug: false
@@ -298,7 +312,7 @@ describe("createJurisprudenciaIaMcpServer", () => {
             "Pesquise jurisprudência sobre: responsabilidade civil por dano moral.",
             "Responda diretamente, sem pedir esclarecimentos.",
             "Se o tema for amplo, escolha o recorte jurídico mais provável e indique essa escolha nos pontos de cautela.",
-            "Estruture a resposta com tese principal, precedentes citados por referencia, tribunal, tipo/numero, data de julgamento, ementa, link quando disponivel e pontos de cautela."
+            "Estruture a resposta com tese principal, precedentes citados por referencia, tribunal, tipo/numero, data de julgamento, ementa, inteiro teor ou transcricao integral disponibilizada pela fonte, link quando disponivel e pontos de cautela. Nao substitua o inteiro teor por resumo, recorte ou excerto; quando a fonte nao disponibilizar inteiro teor, informe isso explicitamente."
           ].join(" "),
           maxWaitSeconds: 120,
           includeDebug: false
@@ -331,8 +345,7 @@ describe("createJurisprudenciaIaMcpServer", () => {
   });
 
   it("hides details from unexpected errors", async () => {
-    const internalMessage =
-      "/internal/runner.ts:42 command failed with credential REDACT_ME";
+    const internalMessage = "internal runner failed with credential REDACT_ME";
 
     await withMcpClient(
       {

@@ -1,6 +1,6 @@
 # Configuracao e publicacao
 
-Este projeto e um conector MCP auto-hospedado para o Claude.ai. Ele roda em Cloudflare Workers Free e consulta o JurisprudenciaIA por HTTP, sem navegador remoto, login ou senha.
+Este projeto e um conector MCP auto-hospedado para Claude.ai ou Codex. Ele roda em Cloudflare Workers Free e consulta o JurisprudenciaIA por HTTP, sem navegador remoto, login ou senha.
 
 O repositorio publico deve conter apenas codigo, testes e documentacao. Cada usuario cria a propria instancia do Worker, os proprios GitHub Secrets e o proprio conector no Claude.ai.
 
@@ -11,7 +11,7 @@ O fluxo recomendado e:
 1. Criar um token de deploy no Cloudflare.
 2. Colocar esse token e os segredos OAuth no GitHub Secrets.
 3. Rodar o workflow `Deploy Worker`.
-4. Cadastrar a URL final no Claude.ai.
+4. Cadastrar a URL final no Claude.ai ou no Codex.
 
 ## 1. Gerar os segredos do MCP
 
@@ -185,6 +185,14 @@ https://mcp.<seu-dominio>/mcp
 
 Depois use esse endpoint no Claude.ai.
 
+Cloudflare Pages ou GitHub Pages podem hospedar um PNG estatico do icone. Para isso, defina a variavel publica `MCP_ICON_URL` com uma URL HTTPS absoluta:
+
+```text
+MCP_ICON_URL=https://<host-estatico>/jurisprudenciaia-mcp.png
+```
+
+Essa opcao altera `logo_uri` e o icone principal anunciado no `initialize` do MCP. Configure esse valor como variavel de ambiente do Worker ou como Cloudflare Secret. Ela nao garante a exibicao na lista do Claude quando o cliente decide consultar `t1.gstatic.com` pelo dominio base `workers.dev`; nesse caso, o dominio customizado continua sendo a alternativa mais previsivel.
+
 ## 7. Testar o Worker
 
 Abra no navegador:
@@ -231,6 +239,16 @@ O Claude deve executar o fluxo OAuth, receber um Bearer token e listar estas fer
 - `buscar_precedentes`
 - `analisar_tese_juridica`
 - `comparar_teses_juridicas`
+
+## 9. Configurar no Codex
+
+O Codex pode usar o Worker por `HTTP com streaming` ou rodar o servidor local por `STDIO`.
+
+Use o guia especifico:
+
+```text
+docs/codex.md
+```
 
 Se o Claude continuar mostrando apenas uma ferramenta depois de um deploy novo, desconecte e conecte o MCP novamente para forcar a atualizacao do schema.
 

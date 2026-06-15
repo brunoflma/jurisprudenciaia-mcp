@@ -2,6 +2,7 @@ import { isOperationalError } from "./errors.js";
 import { FixedWindowRateLimiter } from "./infra/rate-limit.js";
 import { HttpApiJurisprudenciaIaRunner } from "./jurisprudenciaia/http-api-runner.js";
 import type { JurisprudenciaIaRunner } from "./jurisprudenciaia/types.js";
+import { MCP_SERVER_INSTRUCTIONS } from "./mcp/instructions.js";
 import {
   findToolDefinition,
   TOOL_DEFINITIONS
@@ -16,6 +17,7 @@ type WorkerEnv = {
   REQUEST_TIMEOUT_MS?: string;
   RATE_LIMIT_WINDOW_MS?: string;
   RATE_LIMIT_MAX_REQUESTS?: string;
+  MCP_ICON_URL?: string;
 };
 
 type JsonRpcRequest = {
@@ -118,11 +120,11 @@ export async function handleWorkerRequest(
     (url.pathname === PROTECTED_RESOURCE_METADATA_PATH ||
       url.pathname === `${PROTECTED_RESOURCE_METADATA_PATH}${MCP_PATH}`)
   ) {
-    return json(protectedResourceMetadata(origin));
+    return json(protectedResourceMetadata(origin, env));
   }
 
   if (request.method === "GET" && url.pathname === AUTHORIZATION_SERVER_METADATA_PATH) {
-    return json(authorizationServerMetadata(origin));
+    return json(authorizationServerMetadata(origin, env));
   }
 
   if (request.method === "GET" && url.pathname === AUTHORIZE_PATH) {
@@ -160,8 +162,8 @@ export async function handleWorkerRequest(
 
   const activeRunner = runner ?? createRunner(env);
   const responses = Array.isArray(payload)
-    ? await Promise.all(payload.map((item) => handleJsonRpc(item, activeRunner, origin)))
-    : [await handleJsonRpc(payload, activeRunner, origin)];
+    ? await Promise.all(payload.map((item) => handleJsonRpc(item, activeRunner, origin, env)))
+    : [await handleJsonRpc(payload, activeRunner, origin, env)];
   const visibleResponses = responses.filter((item): item is JsonRpcResponse => item !== null);
 
   if (visibleResponses.length === 0) {
@@ -181,7 +183,8 @@ function createRunner(env: WorkerEnv): JurisprudenciaIaRunner {
 async function handleJsonRpc(
   payload: unknown,
   runner: JurisprudenciaIaRunner,
-  origin: string
+  origin: string,
+  env: WorkerEnv
 ): Promise<JsonRpcResponse | null> {
   if (!isJsonRpcRequest(payload)) {
     return jsonRpcError(null, -32600, "Invalid Request");
@@ -194,7 +197,7 @@ async function handleJsonRpc(
 
   switch (payload.method) {
     case "initialize": {
-      const pngIconUri = logoUri(origin);
+      const pngIconUri = logoUri(origin, env);
       const svgIconUri = `${origin}${FAVICON_SVG_PATH}`;
       const icoIconUri = `${origin}/favicon.ico`;
 
@@ -203,6 +206,7 @@ async function handleJsonRpc(
         capabilities: {
           tools: {}
         },
+        instructions: MCP_SERVER_INSTRUCTIONS,
         serverInfo: {
           name: MCP_SERVER_NAME,
           title: MCP_SERVER_TITLE,
@@ -431,11 +435,11 @@ async function authorizeMcpRequest(
   return null;
 }
 
-function protectedResourceMetadata(origin: string): Record<string, unknown> {
+function protectedResourceMetadata(origin: string, env: WorkerEnv): Record<string, unknown> {
   return {
     resource: mcpResource(origin),
     resource_name: MCP_SERVER_TITLE,
-    logo_uri: logoUri(origin),
+    logo_uri: logoUri(origin, env),
     resource_documentation: `${origin}/`,
     authorization_servers: [origin],
     bearer_methods_supported: ["header"],
@@ -443,13 +447,13 @@ function protectedResourceMetadata(origin: string): Record<string, unknown> {
   };
 }
 
-function authorizationServerMetadata(origin: string): Record<string, unknown> {
+function authorizationServerMetadata(origin: string, env: WorkerEnv): Record<string, unknown> {
   return {
     issuer: origin,
     authorization_endpoint: `${origin}${AUTHORIZE_PATH}`,
     token_endpoint: `${origin}${TOKEN_PATH}`,
     service_documentation: `${origin}/`,
-    logo_uri: logoUri(origin),
+    logo_uri: logoUri(origin, env),
     response_types_supported: ["code"],
     grant_types_supported: ["authorization_code"],
     token_endpoint_auth_methods_supported: ["client_secret_basic", "client_secret_post"],
@@ -644,8 +648,22 @@ function mcpResource(origin: string): string {
   return `${origin}${MCP_PATH}`;
 }
 
-function logoUri(origin: string): string {
-  return `${origin}${FAVICON_PNG_PATH}`;
+function logoUri(origin: string, env: WorkerEnv): string {
+  return externalIconUri(env) ?? `${origin}${FAVICON_PNG_PATH}`;
+}
+
+function externalIconUri(env: WorkerEnv): string | undefined {
+  const raw = env.MCP_ICON_URL?.trim();
+  if (!raw) {
+    return undefined;
+  }
+
+  try {
+    const url = new URL(raw);
+    return url.protocol === "https:" ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function randomId(): string {

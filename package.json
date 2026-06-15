@@ -1,15 +1,17 @@
 {
   "name": "jurisprudenciaia-mcp",
   "version": "0.1.0",
-  "description": "Conector MCP auto-hospedado para consultar o JurisprudenciaIA pelo Claude.ai usando Cloudflare Workers.",
+  "description": "Conector MCP auto-hospedado para consultar o JurisprudenciaIA pelo Claude.ai ou Codex usando Cloudflare Workers.",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "dev:stdio": "tsx src/stdio.ts",
     "dev:worker": "wrangler dev",
     "build": "tsc -p tsconfig.json",
     "deploy:worker": "wrangler deploy",
     "start": "node dist/src/server.js",
+    "start:stdio": "node dist/src/stdio.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit"

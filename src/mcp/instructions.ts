@@ -1,0 +1,2 @@
+export const MCP_SERVER_INSTRUCTIONS =
+  "Use este MCP para pesquisa jurisprudencial brasileira. Preserve e mostre ementa, inteiro teor e links dos precedentes citados quando retornados pela fonte; nao substitua inteiro teor por resumo. Trate os resultados como primeira camada de pesquisa e valide em fonte oficial antes de citar em peca, parecer ou minuta. Consultas juridicas podem conter dados sensiveis; nao registre dados pessoais ou trechos de casos concretos em logs publicos.";

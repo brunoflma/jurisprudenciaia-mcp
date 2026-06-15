@@ -1,6 +1,6 @@
 # jurisprudenciaia-mcp
 
-Conector MCP auto-hospedado para consultar o JurisprudenciaIA pelo Claude.ai.
+Conector MCP auto-hospedado para consultar o JurisprudenciaIA pelo Claude.ai ou Codex.
 
 O projeto usa Cloudflare Workers Free e chamadas HTTP diretas para os endpoints usados pelo site. Ele não exige navegador remoto, senha ou login no JurisprudenciaIA.
 
@@ -15,7 +15,8 @@ Para usar a solução de ponta a ponta, você precisa ter:
 - Cloudflare Account ID da conta onde o Worker será publicado.
 - Cloudflare API Token com permissão para editar Workers, preferencialmente pelo modelo `Edit Cloudflare Workers` ou por token customizado equivalente.
 - Repositório GitHub com acesso para configurar Actions e Repository Secrets, caso use a publicação automática.
-- Conta Claude.ai com acesso à configuração de conectores MCP remotos e aos campos avançados de OAuth.
+- Conta Claude.ai com acesso à configuração de conectores MCP remotos e aos campos avançados de OAuth, caso use Claude.
+- Codex CLI ou extensão/IDE com suporte a MCP, caso use Codex.
 - Acesso de rede ao site `https://www.jurisprudenciaia.com.br/`, pois o Worker consulta essa fonte em tempo de execução.
 
 Os secrets reais não devem ser salvos no repositório. Use apenas GitHub Secrets, Cloudflare Secrets ou variáveis de ambiente locais não versionadas. Também não publique resultados reais de consultas, peças, nomes de partes, CPFs, e-mails ou outros dados pessoais em issues, logs ou arquivos de exemplo.
@@ -73,17 +74,27 @@ No Claude.ai, use `Advanced settings` para informar o OAuth Client ID e o OAuth 
 
 O Worker expõe `/favicon.png`, `/favicon.svg`, `/favicon.ico`, `logo_uri` nos metadados OAuth e `serverInfo.icons` no `initialize` do MCP. O PNG é anunciado em `96x96` como ícone principal porque alguns clientes de conector ignoram SVG ou priorizam recursos raster/cacheáveis.
 
+Se quiser hospedar o ícone em Cloudflare Pages, GitHub Pages ou outro host estático HTTPS, defina `MCP_ICON_URL` com a URL absoluta do PNG. Essa variável altera o `logo_uri` e o ícone principal anunciado no `initialize`. URLs sem HTTPS são ignoradas. O valor pode ser configurado como variável de ambiente do Worker ou como Cloudflare Secret, já que não contém dado sensível.
+
 Observação sobre o Claude.ai: quando a URL usa `workers.dev`, o Claude pode resolver o ícone via Google Favicon (`t1.gstatic.com/faviconV2`) usando apenas o domínio base, como `http://<seu-subdominio>.workers.dev`, e não o hostname completo `https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev`. Nesse cenário, o favicon do Worker está correto, mas a lista de conectores pode continuar sem exibir o ícone. Para exibição confiável, publique o Worker em um domínio customizado seu, por exemplo `https://mcp.<seu-dominio>/mcp`, e cadastre essa URL no Claude.ai.
+
+## Uso no Codex
+
+O caminho recomendado no Codex é usar o Worker por HTTP com streaming, reaproveitando OAuth, rate limit e HTTPS. Também existe um entrypoint local STDIO para uso em ambiente de desenvolvimento.
+
+O passo a passo está em `docs/codex.md`.
 
 ## Ferramentas disponíveis
 
-O conector publica cinco ferramentas para o Claude:
+O conector publica cinco ferramentas para clientes MCP:
 
 - `consultar_jurisprudenciaia`: consulta livre, com opção de debug.
 - `pesquisar_jurisprudencia`: pesquisa direta e limpa por jurisprudência.
 - `buscar_precedentes`: busca precedentes por tema, com tribunais preferenciais.
 - `analisar_tese_juridica`: confronta uma tese com a jurisprudência.
 - `comparar_teses_juridicas`: compara duas teses para a mesma questão jurídica.
+
+As respostas estruturadas preservam a ementa, o link e o inteiro teor/transcrição integral quando a fonte disponibiliza esses campos. Quando o inteiro teor não vem no retorno da fonte, o Markdown informa a ausência explicitamente para evitar confundir ementa ou excerto com acórdão completo.
 
 ## Publicação pelo GitHub Actions
 

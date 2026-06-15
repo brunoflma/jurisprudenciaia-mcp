@@ -6,14 +6,20 @@ import {
   type JurisprudenciaIaToolDefinition,
   normalizeToolInput,
 } from "./tool-definition.js";
+import { MCP_SERVER_INSTRUCTIONS } from "./instructions.js";
 
 export { normalizeToolInput } from "./tool-definition.js";
 
 export function createJurisprudenciaIaMcpServer(runner: JurisprudenciaIaRunner): McpServer {
-  const server = new McpServer({
-    name: "jurisprudenciaia-mcp",
-    version: "0.1.0"
-  });
+  const server = new McpServer(
+    {
+      name: "jurisprudenciaia-mcp",
+      version: "0.1.0"
+    },
+    {
+      instructions: MCP_SERVER_INSTRUCTIONS
+    }
+  );
 
   for (const definition of TOOL_DEFINITIONS) {
     server.registerTool(
