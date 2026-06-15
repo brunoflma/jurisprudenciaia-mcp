@@ -382,6 +382,57 @@
       border-color: var(--green);
     }
 
+    .client-options {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1px;
+      margin-top: 1rem;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--line);
+    }
+
+    .client-option {
+      min-width: 0;
+      padding: 1rem;
+      background: rgba(25, 26, 24, 0.95);
+    }
+
+    .client-option h3 {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+      justify-content: space-between;
+      line-height: 1.2;
+    }
+
+    .client-option h3 span {
+      flex: 0 0 auto;
+      border: 1px solid rgba(215, 170, 91, 0.36);
+      border-radius: 999px;
+      padding: 0.18rem 0.45rem;
+      color: var(--amber);
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .client-option p {
+      margin-top: 0.45rem;
+      color: var(--muted);
+    }
+
+    .client-option ul {
+      margin: 0.7rem 0 0;
+      padding-left: 1.15rem;
+      color: var(--muted);
+    }
+
+    .client-option li + li {
+      margin-top: 0.35rem;
+    }
+
     .checkline {
       display: flex;
       gap: 0.65rem;
@@ -498,6 +549,10 @@
         grid-template-columns: 1fr;
       }
 
+      .client-options {
+        grid-template-columns: 1fr;
+      }
+
       .step-head {
         grid-template-columns: 1fr;
       }
@@ -517,7 +572,7 @@
       <h1>Guia de deploy do JurisprudenciaIA MCP</h1>
       <p class="lead">
         Um roteiro guiado para preparar os secrets, publicar o Worker e conectar o MCP
-        no Claude.ai com segurança e previsibilidade.
+        no Claude.ai ou no Codex com segurança e previsibilidade.
       </p>
       <div class="route" aria-label="Resumo do fluxo de deploy">
         <div class="route-item">
@@ -533,7 +588,7 @@
         <div class="route-item">
           <span>3</span>
           <strong>Conectar</strong>
-          <p>Teste o Worker e registre o conector no Claude.ai.</p>
+          <p>Teste o Worker e registre o conector no Claude.ai ou no Codex.</p>
         </div>
       </div>
       <ul class="quick-rules">
@@ -564,7 +619,7 @@
             <ul class="plain-list">
               <li>GitHub, já logado na conta que possui o repositório.</li>
               <li>Cloudflare Dashboard, já logado na conta que vai hospedar o Worker.</li>
-              <li>Claude.ai, já logado na conta onde o conector será usado.</li>
+              <li>Claude.ai ou Codex, conforme o cliente onde o conector será usado.</li>
               <li>Bloco de Notas, para guardar valores temporariamente durante o deploy.</li>
             </ul>
           </div>
@@ -830,7 +885,7 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
             <span class="number">7</span>
             <div>
               <h2 id="step-7-title">Teste se o Worker está online</h2>
-              <p>Este teste confirma que a URL publicada responde antes de configurar o Claude.ai.</p>
+              <p>Este teste confirma que a URL publicada responde antes de configurar o cliente MCP.</p>
             </div>
           </div>
           <div class="step-body">
@@ -868,38 +923,61 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
           <div class="step-head">
             <span class="number">8</span>
             <div>
-              <h2 id="step-8-title">Conecte o MCP no Claude.ai</h2>
-              <p>Use a URL com <code>/mcp</code> no final e o mesmo Client Secret do GitHub.</p>
+              <h2 id="step-8-title">Conecte o MCP no Claude.ai ou no Codex</h2>
+              <p>Use a URL com <code>/mcp</code> no final. No Claude.ai, informe OAuth manualmente; no Codex, selecione HTTP com streaming.</p>
             </div>
           </div>
           <div class="step-body">
-            <ol class="literal">
-              <li>Entre em <a href="https://claude.ai/" target="_blank" rel="noreferrer">claude.ai</a>.</li>
-              <li>Abra <strong>Settings</strong>.</li>
-              <li>Entre em <strong>Connectors</strong>.</li>
-              <li>Clique para adicionar um conector personalizado.</li>
-              <li>No campo de URL, cole sua <code>URL_MCP</code>.</li>
-              <li>Abra <strong>Advanced settings</strong>, se existir.</li>
-              <li>Em <strong>OAuth Client ID</strong>, cole <code>jurisprudenciaia-mcp-client</code>.</li>
-              <li>Em <strong>OAuth Client Secret</strong>, cole o mesmo valor salvo em <code>MCP_OAUTH_CLIENT_SECRET</code>.</li>
-              <li>Salve ou conecte o conector.</li>
-              <li>Autorize a conexão quando o Claude.ai pedir.</li>
-            </ol>
+            <div class="client-options">
+              <div class="client-option">
+                <h3>Claude.ai <span>Web</span></h3>
+                <p>Use este caminho quando o conector for usado dentro do Claude.ai.</p>
+                <ul>
+                  <li>Entre em <a href="https://claude.ai/" target="_blank" rel="noreferrer">claude.ai</a>.</li>
+                  <li>Abra <strong>Settings</strong> e depois <strong>Connectors</strong>.</li>
+                  <li>Adicione um conector personalizado e cole sua <code>URL_MCP</code>.</li>
+                  <li>Abra <strong>Advanced settings</strong>, se existir.</li>
+                  <li>Informe <strong>OAuth Client ID</strong> e <strong>OAuth Client Secret</strong>.</li>
+                  <li>Salve e autorize a conexão quando o Claude.ai pedir.</li>
+                </ul>
+              </div>
+              <div class="client-option">
+                <h3>Codex <span>HTTP</span></h3>
+                <p>Use este caminho quando o conector for usado no Codex com o Worker publicado.</p>
+                <ul>
+                  <li>Abra a tela <strong>Conectar a um MCP personalizado</strong>.</li>
+                  <li>Em <strong>Nome</strong>, informe <code>jurisprudenciaia-mcp</code>.</li>
+                  <li>Selecione <strong>HTTP com streaming</strong>.</li>
+                  <li>No campo de URL, cole sua <code>URL_MCP</code>.</li>
+                  <li>Salve e conclua o login OAuth quando o Codex solicitar.</li>
+                  <li>Para desenvolvimento local via STDIO, use o arquivo <code>docs/codex.md</code>.</li>
+                </ul>
+              </div>
+            </div>
             <div class="copy-block">
               <div class="copy-head">
-                <span>Valores que vão no Claude.ai</span>
+                <span>Valores para Claude.ai</span>
                 <button class="copy" type="button">Copiar</button>
               </div>
               <pre><code>URL: https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp
 OAuth Client ID: jurisprudenciaia-mcp-client
 OAuth Client Secret: &lt;mesmo valor de MCP_OAUTH_CLIENT_SECRET&gt;</code></pre>
             </div>
+            <div class="copy-block">
+              <div class="copy-head">
+                <span>Valores para Codex HTTP com streaming</span>
+                <button class="copy" type="button">Copiar</button>
+              </div>
+              <pre><code>Nome: jurisprudenciaia-mcp
+Tipo: HTTP com streaming
+URL: https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</code></pre>
+            </div>
             <p class="note danger">
-              Não cole <code>MCP_ACCESS_TOKEN_SECRET</code> no Claude.ai. Esse valor é somente do Worker.
+              Não cole <code>MCP_ACCESS_TOKEN_SECRET</code> no Claude.ai nem no Codex. Esse valor é somente do Worker.
             </p>
             <label class="checkline">
               <input type="checkbox" data-check="8">
-              O Claude.ai conectou o MCP sem erro.
+              Conectei o MCP no cliente escolhido sem erro.
             </label>
           </div>
         </section>
@@ -908,15 +986,15 @@ OAuth Client Secret: &lt;mesmo valor de MCP_OAUTH_CLIENT_SECRET&gt;</code></pre>
           <div class="step-head">
             <span class="number">9</span>
             <div>
-              <h2 id="step-9-title">Faça o primeiro teste no Claude.ai</h2>
+              <h2 id="step-9-title">Faça o primeiro teste no cliente escolhido</h2>
               <p>Agora confirme que as ferramentas aparecem e que a consulta retorna Markdown.</p>
             </div>
           </div>
           <div class="step-body">
             <ol class="literal">
-              <li>Abra uma conversa nova no Claude.ai.</li>
+              <li>Abra uma conversa nova no Claude.ai ou no Codex.</li>
               <li>Cole a mensagem abaixo.</li>
-              <li>Confirme que o Claude usa a ferramenta do MCP.</li>
+              <li>Confirme que o cliente usa a ferramenta do MCP.</li>
               <li>Confira se o resultado contém resposta, tese principal, precedentes e cautelas.</li>
             </ol>
             <div class="copy-block">
@@ -943,7 +1021,7 @@ comparar_teses_juridicas</code></pre>
             </p>
             <label class="checkline">
               <input type="checkbox" data-check="9">
-              Fiz o teste no Claude.ai e as ferramentas apareceram.
+              Fiz o teste no cliente escolhido e as ferramentas apareceram.
             </label>
           </div>
         </section>
@@ -965,11 +1043,15 @@ comparar_teses_juridicas</code></pre>
             Confira se você copiou a URL do Worker, não a URL do repositório GitHub.
           </li>
           <li>
-            <strong>Claude.ai mostra erro de autenticação.</strong>
+            <strong>O cliente mostra erro de autenticação.</strong>
             O valor em OAuth Client Secret deve ser exatamente igual ao GitHub secret <code>MCP_OAUTH_CLIENT_SECRET</code>.
           </li>
           <li>
-            <strong>Claude.ai mostra apenas uma ferramenta ou schema antigo.</strong>
+            <strong>Codex não conecta no HTTP com streaming.</strong>
+            Confira se a opção <strong>HTTP com streaming</strong> está selecionada, se a URL termina em <code>/mcp</code> e se o login OAuth foi concluído.
+          </li>
+          <li>
+            <strong>O cliente mostra apenas uma ferramenta ou schema antigo.</strong>
             Desconecte o conector, conecte novamente e refaça o teste da etapa 9.
           </li>
         </ul>
