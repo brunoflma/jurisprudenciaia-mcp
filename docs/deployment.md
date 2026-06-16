@@ -49,6 +49,8 @@ MCP_OAUTH_CLIENT_SECRET=<resultado do primeiro comando>
 MCP_ACCESS_TOKEN_SECRET=<resultado do segundo comando>
 ```
 
+Este guia usa `jurisprudenciaia-mcp-client` como Client ID padrao. Use exatamente esse mesmo valor no GitHub, no Worker, no Claude.ai e no ChatGPT.
+
 Se for usar o Codex por `HTTP com streaming`, gere tambem um Bearer token estatico:
 
 ```powershell
@@ -148,6 +150,8 @@ MCP_OAUTH_CLIENT_ID=jurisprudenciaia-mcp-client
 MCP_OAUTH_CLIENT_SECRET=<Client Secret gerado no passo 1>
 MCP_ACCESS_TOKEN_SECRET=<segredo de assinatura gerado no passo 1>
 ```
+
+O ChatGPT recusara a conexao se esse valor nao for exatamente igual ao secret `MCP_OAUTH_CLIENT_ID` do Worker. Se mudar o Client ID no Cloudflare, mude tambem o GitHub Secret antes do proximo deploy.
 
 Nao coloque `MCP_BEARER_TOKEN` nos GitHub Secrets no fluxo padrao. Ele sera configurado diretamente como Cloudflare Worker Secret no passo seguinte, caso voce use Codex por HTTP.
 
@@ -303,12 +307,31 @@ https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
 6. Informe:
 
 ```text
-Client ID: <mesmo valor de MCP_OAUTH_CLIENT_ID>
+Client ID: jurisprudenciaia-mcp-client
 Client Secret: <mesmo valor de MCP_OAUTH_CLIENT_SECRET>
 Token endpoint auth method: client_secret_post
 ```
 
 O aviso sobre DCR ou CIMD indica apenas que o Worker nao oferece registro dinamico de cliente. Use o cliente OAuth definido pelo usuario.
+
+Se o ChatGPT abrir campos avancados, confira:
+
+```text
+URL de autorizacao: https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/oauth/authorize
+Token URL: https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/oauth/token
+URL de registro: deixe em branco
+Endereco base do servidor de autorizacao: https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev
+Recurso: https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
+Escopo, se solicitado: jurisprudenciaia:search
+```
+
+Antes de tentar novamente no ChatGPT, voce pode testar o mesmo fluxo OAuth:
+
+```powershell
+$env:MCP_OAUTH_CLIENT_ID = Read-Host "Cole o OAuth Client ID do Worker"
+$env:MCP_OAUTH_CLIENT_SECRET = Read-Host "Cole o OAuth Client Secret do Worker"
+npm run check:chatgpt-oauth -- https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
+```
 
 Se o Claude, ChatGPT ou Codex continuar mostrando apenas uma ferramenta depois de um deploy novo, desconecte e conecte o MCP novamente para forcar a atualizacao do schema.
 

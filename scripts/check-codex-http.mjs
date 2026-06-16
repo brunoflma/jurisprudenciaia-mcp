@@ -1,0 +1,140 @@
+#!/usr/bin/env node
+
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import {
+  StreamableHTTPClientTransport,
+  StreamableHTTPError,
+} from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+
+const expectedTools = [
+  "consultar_jurisprudenciaia",
+  "pesquisar_jurisprudencia",
+  "buscar_precedentes",
+  "analisar_tese_juridica",
+  "comparar_teses_juridicas",
+];
+
+const usage = `Uso:
+  npm run check:codex-http -- https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
+
+Variaveis usadas:
+  MCP_BEARER_TOKEN  mesmo valor configurado como Cloudflare Worker Secret
+  URL_MCP           alternativa para informar a URL sem argumento`;
+
+function fail(message, code = 1) {
+  console.error(message);
+  process.exitCode = code;
+}
+
+function parseUrl() {
+  const arg = process.argv.slice(2).find((value) => !value.startsWith("-"));
+
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    console.log(usage);
+    process.exit(0);
+  }
+
+  const rawUrl = arg || process.env.URL_MCP;
+  if (!rawUrl) {
+    fail(`${usage}\n\nErro: informe a URL /mcp ou defina URL_MCP.`, 2);
+    return undefined;
+  }
+
+  try {
+    return new URL(rawUrl);
+  } catch {
+    fail(`Erro: URL invalida: ${rawUrl}`, 2);
+    return undefined;
+  }
+}
+
+function describeError(error) {
+  if (error instanceof StreamableHTTPError) {
+    if (error.code === 401 || error.code === 403) {
+      return [
+        `HTTP ${error.code}: o Worker recusou o Bearer token.`,
+        "Confira se MCP_BEARER_TOKEN existe no ambiente local e se tem o mesmo valor do Cloudflare Worker Secret.",
+      ].join("\n");
+    }
+
+    return `HTTP ${error.code ?? "desconhecido"}: ${error.message}`;
+  }
+
+  if (error?.name === "AbortError") {
+    return "Timeout de rede ao conectar no Worker.";
+  }
+
+  return error?.message || String(error);
+}
+
+async function main() {
+  const url = parseUrl();
+  if (!url) return;
+
+  const token = process.env.MCP_BEARER_TOKEN;
+  if (!token) {
+    fail(
+      [
+        "Erro: MCP_BEARER_TOKEN nao esta definido neste processo.",
+        "No Windows, defina como variavel de usuario e reinicie o Codex:",
+        '[Environment]::SetEnvironmentVariable("MCP_BEARER_TOKEN", "<mesmo valor do Worker>", "User")',
+      ].join("\n"),
+      2,
+    );
+    return;
+  }
+
+  const client = new Client({
+    name: "jurisprudenciaia-codex-http-check",
+    version: "0.1.0",
+  });
+
+  const transport = new StreamableHTTPClientTransport(url, {
+    requestInit: {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  });
+
+  try {
+    await client.connect(transport);
+    console.log(`Conectado: ${url.href}`);
+
+    const { tools } = await client.listTools();
+    const names = tools.map((tool) => tool.name).sort();
+    console.log(`Ferramentas encontradas (${names.length}): ${names.join(", ")}`);
+
+    const missing = expectedTools.filter((name) => !names.includes(name));
+    if (missing.length) {
+      fail(`Erro: ferramentas ausentes: ${missing.join(", ")}`);
+      return;
+    }
+
+    const result = await client.callTool({
+      name: "consultar_jurisprudenciaia",
+      arguments: {
+        query: "responsabilidade civil por negativacao indevida dano moral",
+        max_wait_seconds: 45,
+      },
+    });
+
+    if (result.isError) {
+      fail("Erro: a ferramenta respondeu com isError=true. A autenticacao MCP funcionou, mas a consulta falhou.");
+      return;
+    }
+
+    const text = result.content
+      ?.filter((item) => item.type === "text")
+      .map((item) => item.text)
+      .join("\n") ?? "";
+
+    console.log(`Chamada real OK: consultar_jurisprudenciaia retornou ${text.length} caracteres.`);
+  } catch (error) {
+    fail(describeError(error));
+  } finally {
+    await client.close().catch(() => {});
+  }
+}
+
+await main();

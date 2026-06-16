@@ -71,6 +71,6 @@ export function loadConfig(env: Env = process.env): AppConfig {
     ),
     requestTimeoutMs: positiveInteger(env, "REQUEST_TIMEOUT_MS", 120000),
     rateLimitWindowMs: positiveInteger(env, "RATE_LIMIT_WINDOW_MS", 60000),
-    rateLimitMaxRequests: positiveInteger(env, "RATE_LIMIT_MAX_REQUESTS", 4)
+    rateLimitMaxRequests: positiveInteger(env, "RATE_LIMIT_MAX_REQUESTS", 30)
   };
 }

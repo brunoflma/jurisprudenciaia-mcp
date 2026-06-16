@@ -776,7 +776,7 @@ function jsonRpcError(
 
 function getLimiter(env: WorkerEnv): FixedWindowRateLimiter {
   const windowMs = positiveInteger(env.RATE_LIMIT_WINDOW_MS, 60000);
-  const maxRequests = positiveInteger(env.RATE_LIMIT_MAX_REQUESTS, 4);
+  const maxRequests = positiveInteger(env.RATE_LIMIT_MAX_REQUESTS, 30);
   const key = `${windowMs}:${maxRequests}`;
 
   if (!limiter || limiterConfigKey !== key) {

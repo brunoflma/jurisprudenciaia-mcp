@@ -11,7 +11,7 @@ describe("loadConfig", () => {
     expect(config.jurisprudenciaIaUrl).toBe("https://www.jurisprudenciaia.com.br/");
     expect(config.requestTimeoutMs).toBe(120000);
     expect(config.rateLimitWindowMs).toBe(60000);
-    expect(config.rateLimitMaxRequests).toBe(4);
+    expect(config.rateLimitMaxRequests).toBe(30);
   });
 
   it("normalizes configured URL", () => {

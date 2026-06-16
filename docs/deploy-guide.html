@@ -66,23 +66,25 @@
     pre {
       margin: 0;
       padding: 1rem;
-      overflow-x: auto;
+      overflow-x: hidden;
       background: var(--code);
       color: #f8efd9;
       border: 1px solid #303934;
       border-radius: 8px;
       font-family: "Cascadia Code", Consolas, monospace;
       font-size: 0.92rem;
+      line-height: 1.55;
     }
 
     pre code {
       display: block;
-      min-width: max-content;
+      min-width: 0;
       border: 0;
       background: transparent;
       padding: 0;
-      overflow-wrap: normal;
-      white-space: pre;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+      word-break: normal;
     }
 
     .nowrap {
@@ -358,6 +360,74 @@
       margin-top: 0.9rem;
     }
 
+    .copy-stack {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0.9rem;
+      margin-top: 0.9rem;
+    }
+
+    .copy-stack .copy-block {
+      margin-top: 0;
+    }
+
+    .client-selector {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.65rem;
+      margin-top: 1rem;
+    }
+
+    .client-tab {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(25, 26, 24, 0.92);
+      color: var(--ink);
+      padding: 0.8rem;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .client-tab strong,
+    .client-tab span {
+      display: block;
+    }
+
+    .client-tab span {
+      margin-top: 0.18rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .client-tab.is-active {
+      border-color: rgba(100, 195, 145, 0.8);
+      background: rgba(42, 67, 52, 0.78);
+    }
+
+    .client-panel {
+      margin-top: 1rem;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(25, 26, 24, 0.95);
+      padding: 1rem;
+    }
+
+    .client-panel[hidden] {
+      display: none;
+    }
+
+    .client-panel h3 {
+      margin-bottom: 0.35rem;
+    }
+
+    .client-panel > p {
+      color: var(--muted);
+    }
+
+    .client-panel .literal {
+      margin-top: 0.9rem;
+    }
+
     .copy-head {
       display: flex;
       gap: 0.75rem;
@@ -384,7 +454,7 @@
 
     .client-options {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: 1.15fr repeat(2, minmax(0, 1fr));
       gap: 1px;
       margin-top: 1rem;
       overflow: hidden;
@@ -397,6 +467,10 @@
       min-width: 0;
       padding: 1rem;
       background: rgba(25, 26, 24, 0.95);
+    }
+
+    .client-option.primary {
+      box-shadow: inset 0 3px 0 var(--green);
     }
 
     .client-option h3 {
@@ -550,6 +624,14 @@
       }
 
       .client-options {
+        grid-template-columns: 1fr;
+      }
+
+      .client-selector {
+        grid-template-columns: 1fr;
+      }
+
+      .copy-stack {
         grid-template-columns: 1fr;
       }
 
@@ -941,72 +1023,153 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
             <span class="number">8</span>
             <div>
               <h2 id="step-8-title">Conecte o MCP no cliente</h2>
-              <p>Use a URL com <code>/mcp</code> no final. Claude.ai e ChatGPT usam OAuth; Codex usa Bearer por variável de ambiente.</p>
+              <p>Use a URL com <code>/mcp</code> no final. Escolha um caminho: Claude.ai e ChatGPT usam OAuth; Codex usa Bearer por variável local.</p>
             </div>
           </div>
           <div class="step-body">
-            <div class="client-options">
-              <div class="client-option">
-                <h3>Claude.ai <span>Web</span></h3>
-                <p>Use este caminho quando o conector for usado dentro do Claude.ai.</p>
-                <ul>
-                  <li>Entre em <a href="https://claude.ai/" target="_blank" rel="noreferrer">claude.ai</a>.</li>
-                  <li>Abra <strong>Settings</strong> e depois <strong>Connectors</strong>.</li>
-                  <li>Adicione um conector personalizado e cole sua <code>URL_MCP</code>.</li>
-                  <li>Abra <strong>Advanced settings</strong>, se existir.</li>
-                  <li>Informe <strong>OAuth Client ID</strong> e <strong>OAuth Client Secret</strong>.</li>
-                  <li>Salve e autorize a conexão quando o Claude.ai pedir.</li>
-                </ul>
-              </div>
-              <div class="client-option">
-                <h3>ChatGPT <span>App</span></h3>
-                <p>Use este caminho quando o conector for usado como app em modo desenvolvedor.</p>
-                <ul>
-                  <li>Abra <strong>Configurações</strong> e depois <strong>Aplicativos</strong>.</li>
-                  <li>Ative o <strong>Modo desenvolvedor</strong> e crie um novo app.</li>
-                  <li>Em <strong>Conexão</strong>, escolha <strong>URL do servidor</strong> e cole sua <code>URL_MCP</code>.</li>
-                  <li>Em <strong>Autenticação</strong>, escolha <strong>OAuth</strong>.</li>
-                  <li>Use <strong>Cliente OAuth definido pelo usuário</strong> com <code>client_secret_post</code>.</li>
-                  <li>Informe o mesmo Client ID e Client Secret do Worker.</li>
-                  <li>Se aparecer aviso de DCR ou CIMD indisponível, continue com o cliente definido pelo usuário.</li>
-                </ul>
-              </div>
-              <div class="client-option">
-                <h3>Codex <span>HTTP</span></h3>
-                <p>Use este caminho quando o conector for usado no Codex com o Worker publicado.</p>
-                <ul>
-                  <li>Abra a tela <strong>Conectar a um MCP personalizado</strong>.</li>
-                  <li>Em <strong>Nome</strong>, informe <code>jurisprudenciaia-mcp</code>.</li>
-                  <li>Selecione <strong>HTTP com streaming</strong>.</li>
-                  <li>No campo de URL, cole sua <code>URL_MCP</code>.</li>
-                  <li>No campo <strong>Variável de ambiente de token do portador</strong>, informe <code>MCP_BEARER_TOKEN</code>.</li>
-                  <li>Garanta que o Codex local tenha essa variável com o mesmo valor do Worker.</li>
-                  <li>Para desenvolvimento local via STDIO, use o arquivo <code>docs/codex.md</code>.</li>
-                </ul>
-              </div>
+            <p class="note">
+              Escolha onde você vai usar o conector. O guia mostra apenas os campos daquele cliente para evitar mistura de tokens.
+            </p>
+            <div class="client-selector" role="tablist" aria-label="Escolha o cliente MCP">
+              <button class="client-tab is-active" type="button" role="tab" aria-selected="true" data-client-tab="claude">
+                <strong>Claude.ai</strong>
+                <span>Connector personalizado com OAuth</span>
+              </button>
+              <button class="client-tab" type="button" role="tab" aria-selected="false" data-client-tab="chatgpt">
+                <strong>ChatGPT</strong>
+                <span>App em modo desenvolvedor com OAuth</span>
+              </button>
+              <button class="client-tab" type="button" role="tab" aria-selected="false" data-client-tab="codex">
+                <strong>Codex</strong>
+                <span>HTTP com streaming e Bearer local</span>
+              </button>
             </div>
-            <div class="copy-block">
-              <div class="copy-head">
-                <span>Valores para Claude.ai ou ChatGPT</span>
-                <button class="copy" type="button">Copiar</button>
-              </div>
-              <pre><code>URL: https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp
-OAuth Client ID: &lt;mesmo valor de MCP_OAUTH_CLIENT_ID&gt;
-OAuth Client Secret: &lt;mesmo valor de MCP_OAUTH_CLIENT_SECRET&gt;
-ChatGPT token auth method: client_secret_post</code></pre>
-            </div>
-            <div class="copy-block">
-              <div class="copy-head">
-                <span>Valores para Codex HTTP com streaming</span>
-                <button class="copy" type="button">Copiar</button>
-              </div>
-              <pre><code>Nome: jurisprudenciaia-mcp
+
+            <div class="client-panel" data-client-panel="codex" hidden>
+              <h3>Codex</h3>
+              <p>Use esta tela quando o conector for usado no Codex Desktop.</p>
+              <ol class="literal">
+                <li>No Worker, grave o secret <code>MCP_BEARER_TOKEN</code>.</li>
+                <li>No Windows, crie a variável de usuário <code>MCP_BEARER_TOKEN</code> com o mesmo valor.</li>
+                <li>Feche e abra o Codex depois de criar ou alterar a variável.</li>
+                <li>No Codex, abra <strong>Conectar a um MCP personalizado</strong>.</li>
+                <li>Preencha os campos abaixo e rode o teste antes de procurar erro na interface.</li>
+              </ol>
+              <div class="copy-stack">
+                <div class="copy-block">
+                  <div class="copy-head">
+                    <span>Campos da tela do Codex</span>
+                    <button class="copy" type="button">Copiar</button>
+                  </div>
+                  <pre><code>Nome: jurisprudenciaia-mcp
 Tipo: HTTP com streaming
 URL: https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp
 Variável de ambiente de token do portador: MCP_BEARER_TOKEN</code></pre>
+                </div>
+                <div class="copy-block">
+                  <div class="copy-head">
+                    <span>Variável local do Windows</span>
+                    <button class="copy" type="button">Copiar</button>
+                  </div>
+                  <pre><code>[Environment]::SetEnvironmentVariable("MCP_BEARER_TOKEN", "&lt;mesmo valor do Worker&gt;", "User")</code></pre>
+                </div>
+                <div class="copy-block">
+                  <div class="copy-head">
+                    <span>Teste antes de abrir o Codex</span>
+                    <button class="copy" type="button">Copiar</button>
+                  </div>
+                  <pre><code>$env:MCP_BEARER_TOKEN = [Environment]::GetEnvironmentVariable("MCP_BEARER_TOKEN", "User")
+npm run check:codex-http -- https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</code></pre>
+                </div>
+              </div>
+              <p class="note success">
+                Teste correto: <code>Conectado</code>, <code>Ferramentas encontradas (5)</code> e <code>Chamada real OK</code>.
+              </p>
+            </div>
+
+            <div class="client-panel" data-client-panel="chatgpt" hidden>
+              <h3>ChatGPT</h3>
+              <p>Use esta tela para criar um app em modo desenvolvedor no ChatGPT. Não use o token do Codex aqui.</p>
+              <ol class="literal">
+                <li>Abra <strong>Configurações</strong>, depois <strong>Aplicativos</strong>.</li>
+                <li>Ative o <strong>Modo desenvolvedor</strong> e clique em criar novo app.</li>
+                <li>Em <strong>Conexão</strong>, escolha <strong>URL do servidor</strong> e cole a URL <code>/mcp</code>.</li>
+                <li>Em <strong>Autenticação</strong>, escolha <strong>OAuth</strong>.</li>
+                <li>Em <strong>Método de registro</strong>, escolha <strong>Cliente OAuth definido pelo usuário</strong>.</li>
+                <li>Informe exatamente o mesmo Client ID e Client Secret salvos no Worker.</li>
+                <li>Use <code>client_secret_post</code> como método de autenticação do endpoint de token.</li>
+                <li>Ignore os avisos de DCR e CIMD indisponíveis; eles são esperados neste modo.</li>
+              </ol>
+              <div class="copy-stack">
+                <div class="copy-block">
+                  <div class="copy-head">
+                    <span>Campos principais do ChatGPT</span>
+                    <button class="copy" type="button">Copiar</button>
+                  </div>
+                  <pre><code>Nome: jurisprudenciaia-mcp
+Conexão: URL do servidor
+URL: https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp
+Autenticação: OAuth
+Método de registro: Cliente OAuth definido pelo usuário
+OAuth Client ID: jurisprudenciaia-mcp-client
+OAuth Client Secret: &lt;mesmo valor do Worker Secret MCP_OAUTH_CLIENT_SECRET&gt;
+Método de autenticação do endpoint de token: client_secret_post</code></pre>
+                </div>
+                <div class="copy-block">
+                  <div class="copy-head">
+                    <span>Endpoints avançados do ChatGPT</span>
+                    <button class="copy" type="button">Copiar</button>
+                  </div>
+                  <pre><code>URL de autorização: https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/oauth/authorize
+Token URL: https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/oauth/token
+URL de registro: deixe em branco
+Endereço base do servidor de autorização: https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev
+Recurso: https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp
+Escopo, se o ChatGPT pedir: jurisprudenciaia:search</code></pre>
+                </div>
+                <div class="copy-block">
+                  <div class="copy-head">
+                    <span>Teste antes de criar o app</span>
+                    <button class="copy" type="button">Copiar</button>
+                  </div>
+                  <pre><code>$env:MCP_OAUTH_CLIENT_ID = Read-Host "Cole o OAuth Client ID do Worker"
+$env:MCP_OAUTH_CLIENT_SECRET = Read-Host "Cole o OAuth Client Secret do Worker"
+npm run check:chatgpt-oauth -- https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</code></pre>
+                </div>
+              </div>
+              <p class="note danger">
+                Se aparecer erro genérico ao conectar, o caso mais comum é Client ID ou Client Secret diferente do Worker. Se publicar pelo GitHub Actions, mantenha o GitHub Secret <code>MCP_OAUTH_CLIENT_ID</code> com o mesmo valor: <code>jurisprudenciaia-mcp-client</code>.
+              </p>
+            </div>
+
+            <div class="client-panel" data-client-panel="claude">
+              <h3>Claude.ai</h3>
+              <p>Use esta tela quando o conector for usado dentro do Claude.ai.</p>
+              <ol class="literal">
+                <li>Entre em <a href="https://claude.ai/" target="_blank" rel="noreferrer">claude.ai</a>.</li>
+                <li>Abra <strong>Settings</strong> e depois <strong>Connectors</strong>.</li>
+                <li>Adicione um conector personalizado e cole a URL <code>/mcp</code>.</li>
+                <li>Abra <strong>Advanced settings</strong>, se aparecer.</li>
+                <li>Informe o Client ID e o Client Secret salvos no Worker.</li>
+                <li>Salve e autorize a conexão quando o Claude.ai pedir.</li>
+              </ol>
+              <div class="copy-stack">
+                <div class="copy-block">
+                  <div class="copy-head">
+                    <span>Campos do Claude.ai</span>
+                    <button class="copy" type="button">Copiar</button>
+                  </div>
+                  <pre><code>URL: https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp
+OAuth Client ID: jurisprudenciaia-mcp-client
+OAuth Client Secret: &lt;mesmo valor do Worker Secret MCP_OAUTH_CLIENT_SECRET&gt;</code></pre>
+                </div>
+              </div>
+              <p class="note">
+                O Claude.ai costuma descobrir os endpoints OAuth automaticamente pela URL <code>/mcp</code>. Se ele pedir campos avançados, use os mesmos endpoints do ChatGPT.
+              </p>
             </div>
             <p class="note danger">
-              Não cole <code>MCP_ACCESS_TOKEN_SECRET</code> em nenhum cliente. O <code>MCP_BEARER_TOKEN</code> deve ficar somente no Worker e no ambiente local do Codex.
+              Não cole <code>MCP_ACCESS_TOKEN_SECRET</code> em nenhum cliente. No Claude.ai e no ChatGPT use <code>MCP_OAUTH_CLIENT_ID</code> e <code>MCP_OAUTH_CLIENT_SECRET</code>. No Codex use <code>MCP_BEARER_TOKEN</code>.
             </p>
             <label class="checkline">
               <input type="checkbox" data-check="8">
@@ -1077,11 +1240,11 @@ comparar_teses_juridicas</code></pre>
           </li>
           <li>
             <strong>O cliente mostra erro de autenticação.</strong>
-            No Claude.ai ou ChatGPT, confira Client ID e Client Secret. No Codex, confira se <code>MCP_BEARER_TOKEN</code> existe no Worker e no ambiente local.
+            No Claude.ai ou ChatGPT, confira Client ID e Client Secret. No Codex, rode <code>npm run check:codex-http</code> e confira se <code>MCP_BEARER_TOKEN</code> existe no Worker e como variável de usuário do Windows.
           </li>
           <li>
             <strong>Codex não conecta no HTTP com streaming.</strong>
-            Confira se a opção <strong>HTTP com streaming</strong> está selecionada, se a URL termina em <code>/mcp</code> e se o campo de token do portador aponta para <code>MCP_BEARER_TOKEN</code>.
+            Confira se a opção <strong>HTTP com streaming</strong> está selecionada, se a URL termina em <code>/mcp</code>, se o campo de token do portador aponta para <code>MCP_BEARER_TOKEN</code> e se o Codex foi reiniciado depois da variável local ser criada.
           </li>
           <li>
             <strong>O cliente mostra apenas uma ferramenta ou schema antigo.</strong>
@@ -1101,6 +1264,8 @@ comparar_teses_juridicas</code></pre>
   <script>
     const storageKey = "jurisprudenciaia-mcp-deploy-guide";
     const checks = Array.from(document.querySelectorAll("[data-check]"));
+    const clientTabs = Array.from(document.querySelectorAll("[data-client-tab]"));
+    const clientPanels = Array.from(document.querySelectorAll("[data-client-panel]"));
     const progressText = document.querySelector("#progressText");
     const progressBar = document.querySelector("#progressBar");
 
@@ -1132,6 +1297,29 @@ comparar_teses_juridicas</code></pre>
       });
     });
     updateProgress();
+
+    function selectClient(client) {
+      clientTabs.forEach((button) => {
+        const active = button.dataset.clientTab === client;
+        button.classList.toggle("is-active", active);
+        button.setAttribute("aria-selected", active ? "true" : "false");
+      });
+
+      clientPanels.forEach((panel) => {
+        panel.hidden = panel.dataset.clientPanel !== client;
+      });
+
+      state.client = client;
+      writeState(state);
+    }
+
+    clientTabs.forEach((button) => {
+      button.addEventListener("click", () => {
+        selectClient(button.dataset.clientTab);
+      });
+    });
+
+    selectClient(state.client || "claude");
 
     document.querySelectorAll(".copy").forEach((button) => {
       button.addEventListener("click", async () => {

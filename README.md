@@ -74,7 +74,7 @@ https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
 
 No Claude.ai, use `Advanced settings` para informar o OAuth Client ID e o OAuth Client Secret configurados no Worker.
 
-No ChatGPT, crie um app em modo desenvolvedor com a mesma URL `/mcp`, selecione autenticação OAuth, use `Cliente OAuth definido pelo usuário`, informe o mesmo `MCP_OAUTH_CLIENT_ID` e `MCP_OAUTH_CLIENT_SECRET`, e mantenha o método de token como `client_secret_post`. Avisos de DCR/CIMD indisponível são esperados nesta configuração: o Worker não oferece registro dinâmico aberto porque isso enfraqueceria a proteção da instância privada.
+No ChatGPT, crie um app em modo desenvolvedor com a mesma URL `/mcp`, selecione autenticação OAuth, use `Cliente OAuth definido pelo usuário`, informe `jurisprudenciaia-mcp-client` como Client ID e use o mesmo `MCP_OAUTH_CLIENT_SECRET` configurado no Worker. Mantenha o método de token como `client_secret_post`. Avisos de DCR/CIMD indisponível são esperados nesta configuração. Se o ChatGPT mostrar erro genérico ao conectar, rode `npm run check:chatgpt-oauth` para separar Client ID errado de Client Secret errado.
 
 O Worker expõe `/favicon.png`, `/favicon.svg`, `/favicon.ico`, `logo_uri` nos metadados OAuth e `serverInfo.icons` no `initialize` do MCP. O PNG é anunciado em `96x96` como ícone principal porque alguns clientes de conector ignoram SVG ou priorizam recursos raster/cacheáveis.
 
@@ -84,11 +84,18 @@ Observação sobre o Claude.ai: quando a URL usa `workers.dev`, o Claude pode re
 
 ## Uso no Codex
 
-O caminho recomendado no Codex é usar o Worker por `HTTP com streaming` e preencher o campo `Variável de ambiente de token do portador` com `MCP_BEARER_TOKEN`. O valor real desse token deve existir como secret no Worker e como variável de ambiente local do Codex. Também existe um entrypoint local STDIO para uso em ambiente de desenvolvimento.
+O caminho recomendado no Codex é usar o Worker por `HTTP com streaming` e preencher o campo `Variável de ambiente de token do portador` com `MCP_BEARER_TOKEN`. O valor real desse token deve existir como secret no Worker e como variável de usuário do Windows antes de abrir o Codex. Também existe um entrypoint local STDIO para uso em ambiente de desenvolvimento.
 
 Se você publicar pelo workflow atual do GitHub Actions, configure `MCP_BEARER_TOKEN` diretamente como Cloudflare Worker Secret depois do primeiro deploy. O workflow público sincroniza os secrets OAuth, mas não sincroniza esse token opcional sem uma alteração adicional no arquivo de workflow.
 
-O passo a passo está em `docs/codex.md`.
+O diagnóstico do mesmo fluxo HTTP/Bearer usado pelo Codex pode ser feito com:
+
+```powershell
+$env:MCP_BEARER_TOKEN = [Environment]::GetEnvironmentVariable("MCP_BEARER_TOKEN", "User")
+npm run check:codex-http -- https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
+```
+
+O passo a passo completo está em `docs/codex.md`.
 
 ## Ferramentas disponíveis
 

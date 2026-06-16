@@ -12,6 +12,8 @@
     "deploy:worker": "wrangler deploy",
     "start": "node dist/src/server.js",
     "start:stdio": "node dist/src/stdio.js",
+    "check:codex-http": "node scripts/check-codex-http.mjs",
+    "check:chatgpt-oauth": "node scripts/check-chatgpt-oauth.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit"
