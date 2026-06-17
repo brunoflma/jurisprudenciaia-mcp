@@ -51,9 +51,9 @@ MCP_ACCESS_TOKEN_SECRET=<resultado do segundo comando>
 
 Este guia usa `jurisprudenciaia-mcp-client` como Client ID padrao. Use exatamente esse mesmo valor no GitHub, no Worker, no Claude.ai e no ChatGPT.
 
-Se for usar o Codex por `HTTP com streaming`, gere tambem um Bearer token estatico:
+Se for usar o Codex por `HTTP com streaming`, gere também um Bearer token estático:
 
-```powershell
+```shell
 node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
 
@@ -65,11 +65,11 @@ MCP_BEARER_TOKEN=<resultado do terceiro comando>
 
 Importante:
 
-- `MCP_OAUTH_CLIENT_SECRET` sera usado no GitHub e no Claude.ai.
-- `MCP_ACCESS_TOKEN_SECRET` sera usado somente no GitHub/Cloudflare Worker.
-- `MCP_BEARER_TOKEN` sera usado no Cloudflare Worker e no ambiente local do Codex. No workflow publico atual, configure esse token diretamente no Worker depois do deploy.
-- Nenhum desses valores deve entrar no codigo ou em arquivos do repositorio.
-- Nao publique consultas juridicas reais, resultados do JurisprudenciaIA, nomes de partes, CPFs, e-mails ou outros dados pessoais em logs, issues ou exemplos.
+- `MCP_OAUTH_CLIENT_SECRET` será usado no GitHub e no Claude.ai.
+- `MCP_ACCESS_TOKEN_SECRET` será usado somente no GitHub/Cloudflare Worker.
+- `MCP_BEARER_TOKEN` será usado no Cloudflare Worker e no ambiente local do Codex, tanto no Windows quanto no macOS. No workflow público atual, configure esse token diretamente no Worker depois do deploy.
+- Nenhum desses valores deve entrar no código ou em arquivos do repositório.
+- Não publique consultas jurídicas reais, resultados do JurisprudênciaIA, nomes de partes, CPFs, e-mails ou outros dados pessoais em logs, issues ou exemplos.
 
 ## 2. Criar o Cloudflare API Token
 
@@ -178,14 +178,14 @@ Se algum secret obrigatorio estiver faltando, o workflow fica verde, mas mostra 
 
 ### Opcional para Codex: configurar Bearer no Worker
 
-Se voce for usar o Codex por `HTTP com streaming`, configure o Bearer token diretamente no Worker depois do primeiro deploy:
+Se você for usar o Codex por `HTTP com streaming`, configure o Bearer token diretamente no Worker depois do primeiro deploy:
 
-```powershell
+```shell
 npx wrangler login
 npx wrangler secret put MCP_BEARER_TOKEN
 ```
 
-Quando o Wrangler pedir o valor, cole o `MCP_BEARER_TOKEN` gerado no passo 1. O mesmo valor deve existir no ambiente local do Codex.
+Quando o Wrangler pedir o valor, cole o `MCP_BEARER_TOKEN` gerado no passo 1. O mesmo valor deve existir no ambiente local do Codex no Windows ou no macOS.
 
 ## 6. Descobrir a URL final do Worker
 
@@ -279,10 +279,31 @@ Para `HTTP com streaming`, use:
 ```text
 Nome: jurisprudenciaia-mcp
 URL: https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
-Variavel de ambiente de token do portador: MCP_BEARER_TOKEN
+Variável de ambiente de token do portador: MCP_BEARER_TOKEN
 ```
 
-O valor local de `MCP_BEARER_TOKEN` precisa ser exatamente o mesmo secret configurado no Worker. Nao coloque esse token em URL, README, issue, print publico ou `config.toml`.
+O valor local de `MCP_BEARER_TOKEN` precisa ser exatamente o mesmo secret configurado no Worker. Não coloque esse token em URL, README, issue, print público ou `config.toml`.
+
+No Windows:
+
+```powershell
+[Environment]::SetEnvironmentVariable("MCP_BEARER_TOKEN", "<mesmo valor do Worker>", "User")
+```
+
+No macOS, para Codex Desktop aberto pelo Dock, Finder ou Spotlight:
+
+```zsh
+launchctl setenv MCP_BEARER_TOKEN "<mesmo valor do Worker>"
+```
+
+No macOS, para Codex usado pelo Terminal:
+
+```zsh
+echo 'export MCP_BEARER_TOKEN="<mesmo valor do Worker>"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+Depois de criar ou alterar a variável, feche e abra o Codex.
 
 Use o guia especifico:
 
@@ -362,7 +383,7 @@ O resultado esperado deve comecar com:
 - O access token e emitido pelo fluxo OAuth Authorization Code com PKCE.
 - O access token OAuth e emitido pelo fluxo Authorization Code com PKCE quando o cliente envia PKCE; clientes confidenciais com `client_secret_post` tambem sao aceitos.
 - Claude.ai e ChatGPT recebem apenas `MCP_OAUTH_CLIENT_ID` e `MCP_OAUTH_CLIENT_SECRET`.
-- O Codex recebe somente o nome da variavel local `MCP_BEARER_TOKEN`; o valor real deve ficar no ambiente local e no Worker.
+- O Codex recebe somente o nome da variável local `MCP_BEARER_TOKEN`; o valor real deve ficar no ambiente local do Windows/macOS e no Worker.
 - `MCP_ACCESS_TOKEN_SECRET` fica somente no Worker/GitHub.
 - Para revogar OAuth, troque `MCP_OAUTH_CLIENT_SECRET` e `MCP_ACCESS_TOKEN_SECRET` no GitHub Secrets e rode o workflow novamente. Para revogar Codex Bearer, troque `MCP_BEARER_TOKEN`.
 - O repositorio nao deve conter chaves Cloudflare, GitHub, Browserless ou tokens reais.

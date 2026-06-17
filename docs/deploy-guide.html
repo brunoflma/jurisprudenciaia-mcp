@@ -769,10 +769,8 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
           </div>
           <div class="step-body">
             <ol class="literal">
-              <li>No Windows, aperte a tecla <strong>Windows</strong>.</li>
-              <li>Digite <strong>PowerShell</strong>.</li>
-              <li>Abra o aplicativo <strong>Windows PowerShell</strong>.</li>
-              <li>Copie o primeiro comando abaixo, cole no PowerShell e aperte <strong>Enter</strong>.</li>
+              <li>Abra o terminal do seu sistema: <strong>PowerShell</strong> no Windows ou <strong>Terminal</strong> no macOS.</li>
+              <li>Copie o primeiro comando abaixo, cole no terminal e aperte <strong>Enter</strong>.</li>
               <li>Copie o resultado e cole na linha <code>MCP_OAUTH_CLIENT_SECRET=</code> da sua anotação.</li>
               <li>Repita com o segundo comando e cole o resultado em <code>MCP_ACCESS_TOKEN_SECRET=</code>.</li>
               <li>Se for usar Codex HTTP, repita com o terceiro comando e cole em <code>MCP_BEARER_TOKEN=</code>.</li>
@@ -800,7 +798,8 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
             </div>
             <p class="note">
               Resultado correto: cada comando mostra uma linha longa com letras e números. Se aparecer
-              <code>node não é reconhecido</code>, o Node.js não está instalado nesse computador.
+              <code>node não é reconhecido</code> no Windows ou <code>command not found: node</code> no macOS,
+              o Node.js não está instalado nesse computador.
             </p>
             <label class="checkline">
               <input type="checkbox" data-check="2">
@@ -1050,7 +1049,7 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
               <p>Use esta tela quando o conector for usado no Codex Desktop.</p>
               <ol class="literal">
                 <li>No Worker, grave o secret <code>MCP_BEARER_TOKEN</code>.</li>
-                <li>No Windows, crie a variável de usuário <code>MCP_BEARER_TOKEN</code> com o mesmo valor.</li>
+                <li>No computador, crie a variável local <code>MCP_BEARER_TOKEN</code> com o mesmo valor.</li>
                 <li>Feche e abra o Codex depois de criar ou alterar a variável.</li>
                 <li>No Codex, abra <strong>Conectar a um MCP personalizado</strong>.</li>
                 <li>Preencha os campos abaixo e rode o teste antes de procurar erro na interface.</li>
@@ -1068,22 +1067,49 @@ Variável de ambiente de token do portador: MCP_BEARER_TOKEN</code></pre>
                 </div>
                 <div class="copy-block">
                   <div class="copy-head">
-                    <span>Variável local do Windows</span>
+                    <span>Windows: variável de usuário</span>
                     <button class="copy" type="button">Copiar</button>
                   </div>
                   <pre><code>[Environment]::SetEnvironmentVariable("MCP_BEARER_TOKEN", "&lt;mesmo valor do Worker&gt;", "User")</code></pre>
                 </div>
                 <div class="copy-block">
                   <div class="copy-head">
-                    <span>Teste antes de abrir o Codex</span>
+                    <span>macOS: Codex Desktop</span>
+                    <button class="copy" type="button">Copiar</button>
+                  </div>
+                  <pre><code>launchctl setenv MCP_BEARER_TOKEN "&lt;mesmo valor do Worker&gt;"</code></pre>
+                </div>
+                <div class="copy-block">
+                  <div class="copy-head">
+                    <span>macOS: Terminal ou CLI</span>
+                    <button class="copy" type="button">Copiar</button>
+                  </div>
+                  <pre><code>echo 'export MCP_BEARER_TOKEN="&lt;mesmo valor do Worker&gt;"' &gt;&gt; ~/.zshrc
+source ~/.zshrc</code></pre>
+                </div>
+                <div class="copy-block">
+                  <div class="copy-head">
+                    <span>Teste no Windows</span>
                     <button class="copy" type="button">Copiar</button>
                   </div>
                   <pre><code>$env:MCP_BEARER_TOKEN = [Environment]::GetEnvironmentVariable("MCP_BEARER_TOKEN", "User")
 npm run check:codex-http -- https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</code></pre>
                 </div>
+                <div class="copy-block">
+                  <div class="copy-head">
+                    <span>Teste no macOS</span>
+                    <button class="copy" type="button">Copiar</button>
+                  </div>
+                  <pre><code>export MCP_BEARER_TOKEN="$(launchctl getenv MCP_BEARER_TOKEN)"
+npm run check:codex-http -- https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</code></pre>
+                </div>
               </div>
               <p class="note success">
                 Teste correto: <code>Conectado</code>, <code>Ferramentas encontradas (5)</code> e <code>Chamada real OK</code>.
+              </p>
+              <p class="note">
+                No macOS, <code>launchctl setenv</code> é o caminho para o Codex Desktop aberto pelo Dock, Finder ou Spotlight.
+                Se reiniciar o Mac e a variável sumir, rode o comando novamente antes de abrir o Codex.
               </p>
             </div>
 
@@ -1240,11 +1266,11 @@ comparar_teses_juridicas</code></pre>
           </li>
           <li>
             <strong>O cliente mostra erro de autenticação.</strong>
-            No Claude.ai ou ChatGPT, confira Client ID e Client Secret. No Codex, rode <code>npm run check:codex-http</code> e confira se <code>MCP_BEARER_TOKEN</code> existe no Worker e como variável de usuário do Windows.
+            No Claude.ai ou ChatGPT, confira Client ID e Client Secret. No Codex, rode <code>npm run check:codex-http</code> e confira se <code>MCP_BEARER_TOKEN</code> existe no Worker e como variável local no Windows ou no macOS.
           </li>
           <li>
             <strong>Codex não conecta no HTTP com streaming.</strong>
-            Confira se a opção <strong>HTTP com streaming</strong> está selecionada, se a URL termina em <code>/mcp</code>, se o campo de token do portador aponta para <code>MCP_BEARER_TOKEN</code> e se o Codex foi reiniciado depois da variável local ser criada.
+            Confira se a opção <strong>HTTP com streaming</strong> está selecionada, se a URL termina em <code>/mcp</code>, se o campo de token do portador aponta para <code>MCP_BEARER_TOKEN</code> e se o Codex foi fechado e aberto depois da variável local ser criada.
           </li>
           <li>
             <strong>O cliente mostra apenas uma ferramenta ou schema antigo.</strong>

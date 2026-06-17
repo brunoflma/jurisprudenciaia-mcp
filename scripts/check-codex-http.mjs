@@ -17,7 +17,7 @@ const expectedTools = [
 const usage = `Uso:
   npm run check:codex-http -- https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
 
-Variaveis usadas:
+Variáveis usadas:
   MCP_BEARER_TOKEN  mesmo valor configurado como Cloudflare Worker Secret
   URL_MCP           alternativa para informar a URL sem argumento`;
 
@@ -43,7 +43,7 @@ function parseUrl() {
   try {
     return new URL(rawUrl);
   } catch {
-    fail(`Erro: URL invalida: ${rawUrl}`, 2);
+    fail(`Erro: URL inválida: ${rawUrl}`, 2);
     return undefined;
   }
 }
@@ -75,9 +75,17 @@ async function main() {
   if (!token) {
     fail(
       [
-        "Erro: MCP_BEARER_TOKEN nao esta definido neste processo.",
-        "No Windows, defina como variavel de usuario e reinicie o Codex:",
+        "Erro: MCP_BEARER_TOKEN não está definido neste processo.",
+        "Windows, variável de usuário:",
         '[Environment]::SetEnvironmentVariable("MCP_BEARER_TOKEN", "<mesmo valor do Worker>", "User")',
+        "",
+        "macOS, Codex Desktop aberto pelo Dock/Finder/Spotlight:",
+        'launchctl setenv MCP_BEARER_TOKEN "<mesmo valor do Worker>"',
+        "",
+        "macOS ou Linux, Terminal/CLI:",
+        'export MCP_BEARER_TOKEN="<mesmo valor do Worker>"',
+        "",
+        "Depois de criar ou alterar a variável, feche e abra o Codex.",
       ].join("\n"),
       2,
     );

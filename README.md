@@ -26,7 +26,7 @@ Este projeto transforma a pesquisa jurisprudencial em uma ferramenta MCP: você 
 | --- | --- |
 | Claude.ai | Conector personalizado com OAuth |
 | ChatGPT | App em modo desenvolvedor com OAuth |
-| Codex | MCP remoto por HTTP com streaming |
+| Codex | MCP remoto por HTTP com streaming no Windows ou macOS |
 
 O guia mais simples está em [`docs/deploy-guide.html`](docs/deploy-guide.html). Abra esse arquivo no navegador e escolha a aba do cliente que você quer configurar: Claude.ai, ChatGPT ou Codex.
 
