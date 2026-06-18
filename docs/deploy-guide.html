@@ -52,6 +52,11 @@
       font: inherit;
     }
 
+    *:focus-visible {
+      outline: 2px solid var(--green);
+      outline-offset: 2px;
+    }
+
     code {
       border: 1px solid var(--line);
       background: rgba(255, 255, 255, 0.05);
@@ -386,6 +391,12 @@
       padding: 0.8rem;
       text-align: left;
       cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .client-tab:not(.is-active):hover {
+      background: rgba(42, 67, 52, 0.2);
+      border-color: rgba(100, 195, 145, 0.4);
     }
 
     .client-tab strong,
@@ -446,6 +457,7 @@
       color: var(--ink);
       padding: 0.42rem 0.7rem;
       cursor: pointer;
+      transition: all 0.2s ease;
     }
 
     .copy:hover {
@@ -1348,6 +1360,11 @@ comparar_teses_juridicas</code></pre>
     selectClient(state.client || "claude");
 
     document.querySelectorAll(".copy").forEach((button) => {
+      const headText = button.previousElementSibling?.textContent;
+      if (headText) {
+        button.setAttribute("aria-label", `Copiar ${headText}`);
+      }
+
       button.addEventListener("click", async () => {
         const block = button.closest(".copy-block");
         const code = block ? block.querySelector("code") : null;
