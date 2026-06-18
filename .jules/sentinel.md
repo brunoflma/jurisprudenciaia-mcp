@@ -1,0 +1,4 @@
+## 2024-10-27 - Timing Attack in OAuth Client Secret Validation
+**Vulnerability:** Found a timing attack vulnerability in `src/worker.ts` where the OAuth `client.secret` was compared against `settings.clientSecret` using a standard strict inequality operator (`!==`).
+**Learning:** Standard string comparisons short-circuit as soon as a mismatched character is found. An attacker can exploit this by submitting many requests and measuring the response times to guess the `clientSecret` byte-by-byte. This pattern was found in the custom OAuth authorization code flow implementation.
+**Prevention:** Always use a constant-time comparison function, like `crypto.subtle.timingSafeEqual` (in Node.js) or a custom constant-time byte comparison function (as implemented in `constantTimeEqual` in this codebase), whenever comparing sensitive values like secrets, passwords, or tokens.

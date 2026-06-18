@@ -373,7 +373,11 @@ async function handleToken(request: Request, env: WorkerEnv, origin: string): Pr
   }
 
   const client = oauthClientCredentials(request, form);
-  if (client.id !== settings.clientId || client.secret !== settings.clientSecret) {
+  if (
+    client.id !== settings.clientId ||
+    !client.secret ||
+    !constantTimeEqual(client.secret, settings.clientSecret)
+  ) {
     return oauthTokenError("invalid_client", "Invalid client credentials.", 401);
   }
 
