@@ -30,6 +30,11 @@ const NOISE_PATTERNS = [
   /^Os precedentes que a IA citar/i
 ];
 
+const COMBINED_NOISE_PATTERN = new RegExp(
+  NOISE_PATTERNS.map((pattern) => pattern.source).join("|"),
+  "i"
+);
+
 const ACCESSIBILITY_SNAPSHOT_PATTERN = /^\s*-\s+(?:paragraph|heading|StaticText|status)\b/m;
 const SNAPSHOT_GENERATED_START_PATTERN =
   /^(?:#{1,6}\s*)?(?:(?:\d+\.|[IVX]+\.)\s|(?:A|As|O|Os|Em|No|Na|Nos|Nas|Quanto|Conforme|Segundo|Nesse|Nessa|Dessa|Assim|Para|Quando)\b)/i;
@@ -155,12 +160,25 @@ function extractAccessibilitySnapshotText(rawText: string, query: string): strin
 }
 
 function cleanLines(rawText: string): string[] {
-  return rawText
-    .split(/\r?\n/)
-    .map((line) => line.replace(/\s+/g, " ").trim())
-    .filter((line) => line.length > 0)
-    .filter((line, index, lines) => index === 0 || line !== lines[index - 1])
-    .filter((line) => !NOISE_PATTERNS.some((pattern) => pattern.test(line)));
+  // Performance optimization:
+  // Process the text in a single pass instead of split -> map -> filter -> filter -> filter
+  // Deduplicates adjacent lines and filters out noise efficiently.
+  const result: string[] = [];
+  let previousLine: string | undefined;
+
+  for (const rawLine of rawText.split(/\r?\n/)) {
+    const line = rawLine.replace(/\s+/g, " ").trim();
+    if (line.length === 0) continue;
+
+    if (line !== previousLine) {
+      if (!COMBINED_NOISE_PATTERN.test(line)) {
+        result.push(line);
+      }
+    }
+    previousLine = line;
+  }
+
+  return result;
 }
 
 export function normalizeJurisprudenciaIaResult(input: JurisprudenciaIaNormalizeInput): string {
