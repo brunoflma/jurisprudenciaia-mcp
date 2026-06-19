@@ -7,6 +7,7 @@ const env = {
   MCP_OAUTH_CLIENT_ID: "claude-test-client",
   MCP_OAUTH_CLIENT_SECRET: "client-secret-12345678901234567890",
   MCP_ACCESS_TOKEN_SECRET: "access-token-secret-12345678901234567890",
+  MCP_OAUTH_REDIRECT_URIS: "https://claude.test/oauth/callback, https://chatgpt.com/connector/oauth/test-callback",
   MCP_BEARER_TOKEN: "codex-static-bearer-token-12345678901234567890",
   RATE_LIMIT_MAX_REQUESTS: "100"
 };
@@ -148,6 +149,51 @@ describe("Cloudflare Worker MCP endpoint", () => {
     expect(await json(serverResponse)).toMatchObject({
       logo_uri: "https://worker.test/favicon.png"
     });
+  });
+
+  it("rejects token requests with missing client secret", async () => {
+    const response = await handleWorkerRequest(
+      new Request("https://worker.test/oauth/token", {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code: "dummy",
+          redirect_uri: redirectUri,
+          client_id: env.MCP_OAUTH_CLIENT_ID
+        })
+      }),
+      env
+    );
+
+    expect(response.status).toBe(401);
+    const body = await json(response);
+    expect(body.error).toBe("invalid_client");
+  });
+
+  it("rejects token requests with incorrect client secret", async () => {
+    const response = await handleWorkerRequest(
+      new Request("https://worker.test/oauth/token", {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code: "dummy",
+          redirect_uri: redirectUri,
+          client_id: env.MCP_OAUTH_CLIENT_ID,
+          client_secret: "wrong-secret-that-does-not-match"
+        })
+      }),
+      env
+    );
+
+    expect(response.status).toBe(401);
+    const body = await json(response);
+    expect(body.error).toBe("invalid_client");
   });
 
   it("rejects MCP requests without a bearer token", async () => {
@@ -458,6 +504,62 @@ describe("Cloudflare Worker MCP endpoint", () => {
     );
 
     expect(response.status).toBe(404);
+  });
+
+  it("blocks OAuth authorize with unregistered redirect URI", async () => {
+    const authorizeUrl = new URL("https://worker.test/oauth/authorize");
+
+    authorizeUrl.searchParams.set("response_type", "code");
+    authorizeUrl.searchParams.set("client_id", env.MCP_OAUTH_CLIENT_ID);
+    authorizeUrl.searchParams.set("redirect_uri", "https://unregistered.test/callback");
+
+    const response = await handleWorkerRequest(new Request(authorizeUrl), env);
+    expect(response.status).toBe(400);
+    expect(response.headers.has("location")).toBe(false);
+
+    const body = await json(response);
+    expect(body.error).toBe("invalid_request");
+  });
+
+  it("blocks OAuth authorize when allowlist is missing", async () => {
+    const authorizeUrl = new URL("https://worker.test/oauth/authorize");
+
+    authorizeUrl.searchParams.set("response_type", "code");
+    authorizeUrl.searchParams.set("client_id", env.MCP_OAUTH_CLIENT_ID);
+    authorizeUrl.searchParams.set("redirect_uri", redirectUri);
+
+    const envWithoutAllowlist = { ...env, MCP_OAUTH_REDIRECT_URIS: undefined };
+    const response = await handleWorkerRequest(new Request(authorizeUrl), envWithoutAllowlist);
+
+    expect(response.status).toBe(400);
+    expect(response.headers.has("location")).toBe(false);
+
+    const body = await json(response);
+    expect(body.error).toBe("invalid_request");
+  });
+
+  it("blocks OAuth authorize with unknown client", async () => {
+    const authorizeUrl = new URL("https://worker.test/oauth/authorize");
+
+    authorizeUrl.searchParams.set("response_type", "code");
+    authorizeUrl.searchParams.set("client_id", "unknown-client");
+    authorizeUrl.searchParams.set("redirect_uri", redirectUri);
+
+    const response = await handleWorkerRequest(new Request(authorizeUrl), env);
+    expect(response.status).toBe(400);
+    expect(response.headers.has("location")).toBe(false);
+
+    const body = await json(response);
+    expect(body.error).toBe("invalid_client");
+  });
+
+  it("handles malformed base64url safely without crashing", async () => {
+    const request = post("/mcp", { jsonrpc: "2.0", id: 1, method: "tools/list" });
+    request.headers.set("authorization", "Bearer valid.invalid!token.signature");
+
+    const response = await handleWorkerRequest(request, env, runner(""));
+
+    expect(response.status).toBe(401);
   });
 });
 

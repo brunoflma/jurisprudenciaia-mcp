@@ -1,34 +1,7 @@
 import { OperationalError } from "../errors.js";
 import type { JurisprudenciaIaNormalizeInput } from "./types.js";
 
-const NOISE_PATTERNS = [
-  /^entrar$/i,
-  /^login$/i,
-  /^cadastrar$/i,
-  /^pesquisar$/i,
-  /^buscar$/i,
-  /^carregando/i,
-  /^loading/i,
-  /^menu$/i,
-  /^início$/i,
-  /^inicio$/i,
-  /^termos$/i,
-  /^termos de uso$/i,
-  /^termos e condições$/i,
-  /^termos e condicoes$/i,
-  /^política$/i,
-  /^politica$/i,
-  /^política de privacidade$/i,
-  /^politica de privacidade$/i,
-  /^copiar$/i,
-  /^nova busca$/i,
-  /^fazer nova pesquisa$/i,
-  /^cookies?$/i,
-  /^O JurisprudênciaIA pode cometer erros/i,
-  /^O JurisprudenciaIA pode cometer erros/i,
-  /^Precedentes citados/i,
-  /^Os precedentes que a IA citar/i
-];
+const NOISE_PATTERN = /^(?:entrar|login|cadastrar|pesquisar|buscar|menu|in[ií]cio|termos(?: de uso| e condi[cç][oõ]es)?|pol[ií]tica(?: de privacidade)?|copiar|nova busca|fazer nova pesquisa|cookies?)$|^(?:carregando|loading|O Jurisprud[eê]nciaIA pode cometer erros|Precedentes citados|Os precedentes que a IA citar)/i;
 
 const ACCESSIBILITY_SNAPSHOT_PATTERN = /^\s*-\s+(?:paragraph|heading|StaticText|status)\b/m;
 const SNAPSHOT_GENERATED_START_PATTERN =
@@ -155,12 +128,23 @@ function extractAccessibilitySnapshotText(rawText: string, query: string): strin
 }
 
 function cleanLines(rawText: string): string[] {
-  return rawText
-    .split(/\r?\n/)
-    .map((line) => line.replace(/\s+/g, " ").trim())
-    .filter((line) => line.length > 0)
-    .filter((line, index, lines) => index === 0 || line !== lines[index - 1])
-    .filter((line) => !NOISE_PATTERNS.some((pattern) => pattern.test(line)));
+  const result: string[] = [];
+  const lines = rawText.split(/\r?\n/);
+  let lastProcessedLine = "";
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].replace(/\s+/g, " ").trim();
+
+    if (line.length === 0) continue;
+    if (line === lastProcessedLine) continue;
+    lastProcessedLine = line;
+
+    if (NOISE_PATTERN.test(line)) continue;
+
+    result.push(line);
+  }
+
+  return result;
 }
 
 export function normalizeJurisprudenciaIaResult(input: JurisprudenciaIaNormalizeInput): string {

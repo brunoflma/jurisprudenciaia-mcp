@@ -12,6 +12,7 @@ type WorkerEnv = {
   MCP_OAUTH_CLIENT_ID?: string;
   MCP_OAUTH_CLIENT_SECRET?: string;
   MCP_ACCESS_TOKEN_SECRET?: string;
+  MCP_OAUTH_REDIRECT_URIS?: string;
   MCP_BEARER_TOKEN?: string;
   MCP_ACCESS_TOKEN_TTL_SECONDS?: string;
   JURISPRUDENCIAIA_URL?: string;
@@ -46,6 +47,7 @@ type OAuthSettings = {
   clientId: string;
   clientSecret: string;
   signingSecret: string;
+  redirectUris: string[];
 };
 
 type SignedTokenPayload = {
@@ -301,19 +303,23 @@ async function handleAuthorize(request: Request, env: WorkerEnv, origin: string)
   const redirectUri = url.searchParams.get("redirect_uri") ?? "";
   const state = url.searchParams.get("state") ?? undefined;
 
+  if (!isHttpUrl(redirectUri)) {
+    return json({ error: "invalid_request", error_description: "Invalid redirect_uri." }, 400);
+  }
+
+  if (url.searchParams.get("client_id") !== settings.clientId) {
+    return json({ error: "invalid_client", error_description: "Unknown OAuth client." }, 400);
+  }
+
+  if (!settings.redirectUris.includes(redirectUri)) {
+    return json({ error: "invalid_request", error_description: "Unauthorized redirect_uri." }, 400);
+  }
+
   const fail = (error: string, description: string) =>
     oauthRedirectError(redirectUri, state, error, description);
 
   if (url.searchParams.get("response_type") !== "code") {
     return fail("unsupported_response_type", "Only authorization code flow is supported.");
-  }
-
-  if (url.searchParams.get("client_id") !== settings.clientId) {
-    return fail("invalid_client", "Unknown OAuth client.");
-  }
-
-  if (!isHttpUrl(redirectUri)) {
-    return json({ error: "invalid_request", error_description: "Invalid redirect_uri." }, 400);
   }
 
   const resource = url.searchParams.get("resource") ?? mcpResource(origin);
@@ -373,7 +379,11 @@ async function handleToken(request: Request, env: WorkerEnv, origin: string): Pr
   }
 
   const client = oauthClientCredentials(request, form);
-  if (client.id !== settings.clientId || client.secret !== settings.clientSecret) {
+  if (
+    client.id !== settings.clientId ||
+    !client.secret ||
+    !constantTimeEqual(client.secret, settings.clientSecret)
+  ) {
     return oauthTokenError("invalid_client", "Invalid client credentials.", 401);
   }
 
@@ -498,6 +508,10 @@ function oauthSettings(env: WorkerEnv): OAuthSettings {
   const clientId = required(env.MCP_OAUTH_CLIENT_ID, "MCP_OAUTH_CLIENT_ID");
   const clientSecret = required(env.MCP_OAUTH_CLIENT_SECRET, "MCP_OAUTH_CLIENT_SECRET");
   const signingSecret = required(env.MCP_ACCESS_TOKEN_SECRET, "MCP_ACCESS_TOKEN_SECRET");
+  const redirectUrisRaw = env.MCP_OAUTH_REDIRECT_URIS?.trim();
+  const redirectUris = redirectUrisRaw
+    ? redirectUrisRaw.split(",").map((item) => item.trim()).filter((item) => item.length > 0)
+    : [];
 
   if (clientId.length < 8) {
     throw new Error("MCP_OAUTH_CLIENT_ID must have at least 8 characters");
@@ -511,7 +525,7 @@ function oauthSettings(env: WorkerEnv): OAuthSettings {
     throw new Error("MCP_ACCESS_TOKEN_SECRET must have at least 32 characters");
   }
 
-  return { clientId, clientSecret, signingSecret };
+  return { clientId, clientSecret, signingSecret, redirectUris };
 }
 
 function configuredBearerToken(env: WorkerEnv): string | undefined {
@@ -668,14 +682,19 @@ function base64UrlEncodeBytes(bytes: Uint8Array): string {
 function base64UrlDecodeBytes(value: string): Uint8Array {
   const normalized = value.replaceAll("-", "+").replaceAll("_", "/");
   const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
-  const binary = atob(padded);
-  const bytes = new Uint8Array(binary.length);
 
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
+  try {
+    const binary = atob(padded);
+    const bytes = new Uint8Array(binary.length);
+
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+
+    return bytes;
+  } catch {
+    return new Uint8Array(0);
   }
-
-  return bytes;
 }
 
 function formValue(form: FormData, name: string): string | undefined {

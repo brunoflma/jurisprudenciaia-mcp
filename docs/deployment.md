@@ -139,6 +139,7 @@ CLOUDFLARE_API_TOKEN
 MCP_OAUTH_CLIENT_ID
 MCP_OAUTH_CLIENT_SECRET
 MCP_ACCESS_TOKEN_SECRET
+MCP_OAUTH_REDIRECT_URIS
 ```
 
 Valores:
@@ -149,7 +150,10 @@ CLOUDFLARE_API_TOKEN=<API token criado no Cloudflare>
 MCP_OAUTH_CLIENT_ID=jurisprudenciaia-mcp-client
 MCP_OAUTH_CLIENT_SECRET=<Client Secret gerado no passo 1>
 MCP_ACCESS_TOKEN_SECRET=<segredo de assinatura gerado no passo 1>
+MCP_OAUTH_REDIRECT_URIS=<URLs de redirecionamento permitidas separadas por virgula>
 ```
+
+Obrigatoriamente para o funcionamento do fluxo OAuth, voce deve criar o secret `MCP_OAUTH_REDIRECT_URIS` separando as URLs exatas por virgula.
 
 O ChatGPT recusara a conexao se esse valor nao for exatamente igual ao secret `MCP_OAUTH_CLIENT_ID` do Worker. Se mudar o Client ID no Cloudflare, mude tambem o GitHub Secret antes do proximo deploy.
 
@@ -406,6 +410,7 @@ npx wrangler login
 npx wrangler secret put MCP_OAUTH_CLIENT_ID
 npx wrangler secret put MCP_OAUTH_CLIENT_SECRET
 npx wrangler secret put MCP_ACCESS_TOKEN_SECRET
+npx wrangler secret put MCP_OAUTH_REDIRECT_URIS
 npx wrangler secret put MCP_BEARER_TOKEN # opcional para Codex
 npm run deploy:worker
 ```
