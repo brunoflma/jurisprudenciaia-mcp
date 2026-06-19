@@ -52,6 +52,13 @@
       font: inherit;
     }
 
+    button:focus-visible,
+    input:focus-visible,
+    a:focus-visible {
+      outline: 2px solid var(--green);
+      outline-offset: 2px;
+    }
+
     code {
       border: 1px solid var(--line);
       background: rgba(255, 255, 255, 0.05);
@@ -386,6 +393,12 @@
       padding: 0.8rem;
       text-align: left;
       cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .client-tab:hover {
+      border-color: rgba(100, 195, 145, 0.4);
+      background: rgba(30, 40, 35, 0.8);
     }
 
     .client-tab strong,
