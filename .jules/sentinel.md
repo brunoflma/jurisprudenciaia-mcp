@@ -1,0 +1,4 @@
+## 2024-05-15 - Timing Attack Vulnerability in OAuth Secret Validation
+**Vulnerability:** The OAuth client secret validation (`client.secret !== settings.clientSecret`) used standard equality operator comparison. This exposed the codebase to timing attacks, allowing an attacker to deduce the secret character-by-character based on the time it took for the equality check to fail.
+**Learning:** Comparing sensitive values (like passwords, secrets, hashes) should always be done in constant time. The standard equality operator stops checking as soon as it encounters a mismatched character, revealing information about the string's correctness through timing variations.
+**Prevention:** Always use constant time comparison functions like `constantTimeEqual` (already implemented in the project, but wasn't used in this instance) to validate sensitive data, preventing time-based inference of secret materials.
