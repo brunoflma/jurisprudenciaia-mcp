@@ -131,8 +131,23 @@ describe("createJurisprudenciaIaMcpServer", () => {
         ]);
         expect(tool).toMatchObject({
           name: "consultar_jurisprudenciaia",
-          title: "Consultar JurisprudenciaIA"
+          title: "Consultar JurisprudenciaIA",
+          outputSchema: {
+            type: "object",
+            properties: {
+              markdown: { type: "string" }
+            },
+            required: ["markdown"],
+            additionalProperties: false
+          },
+          annotations: {
+            readOnlyHint: true,
+            destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: true
+          }
         });
+        expect(tools.every((item) => item.outputSchema !== undefined)).toBe(true);
         expect(tool?.description).toContain("JurisprudenciaIA");
 
         const result = await client.callTool({
@@ -157,6 +172,10 @@ describe("createJurisprudenciaIaMcpServer", () => {
         expect(firstText(result)).toBe(
           "# Resultado JurisprudenciaIA\n\nTexto consolidado.\n\n## Debug\n\n```text\ntexto bruto extraido\n```"
         );
+        expect(result.structuredContent).toEqual({
+          markdown:
+            "# Resultado JurisprudenciaIA\n\nTexto consolidado.\n\n## Debug\n\n```text\ntexto bruto extraido\n```"
+        });
       }
     );
   });

@@ -3,6 +3,8 @@ import { isOperationalError } from "../errors.js";
 import type { JurisprudenciaIaRunner } from "../jurisprudenciaia/types.js";
 import {
   TOOL_DEFINITIONS,
+  TOOL_ANNOTATIONS,
+  TOOL_OUTPUT_SCHEMA,
   type JurisprudenciaIaToolDefinition,
   normalizeToolInput,
 } from "./tool-definition.js";
@@ -27,7 +29,9 @@ export function createJurisprudenciaIaMcpServer(runner: JurisprudenciaIaRunner):
       {
         title: definition.title,
         description: definition.description,
-        inputSchema: definition.inputSchema
+        inputSchema: definition.inputSchema,
+        outputSchema: TOOL_OUTPUT_SCHEMA,
+        annotations: TOOL_ANNOTATIONS
       },
       async (input) => runTool(definition, input, runner)
     );
@@ -49,6 +53,7 @@ async function runTool(
       : result.markdown;
 
     return {
+      structuredContent: { markdown: text },
       content: [{ type: "text" as const, text }]
     };
   } catch (error) {

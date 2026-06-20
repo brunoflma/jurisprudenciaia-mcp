@@ -313,7 +313,23 @@ describe("Cloudflare Worker MCP endpoint", () => {
     expect(await json(response)).toMatchObject({
       result: {
         tools: expect.arrayContaining([
-          expect.objectContaining({ name: "consultar_jurisprudenciaia" })
+          expect.objectContaining({
+            name: "consultar_jurisprudenciaia",
+            outputSchema: {
+              type: "object",
+              properties: {
+                markdown: { type: "string" }
+              },
+              required: ["markdown"],
+              additionalProperties: false
+            },
+            annotations: {
+              readOnlyHint: true,
+              destructiveHint: false,
+              idempotentHint: true,
+              openWorldHint: true
+            }
+          })
         ])
       }
     });
@@ -470,6 +486,9 @@ describe("Cloudflare Worker MCP endpoint", () => {
       jsonrpc: "2.0",
       id: "call-1",
       result: {
+        structuredContent: {
+          markdown: "# Resultado JurisprudenciaIA\n\nTexto consolidado."
+        },
         content: [
           {
             type: "text",

@@ -5,6 +5,8 @@ import type { JurisprudenciaIaRunner } from "./jurisprudenciaia/types.js";
 import { MCP_SERVER_INSTRUCTIONS } from "./mcp/instructions.js";
 import {
   findToolDefinition,
+  JSON_TOOL_OUTPUT_SCHEMA,
+  TOOL_ANNOTATIONS,
   TOOL_DEFINITIONS
 } from "./mcp/tool-definition.js";
 
@@ -258,7 +260,9 @@ async function handleJsonRpc(
           name: definition.name,
           title: definition.title,
           description: definition.description,
-          inputSchema: definition.jsonInputSchema
+          inputSchema: definition.jsonInputSchema,
+          outputSchema: JSON_TOOL_OUTPUT_SCHEMA,
+          annotations: TOOL_ANNOTATIONS
         }))
       });
 
@@ -289,6 +293,7 @@ async function callTool(
       : result.markdown;
 
     return jsonRpcResult(id, {
+      structuredContent: { markdown: text },
       content: [{ type: "text", text }]
     });
   } catch (error) {

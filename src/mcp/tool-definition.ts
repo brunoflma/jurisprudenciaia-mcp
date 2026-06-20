@@ -19,6 +19,26 @@ type JsonToolInputSchema = {
   additionalProperties: false;
 };
 
+export const TOOL_OUTPUT_SCHEMA = {
+  markdown: z.string().describe("Resultado consolidado da consulta em Markdown.")
+};
+
+export const JSON_TOOL_OUTPUT_SCHEMA = {
+  type: "object",
+  properties: {
+    markdown: { type: "string" }
+  },
+  required: ["markdown"],
+  additionalProperties: false
+} as const;
+
+export const TOOL_ANNOTATIONS = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: true
+} as const;
+
 export type JurisprudenciaIaToolDefinition = {
   name: string;
   title: string;
