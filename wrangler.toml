@@ -2,6 +2,24 @@ name = "jurisprudenciaia-mcp"
 main = "src/worker.ts"
 compatibility_date = "2026-06-13"
 
+[assets]
+directory = "./public/"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1
+persist = true
+
 [vars]
 JURISPRUDENCIAIA_URL = "https://www.jurisprudenciaia.com.br/"
 REQUEST_TIMEOUT_MS = "120000"

@@ -70,6 +70,12 @@ const PROTECTED_RESOURCE_METADATA_PATH = "/.well-known/oauth-protected-resource"
 const AUTHORIZATION_SERVER_METADATA_PATH = "/.well-known/oauth-authorization-server";
 const FAVICON_SVG_PATH = "/favicon.svg";
 const FAVICON_PNG_PATH = "/favicon.png";
+const FAVICON_ICO_PATH = "/favicon.ico";
+const APPLE_TOUCH_ICON_PATH = "/apple-touch-icon.png";
+const FAVICON_REVISION = "61982638";
+const FAVICON_PNG_URL_PATH = `${FAVICON_PNG_PATH}?v=${FAVICON_REVISION}`;
+const FAVICON_ICO_URL_PATH = `${FAVICON_ICO_PATH}?v=${FAVICON_REVISION}`;
+const APPLE_TOUCH_ICON_URL_PATH = `${APPLE_TOUCH_ICON_PATH}?v=${FAVICON_REVISION}`;
 const FAVICON_PNG_BASE64 =
   "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";
 const FAVICON_ICO_BASE64 =
@@ -114,7 +120,7 @@ export async function handleWorkerRequest(
     return png(faviconPngBytes());
   }
 
-  if (request.method === "GET" && url.pathname === "/favicon.ico") {
+  if (request.method === "GET" && url.pathname === FAVICON_ICO_PATH) {
     return ico(faviconIcoBytes());
   }
 
@@ -205,8 +211,7 @@ async function handleJsonRpc(
   switch (payload.method) {
     case "initialize": {
       const pngIconUri = logoUri(origin, env);
-      const svgIconUri = `${origin}${FAVICON_SVG_PATH}`;
-      const icoIconUri = `${origin}/favicon.ico`;
+      const icoIconUri = `${origin}${FAVICON_ICO_URL_PATH}`;
 
       return jsonRpcResult(id, {
         protocolVersion: "2025-11-25",
@@ -223,17 +228,12 @@ async function handleJsonRpc(
             {
               src: pngIconUri,
               mimeType: "image/png",
-              sizes: ["96x96"]
+              sizes: ["256x256"]
             },
             {
               src: icoIconUri,
               mimeType: "image/x-icon",
               sizes: ["16x16"]
-            },
-            {
-              src: svgIconUri,
-              mimeType: "image/svg+xml",
-              sizes: ["any"]
             }
           ],
           websiteUrl: `${origin}/`
@@ -715,7 +715,7 @@ function mcpResource(origin: string): string {
 }
 
 function logoUri(origin: string, env: WorkerEnv): string {
-  return externalIconUri(env) ?? `${origin}${FAVICON_PNG_PATH}`;
+  return externalIconUri(env) ?? `${origin}${FAVICON_PNG_URL_PATH}`;
 }
 
 function constantTimeEqual(left: string, right: string): boolean {
@@ -901,9 +901,9 @@ function landingPage(origin: string): string {
     '<meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
     "<title>JurisprudenciaIA MCP</title>",
-    `<link rel="icon" href="${FAVICON_PNG_PATH}" type="image/png" sizes="96x96">`,
-    `<link rel="icon" href="${FAVICON_SVG_PATH}" type="image/svg+xml">`,
-    '<link rel="alternate icon" href="/favicon.ico" type="image/x-icon">',
+    `<link rel="icon" href="${FAVICON_PNG_URL_PATH}" type="image/png" sizes="256x256">`,
+    `<link rel="apple-touch-icon" href="${APPLE_TOUCH_ICON_URL_PATH}" sizes="256x256">`,
+    `<link rel="alternate icon" href="${FAVICON_ICO_URL_PATH}" type="image/x-icon">`,
     "</head>",
     "<body>",
     "<main>",
