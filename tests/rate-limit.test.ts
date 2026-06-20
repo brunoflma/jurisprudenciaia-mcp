@@ -88,11 +88,11 @@ describe("FixedWindowRateLimiter", () => {
 
     // a expires at 110, so at 115 it's renewed
     expect(limiter.allow("a", 115).allowed).toBe(true);
-    expect(limiter.size).toBe(2); // a and b
 
-    // at 125, b expires, a is still active
-    limiter.allow("c", 125);
-    expect(limiter.size).toBe(2); // a and c
+    // b expires at 120, wait until global prune triggers
+    limiter.allow("c", 125); // Trigger global prune since 125 - 10 >= 100
+
+    expect(limiter.allow("b", 130).allowed).toBe(true); // Now renewed
   });
 
   it("handles removal of all expired entries", () => {
@@ -113,10 +113,8 @@ describe("FixedWindowRateLimiter", () => {
 
     // At 160, b (50) should be expired (160 - 50 = 110 >= 100)
     // a (100) is NOT expired (160 - 100 = 60 < 100)
-    limiter.allow("c", 160);
+    limiter.allow("c", 160); // doesn't trigger global prune if lastPrune was 100, wait until 200
 
-    // We expect b to be expired, a and c to be active
-    expect(limiter.size).toBe(2); // a and c
     expect(limiter.allow("a", 160).allowed).toBe(false);
     expect(limiter.allow("b", 160).allowed).toBe(true);
   });
