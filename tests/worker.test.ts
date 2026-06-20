@@ -219,6 +219,78 @@ describe("Cloudflare Worker MCP endpoint", () => {
     expect(response.headers.get("www-authenticate")).toContain('scope="jurisprudenciaia:search"');
   });
 
+  it("answers initialize without a bearer token so clients can read serverInfo icons", async () => {
+    const response = await handleWorkerRequest(
+      post("/mcp", {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-11-25",
+          capabilities: {},
+          clientInfo: { name: "discovery-client", version: "0.1.0" }
+        }
+      }),
+      env,
+      runner("# Resultado JurisprudenciaIA\n\nTexto.")
+    );
+
+    expect(response.status).toBe(200);
+    const body = await json(response);
+    expect(body).toMatchObject({
+      result: {
+        serverInfo: {
+          title: "JurisprudenciaIA MCP",
+          icons: expect.arrayContaining([
+            expect.objectContaining({ src: expect.stringContaining("favicon.png") })
+          ])
+        }
+      }
+    });
+  });
+
+  it("answers ping without a bearer token", async () => {
+    const response = await handleWorkerRequest(
+      post("/mcp", { jsonrpc: "2.0", id: 9, method: "ping" }),
+      env,
+      runner("# Resultado JurisprudenciaIA\n\nTexto.")
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  it("still rejects unauthenticated tools/call after opening initialize", async () => {
+    const response = await handleWorkerRequest(
+      post("/mcp", {
+        jsonrpc: "2.0",
+        id: 2,
+        method: "tools/call",
+        params: {
+          name: "consultar_jurisprudenciaia",
+          arguments: { query: "dano moral" }
+        }
+      }),
+      env,
+      runner("# Resultado JurisprudenciaIA\n\nTexto.")
+    );
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("www-authenticate")).toContain("resource_metadata=");
+  });
+
+  it("requires a token when a batch mixes initialize with tools/list", async () => {
+    const response = await handleWorkerRequest(
+      post("/mcp", [
+        { jsonrpc: "2.0", id: 1, method: "initialize", params: {} },
+        { jsonrpc: "2.0", id: 2, method: "tools/list" }
+      ]),
+      env,
+      runner("# Resultado JurisprudenciaIA\n\nTexto.")
+    );
+
+    expect(response.status).toBe(401);
+  });
+
   it("accepts a static bearer token for Codex HTTP MCP", async () => {
     const response = await handleWorkerRequest(
       new Request("https://worker.test/mcp", {

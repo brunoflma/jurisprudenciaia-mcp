@@ -86,6 +86,7 @@ const MCP_SERVER_TITLE = "JurisprudenciaIA MCP";
 const MCP_SERVER_DESCRIPTION =
   "Conector MCP auto-hospedado para consultar jurisprudencia via JurisprudenciaIA.";
 const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
+const PUBLIC_MCP_METHODS = new Set(["initialize", "ping"]);
 
 let limiter: FixedWindowRateLimiter | undefined;
 let limiterConfigKey = "";
@@ -152,11 +153,6 @@ export async function handleWorkerRequest(
     return json({ error: "not_found" }, 404);
   }
 
-  const unauthorized = await authorizeMcpRequest(request, env, origin);
-  if (unauthorized) {
-    return unauthorized;
-  }
-
   const decision = getLimiter(env).allow(clientKey(request));
   if (!decision.allowed) {
     return json(
@@ -171,6 +167,16 @@ export async function handleWorkerRequest(
     payload = await request.json();
   } catch {
     return json(jsonRpcError(null, -32700, "Parse error"), 400);
+  }
+
+  // Discovery methods (initialize/ping/notifications) stay public so connector
+  // clients can read serverInfo (name, title, icons) before completing OAuth.
+  // Anything that touches data (tools/list, tools/call) still requires a token.
+  if (requiresAuthorization(payload)) {
+    const unauthorized = await authorizeMcpRequest(request, env, origin);
+    if (unauthorized) {
+      return unauthorized;
+    }
   }
 
   const activeRunner = runner ?? createRunner(env);
@@ -771,6 +777,28 @@ function required(value: string | undefined, name: string): string {
 
 function isJsonRpcRequest(value: unknown): value is JsonRpcRequest {
   return !!value && typeof value === "object" && (value as JsonRpcRequest).jsonrpc === "2.0";
+}
+
+function isPublicMcpMethod(method: unknown): boolean {
+  return (
+    typeof method === "string" &&
+    (PUBLIC_MCP_METHODS.has(method) || method.startsWith("notifications/"))
+  );
+}
+
+function requiresAuthorization(payload: unknown): boolean {
+  const items = Array.isArray(payload) ? payload : [payload];
+  if (items.length === 0) {
+    return true;
+  }
+
+  return items.some((item) => {
+    if (!item || typeof item !== "object") {
+      return true;
+    }
+
+    return !isPublicMcpMethod((item as JsonRpcRequest).method);
+  });
 }
 
 function jsonRpcResult(id: string | number | null, result: unknown): JsonRpcResponse {
