@@ -47,13 +47,12 @@ describe("Cloudflare Worker MCP endpoint", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(await json(response)).toMatchObject({
-      ok: true,
-      runtime: "cloudflare-workers"
-    });
+    const healthBody = await json(response);
+    expect(healthBody).toMatchObject({ ok: true, service: "jurisprudenciaia-mcp" });
+    expect(healthBody.runtime).toBeUndefined();
   });
 
-  it("serves a small landing page with the MCP endpoint", async () => {
+  it("serves a minimal private landing page without leaking internals", async () => {
     const response = await handleWorkerRequest(
       new Request("https://worker.test/"),
       {}
@@ -62,11 +61,13 @@ describe("Cloudflare Worker MCP endpoint", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/html");
     const body = await response.text();
-    expect(body).toContain("https://worker.test/mcp");
-    expect(body).toContain('rel="icon" href="/favicon.png?v=61982638"');
-    expect(body).toContain(
-      'rel="apple-touch-icon" href="/apple-touch-icon.png?v=61982638"'
-    );
+    expect(body).toContain("<title>JurisprudenciaIA MCP</title>");
+    expect(body).toContain("Conector privado · acesso restrito.");
+    expect(body).toContain('name="robots" content="noindex, nofollow"');
+    expect(body).toContain('href="/favicon.png"');
+    // não vaza o motor interno nem o endpoint MCP
+    expect(body).not.toContain("/mcp");
+    expect(body).not.toContain("auto-hospedado");
   });
 
   it("serves an SVG favicon", async () => {

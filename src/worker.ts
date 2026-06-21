@@ -108,11 +108,11 @@ export async function handleWorkerRequest(
   const origin = url.origin;
 
   if (request.method === "GET" && url.pathname === "/healthz") {
-    return json({ ok: true, service: MCP_SERVER_NAME, runtime: "cloudflare-workers" });
+    return json({ ok: true, service: MCP_SERVER_NAME });
   }
 
   if (request.method === "GET" && url.pathname === "/") {
-    return html(landingPage(origin));
+    return html(landingPage());
   }
 
   if (request.method === "GET" && url.pathname === FAVICON_SVG_PATH) {
@@ -882,7 +882,7 @@ function html(body: string, status = 200): Response {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "public, max-age=300",
-      "content-security-policy": "default-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'",
       "referrer-policy": "no-referrer",
       "x-content-type-options": "nosniff"
     }
@@ -926,23 +926,25 @@ function ico(body: Uint8Array, status = 200): Response {
   });
 }
 
-function landingPage(origin: string): string {
+function landingPage(): string {
   return [
     "<!doctype html>",
     '<html lang="pt-BR">',
     "<head>",
     '<meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
-    "<title>JurisprudenciaIA MCP</title>",
-    `<link rel="icon" href="${FAVICON_PNG_URL_PATH}" type="image/png" sizes="256x256">`,
-    `<link rel="apple-touch-icon" href="${APPLE_TOUCH_ICON_URL_PATH}" sizes="256x256">`,
-    `<link rel="alternate icon" href="${FAVICON_ICO_URL_PATH}" type="image/x-icon">`,
+    '<meta name="robots" content="noindex, nofollow">',
+    `<title>${MCP_SERVER_TITLE}</title>`,
+    `<link rel="icon" href="${FAVICON_PNG_PATH}" type="image/png" sizes="96x96">`,
+    `<link rel="icon" href="${FAVICON_SVG_PATH}" type="image/svg+xml">`,
+    `<link rel="alternate icon" href="${FAVICON_ICO_PATH}" type="image/x-icon">`,
+    "<style>:root{color-scheme:dark}html,body{height:100%}body{margin:0;display:flex;align-items:center;justify-content:center;padding:2rem;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:radial-gradient(120% 120% at 50% 0%,#0b211e 0%,#071614 60%,#040d0c 100%);color:#e9e2cf}main{text-align:center}img{width:64px;height:64px}h1{margin:.9rem 0 .35rem;font-size:1.3rem;letter-spacing:.2px}p{margin:0;color:#8aa79c;font-size:.9rem}</style>",
     "</head>",
     "<body>",
     "<main>",
-    "<h1>JurisprudenciaIA MCP</h1>",
-    "<p>Servidor MCP auto-hospedado ativo.</p>",
-    `<p>Endpoint MCP: <code>${origin}${MCP_PATH}</code></p>`,
+    `<img src="${FAVICON_PNG_PATH}" width="64" height="64" alt="">`,
+    `<h1>${MCP_SERVER_TITLE}</h1>`,
+    "<p>Conector privado · acesso restrito.</p>",
     "</main>",
     "</body>",
     "</html>"
