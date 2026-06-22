@@ -523,6 +523,7 @@
       margin-top: 1rem;
       color: var(--muted);
       font-weight: 700;
+      cursor: pointer;
     }
 
     .checkline input {
@@ -1039,21 +1040,21 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
               Escolha onde você vai usar o conector. O guia mostra apenas os campos daquele cliente para evitar mistura de tokens.
             </p>
             <div class="client-selector" role="tablist" aria-label="Escolha o cliente MCP">
-              <button class="client-tab is-active" type="button" role="tab" aria-selected="true" data-client-tab="claude">
+              <button class="client-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="panel-claude" id="tab-claude" data-client-tab="claude">
                 <strong>Claude.ai</strong>
                 <span>Connector personalizado com OAuth</span>
               </button>
-              <button class="client-tab" type="button" role="tab" aria-selected="false" data-client-tab="chatgpt">
+              <button class="client-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-chatgpt" id="tab-chatgpt" data-client-tab="chatgpt">
                 <strong>ChatGPT</strong>
                 <span>App em modo desenvolvedor com OAuth</span>
               </button>
-              <button class="client-tab" type="button" role="tab" aria-selected="false" data-client-tab="codex">
+              <button class="client-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-codex" id="tab-codex" data-client-tab="codex">
                 <strong>Codex</strong>
                 <span>HTTP com streaming e Bearer local</span>
               </button>
             </div>
 
-            <div class="client-panel" data-client-panel="codex" hidden>
+            <div class="client-panel" role="tabpanel" aria-labelledby="tab-codex" id="panel-codex" data-client-panel="codex" hidden>
               <h3>Codex</h3>
               <p>Use esta tela quando o conector for usado no Codex Desktop.</p>
               <ol class="literal">
@@ -1122,7 +1123,7 @@ npm run check:codex-http -- https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.
               </p>
             </div>
 
-            <div class="client-panel" data-client-panel="chatgpt" hidden>
+            <div class="client-panel" role="tabpanel" aria-labelledby="tab-chatgpt" id="panel-chatgpt" data-client-panel="chatgpt" hidden>
               <h3>ChatGPT</h3>
               <p>Use esta tela para criar um app em modo desenvolvedor no ChatGPT. Não use o token do Codex aqui.</p>
               <ol class="literal">
@@ -1177,7 +1178,7 @@ npm run check:chatgpt-oauth -- https://jurisprudenciaia-mcp.&lt;seu-subdominio&g
               </p>
             </div>
 
-            <div class="client-panel" data-client-panel="claude">
+            <div class="client-panel" role="tabpanel" aria-labelledby="tab-claude" id="panel-claude" data-client-panel="claude">
               <h3>Claude.ai</h3>
               <p>Use esta tela quando o conector for usado dentro do Claude.ai.</p>
               <ol class="literal">
