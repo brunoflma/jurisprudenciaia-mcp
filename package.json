@@ -40,5 +40,10 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "pnpm": {
+    "overrides": {
+      "@hono/node-server@<=2.0.5": "2.0.5"
+    }
   }
 }
