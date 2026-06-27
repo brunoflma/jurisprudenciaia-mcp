@@ -67,7 +67,7 @@ Importante:
 
 - `MCP_OAUTH_CLIENT_SECRET` será usado no GitHub e no Claude.ai.
 - `MCP_ACCESS_TOKEN_SECRET` será usado somente no GitHub/Cloudflare Worker.
-- `MCP_BEARER_TOKEN` será usado no Cloudflare Worker e no ambiente local do Codex, tanto no Windows quanto no macOS. No workflow público atual, configure esse token diretamente no Worker depois do deploy.
+- `MCP_BEARER_TOKEN` será usado no Cloudflare Worker e no ambiente local do Codex, tanto no Windows quanto no macOS. Se voce usar Codex por HTTP, configure esse token como GitHub Secret opcional para o workflow sincronizar o valor no Worker antes do deploy.
 - Nenhum desses valores deve entrar no código ou em arquivos do repositório.
 - Não publique consultas jurídicas reais, resultados do JurisprudênciaIA, nomes de partes, CPFs, e-mails ou outros dados pessoais em logs, issues ou exemplos.
 
@@ -131,7 +131,7 @@ No GitHub:
 3. Entre em `Secrets and variables`.
 4. Clique em `Actions`.
 5. Clique em `New repository secret`.
-6. Crie estes cinco secrets obrigatorios:
+6. Crie estes seis secrets obrigatorios:
 
 ```text
 CLOUDFLARE_ACCOUNT_ID
@@ -157,7 +157,7 @@ Obrigatoriamente para o funcionamento do fluxo OAuth, voce deve criar o secret `
 
 O ChatGPT recusara a conexao se esse valor nao for exatamente igual ao secret `MCP_OAUTH_CLIENT_ID` do Worker. Se mudar o Client ID no Cloudflare, mude tambem o GitHub Secret antes do proximo deploy.
 
-Nao coloque `MCP_BEARER_TOKEN` nos GitHub Secrets no fluxo padrao. Ele sera configurado diretamente como Cloudflare Worker Secret no passo seguinte, caso voce use Codex por HTTP.
+Opcionalmente, crie tambem o secret `MCP_BEARER_TOKEN` se voce for usar Codex por `HTTP com streaming`. O workflow sincroniza esse valor no Worker antes de publicar o codigo novo.
 
 ## 5. Publicar o Worker pelo GitHub Actions
 
@@ -169,20 +169,21 @@ No GitHub:
 4. Confirme em `Run workflow`.
 5. Aguarde a execucao terminar.
 
-Quando os cinco secrets estiverem configurados, o workflow vai:
+Quando os seis secrets obrigatorios estiverem configurados, o workflow vai:
 
 1. Instalar dependencias.
 2. Rodar typecheck.
 3. Rodar testes.
 4. Gerar build.
-5. Publicar o Worker com `wrangler deploy`.
-6. Sincronizar os secrets OAuth no Worker.
+5. Sincronizar os secrets OAuth no Worker.
+6. Sincronizar `MCP_BEARER_TOKEN`, se o secret opcional existir.
+7. Publicar o Worker com `wrangler deploy`.
 
-Se algum secret obrigatorio estiver faltando, o workflow fica verde, mas mostra aviso dizendo que pulou o deploy.
+Se algum secret obrigatorio estiver faltando, o workflow falha e o Worker nao e publicado.
 
 ### Opcional para Codex: configurar Bearer no Worker
 
-Se você for usar o Codex por `HTTP com streaming`, configure o Bearer token diretamente no Worker depois do primeiro deploy:
+Se voce for usar o Codex por `HTTP com streaming`, prefira configurar `MCP_BEARER_TOKEN` como GitHub Secret para que o workflow mantenha o Worker sincronizado. Se precisar configurar manualmente depois do primeiro deploy, use:
 
 ```shell
 npx wrangler login
@@ -238,7 +239,7 @@ https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/healthz
 Resposta esperada:
 
 ```json
-{"ok":true,"service":"jurisprudenciaia-mcp","runtime":"cloudflare-workers"}
+{"ok":true,"service":"jurisprudenciaia-mcp"}
 ```
 
 Se essa resposta aparecer, o Worker esta online.
@@ -392,7 +393,7 @@ O resultado esperado deve comecar com:
 - Para revogar OAuth, troque `MCP_OAUTH_CLIENT_SECRET` e `MCP_ACCESS_TOKEN_SECRET` no GitHub Secrets e rode o workflow novamente. Para revogar Codex Bearer, troque `MCP_BEARER_TOKEN`.
 - O repositorio nao deve conter chaves Cloudflare, GitHub, Browserless ou tokens reais.
 - O repositorio tambem nao deve conter URL operacional privada do seu Worker, dumps de testes do Claude ou respostas reais de consultas juridicas.
-- Em repositorios publicos e forks, o CI pode validar o projeto sem secrets. O workflow `Deploy Worker` so publica quando os cinco secrets existem no repositorio que executa o workflow.
+- Em repositorios publicos, configure os seis secrets obrigatorios antes de rodar o workflow `Deploy Worker`. Se qualquer secret obrigatorio estiver ausente, o workflow falha antes de publicar o Worker.
 - GitHub Pages nao serve para este caso porque e hospedagem estatica.
 - GitHub Actions tambem nao e um servidor HTTPS sempre disponivel.
 - Cloudflare Workers Free funciona aqui porque o conector atual nao precisa executar navegador.

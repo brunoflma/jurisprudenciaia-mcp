@@ -30,6 +30,12 @@ Este projeto transforma a pesquisa jurisprudencial em uma ferramenta MCP: você 
 
 O guia mais simples está em [`docs/deploy-guide.html`](docs/deploy-guide.html). Abra esse arquivo no navegador e escolha a aba do cliente que você quer configurar: Claude.ai, ChatGPT ou Codex.
 
+## Arquitetura de produção
+
+A produção roda somente em Cloudflare Workers. O arquivo `wrangler.toml` e o workflow `Deploy Worker` são a fonte de verdade para publicação, domínio, assets estáticos, logs e segredos do Worker.
+
+O servidor Node/Express continua no código para desenvolvimento local e testes, mas não é um alvo de hospedagem de produção neste repositório. A decisão está registrada em [`docs/architecture/adr-001-cloudflare-workers-production.md`](docs/architecture/adr-001-cloudflare-workers-production.md).
+
 ## Ferramentas incluídas
 
 O conector publica cinco ferramentas MCP:

@@ -41,26 +41,19 @@ jobs:
         run: npm run build
 
       - name: Check deployment secrets
-        id: deployment-secrets
         shell: bash
         run: |
           missing=0
 
           for name in CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN MCP_OAUTH_CLIENT_ID MCP_OAUTH_CLIENT_SECRET MCP_ACCESS_TOKEN_SECRET MCP_OAUTH_REDIRECT_URIS; do
             if [ -z "${!name}" ]; then
-              echo "::notice::GitHub secret $name is not configured; skipping Worker deploy."
+              echo "::error::GitHub secret $name is required for Worker deploy."
               missing=1
             fi
           done
 
-          if [ "$missing" -eq 0 ]; then
-            echo "configured=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-          fi
-
           if [ "$missing" -ne 0 ]; then
-            echo "::notice::Validation completed, but Worker deploy is disabled until this repository has its own deployment secrets."
+            exit 1
           fi
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -70,20 +63,18 @@ jobs:
           MCP_ACCESS_TOKEN_SECRET: ${{ secrets.MCP_ACCESS_TOKEN_SECRET }}
           MCP_OAUTH_REDIRECT_URIS: ${{ secrets.MCP_OAUTH_REDIRECT_URIS }}
 
-      - name: Deploy Worker
-        if: github.event_name != 'pull_request' && steps.deployment-secrets.outputs.configured == 'true'
-        run: npx wrangler deploy
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-
-      - name: Sync Worker OAuth secrets
-        if: github.event_name != 'pull_request' && steps.deployment-secrets.outputs.configured == 'true'
+      - name: Sync Worker secrets
         shell: bash
         run: |
           for name in MCP_OAUTH_CLIENT_ID MCP_OAUTH_CLIENT_SECRET MCP_ACCESS_TOKEN_SECRET MCP_OAUTH_REDIRECT_URIS; do
             printf "%s" "${!name}" | npx wrangler secret put "$name"
           done
+
+          if [ -n "$MCP_BEARER_TOKEN" ]; then
+            printf "%s" "$MCP_BEARER_TOKEN" | npx wrangler secret put MCP_BEARER_TOKEN
+          else
+            echo "::notice::Optional GitHub secret MCP_BEARER_TOKEN is not configured; skipping Codex bearer token sync."
+          fi
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -91,3 +82,10 @@ jobs:
           MCP_OAUTH_CLIENT_SECRET: ${{ secrets.MCP_OAUTH_CLIENT_SECRET }}
           MCP_ACCESS_TOKEN_SECRET: ${{ secrets.MCP_ACCESS_TOKEN_SECRET }}
           MCP_OAUTH_REDIRECT_URIS: ${{ secrets.MCP_OAUTH_REDIRECT_URIS }}
+          MCP_BEARER_TOKEN: ${{ secrets.MCP_BEARER_TOKEN }}
+
+      - name: Deploy Worker
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

@@ -893,7 +893,7 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
               <li>Clique em <strong>New repository secret</strong>.</li>
               <li>Preencha <strong>Name</strong> e <strong>Secret</strong> usando a tabela abaixo.</li>
               <li>Clique em <strong>Add secret</strong>.</li>
-              <li>Repita até cadastrar os cinco secrets obrigatórios.</li>
+              <li>Repita até cadastrar os seis secrets obrigatórios.</li>
             </ol>
             <table>
               <thead>
@@ -926,10 +926,10 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
               </tbody>
             </table>
             <p class="note">
-              Resultado correto: a tela de Actions secrets mostra os cinco nomes obrigatórios. O GitHub não mostra os valores depois de salvar.
+              Resultado correto: a tela de Actions secrets mostra os seis nomes obrigatórios. O GitHub não mostra os valores depois de salvar.
             </p>
             <p class="note">
-              Se for usar Codex HTTP, não coloque <code>MCP_BEARER_TOKEN</code> nos GitHub Secrets neste fluxo. Ele será salvo diretamente no Worker como Cloudflare Secret depois do deploy.
+              Se for usar Codex HTTP, crie também o secret opcional <code>MCP_BEARER_TOKEN</code>. O workflow sincroniza esse valor no Worker antes de publicar o código novo.
             </p>
             <label class="checkline">
               <input type="checkbox" data-check="5">
@@ -973,13 +973,11 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
               e use essa URL no Claude.ai.
             </p>
             <p class="note">
-              Se for usar Codex HTTP, abra o Worker no painel da Cloudflare depois do deploy, entre em
-              <strong>Settings</strong> &gt; <strong>Variables and Secrets</strong>, adicione um Secret chamado
-              <code>MCP_BEARER_TOKEN</code> e cole o terceiro valor gerado no passo 2. Esse mesmo valor deve existir no ambiente local do Codex.
+              Se for usar Codex HTTP, confira se o GitHub Secret opcional <code>MCP_BEARER_TOKEN</code> existe antes de rodar o workflow.
+              Esse mesmo valor deve existir no ambiente local do Codex.
             </p>
             <p class="note danger">
-              Se a execução ficar verde, mas aparecer aviso de deploy pulado por secrets ausentes,
-              volte ao passo 5. O deploy não foi publicado nesse caso.
+              Se algum secret obrigatório estiver ausente, a execução fica vermelha. Volte ao passo 5; o deploy não foi publicado nesse caso.
             </p>
             <label class="checkline">
               <input type="checkbox" data-check="6">
@@ -1014,7 +1012,7 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
                 <span>Resposta esperada no navegador</span>
                 <button class="copy" type="button">Copiar</button>
               </div>
-              <pre><code>{"ok":true,"service":"jurisprudenciaia-mcp","runtime":"cloudflare-workers"}</code></pre>
+              <pre><code>{"ok":true,"service":"jurisprudenciaia-mcp"}</code></pre>
             </div>
             <p class="note success">
               Se a resposta acima aparecer, o Worker está online. Se der erro 404, 500 ou página em branco,
@@ -1263,8 +1261,8 @@ comparar_teses_juridicas</code></pre>
         <h2 id="trouble-title">Se algo der errado</h2>
         <ul class="trouble-list">
           <li>
-            <strong>GitHub Actions ficou verde, mas não publicou.</strong>
-            Abra o log. Se aparecer aviso de secrets ausentes, volte ao passo 5 e confira os cinco nomes obrigatórios.
+            <strong>GitHub Actions falhou antes do deploy.</strong>
+            Abra o log. Se aparecer erro de secrets ausentes, volte ao passo 5 e confira os seis nomes obrigatórios.
           </li>
           <li>
             <strong>Cloudflare recusou o deploy.</strong>
