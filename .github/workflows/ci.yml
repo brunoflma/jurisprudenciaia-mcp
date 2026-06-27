@@ -2,6 +2,9 @@ name: CI
 
 on:
   push:
+    branches:
+      - master
+      - main
   pull_request:
   workflow_dispatch:
 
@@ -25,14 +28,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Test
-        run: npm test
-
-      - name: Build
-        run: npm run build
+      - name: Verify
+        run: npm run verify
 
       - name: Validate Worker bundle
         run: npx wrangler deploy --dry-run

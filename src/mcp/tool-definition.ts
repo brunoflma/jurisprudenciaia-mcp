@@ -48,6 +48,8 @@ export type JurisprudenciaIaToolDefinition = {
   normalizeInput(input: unknown): Required<JurisprudenciaIaQuery>;
 };
 
+const MAX_TEXT_LENGTH = 2000;
+
 const genericInputSchema = z.object({
   query: z.string(),
   max_wait_seconds: z.number().int().positive().optional(),
@@ -381,18 +383,33 @@ function normalizeQuery(value: string): string {
     throw new Error("A consulta deve ter pelo menos 8 caracteres");
   }
 
+  if (query.length > MAX_TEXT_LENGTH) {
+    throw new Error(`A consulta excede o limite maximo de ${MAX_TEXT_LENGTH} caracteres`);
+  }
+
   return query;
 }
 
 function normalizeOptionalText(value: string | undefined): string | undefined {
   const normalized = value?.trim().replace(/\s+/g, " ");
+
+  if (normalized && normalized.length > MAX_TEXT_LENGTH) {
+    throw new Error(`O contexto excede o limite maximo de ${MAX_TEXT_LENGTH} caracteres`);
+  }
+
   return normalized || undefined;
 }
 
 function normalizeTribunais(value: string[] | undefined): string[] {
-  return (value ?? [])
+  const tribunais = (value ?? [])
     .map((item) => item.trim().replace(/\s+/g, " ").toUpperCase())
     .filter(Boolean);
+
+  if (tribunais.join(", ").length > MAX_TEXT_LENGTH) {
+    throw new Error(`Os tribunais excedem o limite maximo de ${MAX_TEXT_LENGTH} caracteres`);
+  }
+
+  return tribunais;
 }
 
 function normalizeMaxWait(value: number | undefined): number {

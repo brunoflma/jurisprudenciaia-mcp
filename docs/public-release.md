@@ -42,5 +42,5 @@ Revise todos os achados manualmente. Se a ferramenta apontar histórico antigo o
 ## GitHub Actions
 
 - O workflow `CI` pode rodar em forks e pull requests sem secrets.
-- O workflow `Deploy Worker` valida o projeto, mas só publica quando os cinco secrets de deploy existem no repositório executor.
+- O repositório público não deve conter workflow de deploy nem exigir secrets para pull requests.
 - Nunca cole valores reais de secrets em logs, issues, comentários de PR ou arquivos de exemplo.

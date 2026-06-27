@@ -269,11 +269,12 @@ function referenceNumber(ref: string | undefined): number {
 }
 
 function formatInlineCitations(text: string, references: RegistryUpdate[]): string {
-  const referencesByRef = new Map(
-    references
-      .filter((reference): reference is RegistryUpdate & { ref: string } => !!reference.ref)
-      .map((reference) => [reference.ref, reference])
-  );
+  const referencesByRef = new Map<string, RegistryUpdate>();
+  for (const reference of references) {
+    if (reference.ref) {
+      referencesByRef.set(reference.ref, reference);
+    }
+  }
 
   const formatCitation = (ref: string) => {
     const reference = referencesByRef.get(ref);
@@ -319,7 +320,7 @@ function referenceFullText(reference: RegistryUpdate): string | undefined {
       continue;
     }
 
-    if (ementaFingerprint && comparableLongText(normalized) === ementaFingerprint) {
+    if (ementaFingerprint && fingerprintLongText(normalized) === ementaFingerprint) {
       continue;
     }
 
@@ -489,6 +490,11 @@ function normalizeLongText(value: string | null | undefined): string | undefined
   return normalized || undefined;
 }
 
+function fingerprintLongText(value: string): string {
+  return value.replace(/\s+/g, " ").toLowerCase();
+}
+
 function comparableLongText(value: string | null | undefined): string | undefined {
-  return normalizeLongText(value)?.replace(/\s+/g, " ").toLowerCase();
+  const normalized = normalizeLongText(value);
+  return normalized ? fingerprintLongText(normalized) : undefined;
 }

@@ -10,6 +10,7 @@ import {
   createJurisprudenciaIaMcpServer,
   normalizeToolInput
 } from "../src/mcp/create-server.js";
+import { findToolDefinition } from "../src/mcp/tool-definition.js";
 
 async function withMcpClient(
   runner: JurisprudenciaIaRunner,
@@ -75,6 +76,28 @@ describe("normalizeToolInput", () => {
     expect(() => normalizeToolInput({ query: "abc" })).toThrow(
       "A consulta deve ter pelo menos 8 caracteres"
     );
+  });
+
+  it("rejects oversized thesis context text", () => {
+    const tool = findToolDefinition("analisar_tese_juridica");
+
+    expect(() =>
+      tool!.normalizeInput({
+        tese: "responsabilidade civil por dano moral",
+        contexto: "x".repeat(2001)
+      })
+    ).toThrow("O contexto excede o limite maximo de 2000 caracteres");
+  });
+
+  it("rejects oversized precedent court filters", () => {
+    const tool = findToolDefinition("buscar_precedentes");
+
+    expect(() =>
+      tool!.normalizeInput({
+        tema: "responsabilidade civil por dano moral",
+        tribunais: Array.from({ length: 401 }, (_, index) => `tribunal-${index}`)
+      })
+    ).toThrow("Os tribunais excedem o limite maximo de 2000 caracteres");
   });
 
   it("caps max_wait_seconds at 120", () => {
@@ -364,7 +387,8 @@ describe("createJurisprudenciaIaMcpServer", () => {
   });
 
   it("hides details from unexpected errors", async () => {
-    const internalMessage = "internal runner failed with credential REDACT_ME";
+    const internalMessage =
+      "internal runner failed with credential REDACT_ME";
 
     await withMcpClient(
       {

@@ -45,6 +45,11 @@
     a {
       color: var(--blue);
       text-underline-offset: 0.18em;
+      transition: color 0.2s ease;
+    }
+
+    a:hover {
+      color: var(--ink);
     }
 
     button,
@@ -407,9 +412,17 @@
       font-size: 0.9rem;
     }
 
+    .client-tab:hover {
+      border-color: rgba(215, 170, 91, 0.5);
+    }
+
     .client-tab.is-active {
       border-color: rgba(100, 195, 145, 0.8);
       background: rgba(42, 67, 52, 0.78);
+    }
+
+    .client-tab:hover:not(.is-active) {
+      border-color: rgba(100, 195, 145, 0.4);
     }
 
     .client-panel {
@@ -459,6 +472,12 @@
 
     .copy:hover {
       border-color: var(--green);
+    }
+
+    .copy.is-copied {
+      border-color: var(--green);
+      color: var(--green);
+      background: rgba(100, 195, 145, 0.1);
     }
 
     .client-options {
@@ -524,6 +543,11 @@
       color: var(--muted);
       font-weight: 700;
       cursor: pointer;
+      transition: color 0.2s ease;
+    }
+
+    .checkline:hover {
+      color: var(--ink);
     }
 
     .checkline input {
@@ -531,6 +555,7 @@
       height: 1.15rem;
       margin-top: 0.16rem;
       accent-color: var(--green);
+      cursor: pointer;
     }
 
     table {
@@ -675,7 +700,7 @@
         <div class="route-item">
           <span>2</span>
           <strong>Publicar</strong>
-          <p>Configure Cloudflare, GitHub Secrets e execute o workflow.</p>
+          <p>Configure os Worker secrets e publique pelo Cloudflare Builds.</p>
         </div>
         <div class="route-item">
           <span>3</span>
@@ -721,7 +746,6 @@
               <li>Tokens da Cloudflare.</li>
               <li>Secrets do MCP.</li>
               <li>Anotações internas de desenvolvimento.</li>
-              <li>Consultas jurídicas reais ou respostas copiadas do JurisprudenciaIA.</li>
               <li>Arquivos <code>.env</code> com valores reais.</li>
             </ul>
           </div>
@@ -823,7 +847,7 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
             <span class="number">3</span>
             <div>
               <h2 id="step-3-title">Crie o token de deploy no Cloudflare</h2>
-              <p>Esse token deixa o GitHub publicar o Worker na sua conta Cloudflare.</p>
+              <p>Esse token só é necessário para publicação manual via Wrangler fora do Cloudflare Builds.</p>
             </div>
           </div>
           <div class="step-body">
@@ -880,20 +904,18 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
           <div class="step-head">
             <span class="number">5</span>
             <div>
-              <h2 id="step-5-title">Cadastre os secrets no GitHub</h2>
-              <p>Crie um secret por vez. O nome precisa ser idêntico ao da tabela.</p>
+              <h2 id="step-5-title">Cadastre os secrets no Worker</h2>
+              <p>Crie um Worker secret por vez. O nome precisa ser idêntico ao da tabela.</p>
             </div>
           </div>
           <div class="step-body">
             <ol class="literal">
-              <li>Abra o repositório <code>&lt;seu-usuario&gt;/jurisprudenciaia-mcp</code> no GitHub.</li>
-              <li>Clique em <strong>Settings</strong>.</li>
-              <li>No menu esquerdo, clique em <strong>Secrets and variables</strong>.</li>
-              <li>Clique em <strong>Actions</strong>.</li>
-              <li>Clique em <strong>New repository secret</strong>.</li>
-              <li>Preencha <strong>Name</strong> e <strong>Secret</strong> usando a tabela abaixo.</li>
-              <li>Clique em <strong>Add secret</strong>.</li>
-              <li>Repita até cadastrar os seis secrets obrigatórios.</li>
+              <li>No Cloudflare, abra o Worker <code>jurisprudenciaia-mcp</code>.</li>
+              <li>Entre em <strong>Settings</strong> e depois em <strong>Variables</strong>.</li>
+              <li>Clique para adicionar um novo secret.</li>
+              <li>Preencha <strong>Name</strong> e <strong>Value</strong> usando a tabela abaixo.</li>
+              <li>Salve o secret.</li>
+              <li>Repita até cadastrar os quatro secrets obrigatórios.</li>
             </ol>
             <table>
               <thead>
@@ -903,14 +925,6 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td><code>CLOUDFLARE_ACCOUNT_ID</code></td>
-                  <td>Valor copiado no passo 4.</td>
-                </tr>
-                <tr>
-                  <td><code>CLOUDFLARE_API_TOKEN</code></td>
-                  <td>Token criado no passo 3.</td>
-                </tr>
                 <tr>
                   <td><code>MCP_OAUTH_CLIENT_ID</code></td>
                   <td><code>jurisprudenciaia-mcp-client</code></td>
@@ -923,17 +937,21 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
                   <td><code>MCP_ACCESS_TOKEN_SECRET</code></td>
                   <td>Segundo valor gerado no passo 2.</td>
                 </tr>
+                <tr>
+                  <td><code>MCP_OAUTH_REDIRECT_URIS</code></td>
+                  <td>URLs de redirecionamento permitidas, separadas por vírgula.</td>
+                </tr>
               </tbody>
             </table>
             <p class="note">
-              Resultado correto: a tela de Actions secrets mostra os seis nomes obrigatórios. O GitHub não mostra os valores depois de salvar.
+              Resultado correto: a tela de variáveis do Worker mostra os quatro nomes obrigatórios. O Cloudflare não mostra os valores depois de salvar.
             </p>
             <p class="note">
-              Se for usar Codex HTTP, crie também o secret opcional <code>MCP_BEARER_TOKEN</code>. O workflow sincroniza esse valor no Worker antes de publicar o código novo.
+              Se for usar Codex HTTP, crie também o secret opcional <code>MCP_BEARER_TOKEN</code> diretamente no Worker. GitHub Actions não sincroniza secrets nem publica produção.
             </p>
             <label class="checkline">
               <input type="checkbox" data-check="5">
-              Já cadastrei os secrets necessários no GitHub.
+              Já cadastrei os secrets necessários no Worker.
             </label>
           </div>
         </section>
@@ -942,19 +960,18 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
           <div class="step-head">
             <span class="number">6</span>
             <div>
-              <h2 id="step-6-title">Rode o deploy pelo GitHub Actions</h2>
-              <p>O GitHub vai testar o projeto, gerar o build e publicar no Cloudflare Workers.</p>
+              <h2 id="step-6-title">Publique pelo Cloudflare Builds</h2>
+              <p>O GitHub valida o projeto; o Cloudflare Builds publica no Cloudflare Workers.</p>
             </div>
           </div>
           <div class="step-body">
             <ol class="literal">
-              <li>No repositório do GitHub, clique na aba <strong>Actions</strong>.</li>
-              <li>No menu esquerdo, clique em <strong>Deploy Worker</strong>.</li>
-              <li>Clique em <strong>Run workflow</strong>.</li>
-              <li>Na caixa que abrir, clique novamente em <strong>Run workflow</strong>.</li>
-              <li>Aguarde a execução aparecer na lista.</li>
-              <li>Clique na execução mais recente.</li>
-              <li>Espere todos os itens ficarem verdes.</li>
+              <li>No Cloudflare, abra <strong>Workers & Pages</strong> e selecione o projeto conectado ao repositório privado.</li>
+              <li>Confirme que a branch de produção é <strong>master</strong>.</li>
+              <li>Confirme que o build usa <code>npm run verify</code>.</li>
+              <li>Confirme que o deploy usa <code>npx wrangler deploy</code>.</li>
+              <li>Dispare o build no Cloudflare Builds ou aguarde o build do commit de produção.</li>
+              <li>Espere o build e o deploy ficarem verdes.</li>
               <li>Procure a URL publicada, parecida com <code>https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev</code>.</li>
               <li>Copie essa URL e preencha as linhas <code>URL_WORKER=</code> e <code>URL_MCP=</code> na anotação.</li>
             </ol>
@@ -973,15 +990,15 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
               e use essa URL no Claude.ai.
             </p>
             <p class="note">
-              Se for usar Codex HTTP, confira se o GitHub Secret opcional <code>MCP_BEARER_TOKEN</code> existe antes de rodar o workflow.
+              Se for usar Codex HTTP, confira se o Worker secret opcional <code>MCP_BEARER_TOKEN</code> existe antes de publicar.
               Esse mesmo valor deve existir no ambiente local do Codex.
             </p>
             <p class="note danger">
-              Se algum secret obrigatório estiver ausente, a execução fica vermelha. Volte ao passo 5; o deploy não foi publicado nesse caso.
+              Se algum secret obrigatório estiver ausente, o deploy fica vermelho. Volte ao passo 5; o Worker não foi publicado nesse caso.
             </p>
             <label class="checkline">
               <input type="checkbox" data-check="6">
-              O workflow Deploy Worker terminou verde e eu anotei a URL.
+              O deploy no Cloudflare terminou verde e eu anotei a URL.
             </label>
           </div>
         </section>
@@ -1016,7 +1033,7 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
             </div>
             <p class="note success">
               Se a resposta acima aparecer, o Worker está online. Se der erro 404, 500 ou página em branco,
-              volte ao passo 6 e abra o log do workflow.
+              volte ao passo 6 e abra o log do Cloudflare Builds.
             </p>
             <label class="checkline">
               <input type="checkbox" data-check="7">
@@ -1038,21 +1055,21 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
               Escolha onde você vai usar o conector. O guia mostra apenas os campos daquele cliente para evitar mistura de tokens.
             </p>
             <div class="client-selector" role="tablist" aria-label="Escolha o cliente MCP">
-              <button class="client-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="panel-claude" id="tab-claude" data-client-tab="claude">
+              <button class="client-tab is-active" id="tab-claude" type="button" role="tab" aria-selected="true" aria-controls="panel-claude" data-client-tab="claude">
                 <strong>Claude.ai</strong>
                 <span>Connector personalizado com OAuth</span>
               </button>
-              <button class="client-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-chatgpt" id="tab-chatgpt" data-client-tab="chatgpt">
+              <button class="client-tab" id="tab-chatgpt" type="button" role="tab" aria-selected="false" aria-controls="panel-chatgpt" data-client-tab="chatgpt">
                 <strong>ChatGPT</strong>
                 <span>App em modo desenvolvedor com OAuth</span>
               </button>
-              <button class="client-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-codex" id="tab-codex" data-client-tab="codex">
+              <button class="client-tab" id="tab-codex" type="button" role="tab" aria-selected="false" aria-controls="panel-codex" data-client-tab="codex">
                 <strong>Codex</strong>
                 <span>HTTP com streaming e Bearer local</span>
               </button>
             </div>
 
-            <div class="client-panel" role="tabpanel" aria-labelledby="tab-codex" id="panel-codex" data-client-panel="codex" hidden>
+            <div class="client-panel" id="panel-codex" role="tabpanel" aria-labelledby="tab-codex" data-client-panel="codex" hidden>
               <h3>Codex</h3>
               <p>Use esta tela quando o conector for usado no Codex Desktop.</p>
               <ol class="literal">
@@ -1121,7 +1138,7 @@ npm run check:codex-http -- https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.
               </p>
             </div>
 
-            <div class="client-panel" role="tabpanel" aria-labelledby="tab-chatgpt" id="panel-chatgpt" data-client-panel="chatgpt" hidden>
+            <div class="client-panel" id="panel-chatgpt" role="tabpanel" aria-labelledby="tab-chatgpt" data-client-panel="chatgpt" hidden>
               <h3>ChatGPT</h3>
               <p>Use esta tela para criar um app em modo desenvolvedor no ChatGPT. Não use o token do Codex aqui.</p>
               <ol class="literal">
@@ -1172,11 +1189,11 @@ npm run check:chatgpt-oauth -- https://jurisprudenciaia-mcp.&lt;seu-subdominio&g
                 </div>
               </div>
               <p class="note danger">
-                Se aparecer erro genérico ao conectar, o caso mais comum é Client ID ou Client Secret diferente do Worker. Se publicar pelo GitHub Actions, mantenha o GitHub Secret <code>MCP_OAUTH_CLIENT_ID</code> com o mesmo valor: <code>jurisprudenciaia-mcp-client</code>.
+                Se aparecer erro genérico ao conectar, o caso mais comum é Client ID ou Client Secret diferente do Worker. Mantenha o Worker secret <code>MCP_OAUTH_CLIENT_ID</code> com o valor <code>jurisprudenciaia-mcp-client</code>.
               </p>
             </div>
 
-            <div class="client-panel" role="tabpanel" aria-labelledby="tab-claude" id="panel-claude" data-client-panel="claude">
+            <div class="client-panel" id="panel-claude" role="tabpanel" aria-labelledby="tab-claude" data-client-panel="claude">
               <h3>Claude.ai</h3>
               <p>Use esta tela quando o conector for usado dentro do Claude.ai.</p>
               <ol class="literal">
@@ -1261,8 +1278,8 @@ comparar_teses_juridicas</code></pre>
         <h2 id="trouble-title">Se algo der errado</h2>
         <ul class="trouble-list">
           <li>
-            <strong>GitHub Actions falhou antes do deploy.</strong>
-            Abra o log. Se aparecer erro de secrets ausentes, volte ao passo 5 e confira os seis nomes obrigatórios.
+            <strong>Cloudflare Builds falhou antes do deploy.</strong>
+            Abra o log. Se aparecer erro de secrets ausentes, volte ao passo 5 e confira os nomes obrigatórios no Worker.
           </li>
           <li>
             <strong>Cloudflare recusou o deploy.</strong>
@@ -1317,7 +1334,11 @@ comparar_teses_juridicas</code></pre>
 
     function updateProgress() {
       const completed = checks.filter((input) => input.checked).length;
-      progressText.textContent = `${completed} de ${checks.length} etapas concluidas`;
+      if (completed === checks.length) {
+        progressText.textContent = "🎉 Todas as etapas concluídas!";
+      } else {
+        progressText.textContent = `${completed} de ${checks.length} etapas concluidas`;
+      }
       progressBar.style.width = `${(completed / checks.length) * 100}%`;
     }
 
@@ -1356,6 +1377,12 @@ comparar_teses_juridicas</code></pre>
     selectClient(state.client || "claude");
 
     document.querySelectorAll(".copy").forEach((button) => {
+      const block = button.closest(".copy-block");
+      const span = block ? block.querySelector("span") : null;
+      if (span && span.textContent) {
+        button.setAttribute("aria-label", `Copiar: ${span.textContent.trim()}`);
+      }
+
       button.addEventListener("click", async () => {
         const block = button.closest(".copy-block");
         const code = block ? block.querySelector("code") : null;
@@ -1364,8 +1391,12 @@ comparar_teses_juridicas</code></pre>
         try {
           await navigator.clipboard.writeText(text);
           button.textContent = "Copiado";
+          button.classList.add("is-copied");
+          button.setAttribute("aria-label", "Copiado com sucesso");
           setTimeout(() => {
             button.textContent = "Copiar";
+            button.classList.remove("is-copied");
+            button.setAttribute("aria-label", `Copiar: ${span ? span.textContent.trim() : ""}`);
           }, 1400);
         } catch {
           button.textContent = "Selecione";

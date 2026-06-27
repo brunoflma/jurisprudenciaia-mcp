@@ -2,16 +2,15 @@
 
 Este projeto e um conector MCP auto-hospedado para Claude.ai, ChatGPT ou Codex. Ele roda em Cloudflare Workers Free e consulta o JurisprudenciaIA por HTTP, sem navegador remoto, login ou senha.
 
-O repositorio publico deve conter apenas codigo, testes e documentacao. Cada usuario cria a propria instancia do Worker, os proprios GitHub Secrets e o proprio conector no Claude.ai.
-
 Se preferir um roteiro visual, abra `docs/deploy-guide.html` no navegador.
 
 O fluxo recomendado e:
 
-1. Criar um token de deploy no Cloudflare.
-2. Colocar esse token e os segredos OAuth no GitHub Secrets.
-3. Rodar o workflow `Deploy Worker`.
-4. Cadastrar a URL final no Claude.ai, ChatGPT ou Codex.
+1. Gerar os segredos OAuth e Bearer localmente.
+2. Gravar os segredos no Cloudflare Worker, sem coloca-los no repositorio publico.
+3. Manter GitHub Actions como CI somente.
+4. Publicar pelo Cloudflare Builds no repositorio privado, ou manualmente por Wrangler quando for um deploy controlado.
+5. Cadastrar a URL final no Claude.ai, ChatGPT ou Codex.
 
 ## 1. Gerar os segredos do MCP
 
@@ -23,7 +22,7 @@ MCP_OAUTH_CLIENT_SECRET
 MCP_ACCESS_TOKEN_SECRET
 ```
 
-Use este Client ID de exemplo:
+Use este Client ID:
 
 ```text
 jurisprudenciaia-mcp-client
@@ -65,11 +64,10 @@ MCP_BEARER_TOKEN=<resultado do terceiro comando>
 
 Importante:
 
-- `MCP_OAUTH_CLIENT_SECRET` será usado no GitHub e no Claude.ai.
-- `MCP_ACCESS_TOKEN_SECRET` será usado somente no GitHub/Cloudflare Worker.
-- `MCP_BEARER_TOKEN` será usado no Cloudflare Worker e no ambiente local do Codex, tanto no Windows quanto no macOS. Se voce usar Codex por HTTP, configure esse token como GitHub Secret opcional para o workflow sincronizar o valor no Worker antes do deploy.
+- `MCP_OAUTH_CLIENT_SECRET` será usado no Cloudflare Worker e no Claude.ai.
+- `MCP_ACCESS_TOKEN_SECRET` será usado somente no Cloudflare Worker.
+- `MCP_BEARER_TOKEN` será usado no Cloudflare Worker e no ambiente local do Codex, tanto no Windows quanto no macOS.
 - Nenhum desses valores deve entrar no código ou em arquivos do repositório.
-- Não publique consultas jurídicas reais, resultados do JurisprudênciaIA, nomes de partes, CPFs, e-mails ou outros dados pessoais em logs, issues ou exemplos.
 
 ## 2. Criar o Cloudflare API Token
 
@@ -99,7 +97,7 @@ Use o nome exato da conta Cloudflare onde o Worker sera publicado.
 8. Clique em `Create Token`.
 9. Copie o token gerado imediatamente.
 
-Esse valor sera o GitHub secret:
+Esse valor sera usado pelo Cloudflare Builds ou pela sessao local do Wrangler:
 
 ```text
 CLOUDFLARE_API_TOKEN
@@ -116,37 +114,26 @@ No Cloudflare Dashboard:
 3. Procure `Account ID` na visao geral ou na lateral direita da pagina.
 4. Copie o valor.
 
-Esse valor sera o GitHub secret:
+Esse valor sera usado pelo Cloudflare Builds ou pela sessao local do Wrangler:
 
 ```text
 CLOUDFLARE_ACCOUNT_ID
 ```
 
-## 4. Configurar GitHub Secrets
+## 4. Configurar os secrets do Worker
 
-No GitHub:
-
-1. Abra o repositorio `<seu-usuario>/jurisprudenciaia-mcp`.
-2. Entre em `Settings`.
-3. Entre em `Secrets and variables`.
-4. Clique em `Actions`.
-5. Clique em `New repository secret`.
-6. Crie estes seis secrets obrigatorios:
+Configure estes nomes no Cloudflare Worker:
 
 ```text
-CLOUDFLARE_ACCOUNT_ID
-CLOUDFLARE_API_TOKEN
 MCP_OAUTH_CLIENT_ID
 MCP_OAUTH_CLIENT_SECRET
 MCP_ACCESS_TOKEN_SECRET
 MCP_OAUTH_REDIRECT_URIS
 ```
 
-Valores:
+Valores esperados:
 
 ```text
-CLOUDFLARE_ACCOUNT_ID=<Account ID copiado do Cloudflare>
-CLOUDFLARE_API_TOKEN=<API token criado no Cloudflare>
 MCP_OAUTH_CLIENT_ID=jurisprudenciaia-mcp-client
 MCP_OAUTH_CLIENT_SECRET=<Client Secret gerado no passo 1>
 MCP_ACCESS_TOKEN_SECRET=<segredo de assinatura gerado no passo 1>
@@ -155,35 +142,39 @@ MCP_OAUTH_REDIRECT_URIS=<URLs de redirecionamento permitidas separadas por virgu
 
 Obrigatoriamente para o funcionamento do fluxo OAuth, voce deve criar o secret `MCP_OAUTH_REDIRECT_URIS` separando as URLs exatas por virgula.
 
-O ChatGPT recusara a conexao se esse valor nao for exatamente igual ao secret `MCP_OAUTH_CLIENT_ID` do Worker. Se mudar o Client ID no Cloudflare, mude tambem o GitHub Secret antes do proximo deploy.
+O ChatGPT recusara a conexao se esse valor nao for exatamente igual ao secret `MCP_OAUTH_CLIENT_ID` do Worker. Se mudar o Client ID no Cloudflare, mude tambem o secret do Worker antes do proximo deploy.
 
-Opcionalmente, crie tambem o secret `MCP_BEARER_TOKEN` se voce for usar Codex por `HTTP com streaming`. O workflow sincroniza esse valor no Worker antes de publicar o codigo novo.
+Opcionalmente, crie tambem o secret `MCP_BEARER_TOKEN` se voce for usar Codex por `HTTP com streaming`.
 
-## 5. Publicar o Worker pelo GitHub Actions
+Para configurar manualmente via Wrangler:
 
-No GitHub:
+```powershell
+npx wrangler login
+npx wrangler secret put MCP_OAUTH_CLIENT_ID
+npx wrangler secret put MCP_OAUTH_CLIENT_SECRET
+npx wrangler secret put MCP_ACCESS_TOKEN_SECRET
+npx wrangler secret put MCP_OAUTH_REDIRECT_URIS
+npx wrangler secret put MCP_BEARER_TOKEN # opcional para Codex
+```
 
-1. Abra a aba `Actions`.
-2. Clique no workflow `Deploy Worker`.
-3. Clique em `Run workflow`.
-4. Confirme em `Run workflow`.
-5. Aguarde a execucao terminar.
+## 5. Publicar o Worker
 
-Quando os seis secrets obrigatorios estiverem configurados, o workflow vai:
+No ambiente de producao deste projeto, Cloudflare Builds deve estar conectado ao repositorio privado de producao e a branch configurada para publicacao.
 
-1. Instalar dependencias.
-2. Rodar typecheck.
-3. Rodar testes.
-4. Gerar build.
-5. Sincronizar os secrets OAuth no Worker.
-6. Sincronizar `MCP_BEARER_TOKEN`, se o secret opcional existir.
-7. Publicar o Worker com `wrangler deploy`.
+Se o painel ou a API da Cloudflare retornar `project is disconnected from your Git account`, reconecte o GitHub App em **Workers > Builds** antes de esperar deploy automatico. Esse estado fica fora do Git; alterar o repositorio nao reautoriza a conexao GitHub/Cloudflare.
 
-Se algum secret obrigatorio estiver faltando, o workflow falha e o Worker nao e publicado.
+Configuracao esperada:
+
+```text
+Build command: npm run verify
+Deploy command: npx wrangler deploy
+```
+
+GitHub Actions roda CI e `npx wrangler deploy --dry-run`; ele nao publica producao e nao sincroniza Worker secrets.
 
 ### Opcional para Codex: configurar Bearer no Worker
 
-Se voce for usar o Codex por `HTTP com streaming`, prefira configurar `MCP_BEARER_TOKEN` como GitHub Secret para que o workflow mantenha o Worker sincronizado. Se precisar configurar manualmente depois do primeiro deploy, use:
+Se voce for usar o Codex por `HTTP com streaming`, configure `MCP_BEARER_TOKEN` diretamente como secret do Worker:
 
 ```shell
 npx wrangler login
@@ -389,24 +380,20 @@ O resultado esperado deve comecar com:
 - O access token OAuth e emitido pelo fluxo Authorization Code com PKCE quando o cliente envia PKCE; clientes confidenciais com `client_secret_post` tambem sao aceitos.
 - Claude.ai e ChatGPT recebem apenas `MCP_OAUTH_CLIENT_ID` e `MCP_OAUTH_CLIENT_SECRET`.
 - O Codex recebe somente o nome da variável local `MCP_BEARER_TOKEN`; o valor real deve ficar no ambiente local do Windows/macOS e no Worker.
-- `MCP_ACCESS_TOKEN_SECRET` fica somente no Worker/GitHub.
-- Para revogar OAuth, troque `MCP_OAUTH_CLIENT_SECRET` e `MCP_ACCESS_TOKEN_SECRET` no GitHub Secrets e rode o workflow novamente. Para revogar Codex Bearer, troque `MCP_BEARER_TOKEN`.
+- `MCP_ACCESS_TOKEN_SECRET` fica somente no Worker.
+- Para revogar OAuth, troque `MCP_OAUTH_CLIENT_SECRET` e `MCP_ACCESS_TOKEN_SECRET` no Worker e publique uma nova versao. Para revogar Codex Bearer, troque `MCP_BEARER_TOKEN`.
 - O repositorio nao deve conter chaves Cloudflare, GitHub, Browserless ou tokens reais.
-- O repositorio tambem nao deve conter URL operacional privada do seu Worker, dumps de testes do Claude ou respostas reais de consultas juridicas.
-- Em repositorios publicos, configure os seis secrets obrigatorios antes de rodar o workflow `Deploy Worker`. Se qualquer secret obrigatorio estiver ausente, o workflow falha antes de publicar o Worker.
 - GitHub Pages nao serve para este caso porque e hospedagem estatica.
 - GitHub Actions tambem nao e um servidor HTTPS sempre disponivel.
 - Cloudflare Workers Free funciona aqui porque o conector atual nao precisa executar navegador.
 
 ## Publicacao manual opcional
 
-O fluxo recomendado e pelo GitHub Actions. Se quiser publicar manualmente:
+O fluxo recomendado e pelo Cloudflare Builds. Se quiser publicar manualmente:
 
 ```powershell
 npm install
-npm run typecheck
-npm test
-npm run build
+npm run verify
 npx wrangler login
 npx wrangler secret put MCP_OAUTH_CLIENT_ID
 npx wrangler secret put MCP_OAUTH_CLIENT_SECRET

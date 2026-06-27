@@ -1,6 +1,11 @@
 name = "jurisprudenciaia-mcp"
 main = "src/worker.ts"
 compatibility_date = "2026-06-13"
+workers_dev = true
+
+[[routes]]
+pattern = "jurisprudenciaia-mcp.claudemux.dpdns.org"
+custom_domain = true
 
 [assets]
 directory = "./public/"

@@ -1,7 +1,7 @@
 {
   "name": "jurisprudenciaia-mcp",
   "version": "0.1.0",
-  "description": "Conector MCP auto-hospedado para consultar o JurisprudenciaIA pelo Claude.ai ou Codex usando Cloudflare Workers.",
+  "description": "Conector MCP auto-hospedado para consultar o JurisprudenciaIA usando Cloudflare Workers.",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,6 +14,7 @@
     "start:stdio": "node dist/src/stdio.js",
     "check:codex-http": "node scripts/check-codex-http.mjs",
     "check:chatgpt-oauth": "node scripts/check-chatgpt-oauth.mjs",
+    "verify": "npm run typecheck && npm test && npm audit --audit-level=high && npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit"
@@ -21,7 +22,6 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "express": "^5.1.0",
-    "helmet": "8.2.0",
     "zod": "^4.1.13"
   },
   "devDependencies": {
@@ -35,15 +35,9 @@
     "wrangler": "4.103.0"
   },
   "overrides": {
-    "esbuild": "0.28.1",
-    "@hono/node-server@<2.0.5": "2.0.5"
+    "esbuild": "0.28.1"
   },
   "engines": {
     "node": ">=22"
-  },
-  "pnpm": {
-    "overrides": {
-      "@hono/node-server@<=2.0.5": "2.0.5"
-    }
   }
 }

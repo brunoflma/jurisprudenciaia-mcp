@@ -8,6 +8,13 @@ const SNAPSHOT_GENERATED_START_PATTERN =
   /^(?:#{1,6}\s*)?(?:(?:\d+\.|[IVX]+\.)\s|(?:A|As|O|Os|Em|No|Na|Nos|Nas|Quanto|Conforme|Segundo|Nesse|Nessa|Dessa|Assim|Para|Quando)\b)/i;
 const SNAPSHOT_PLAN_LINE_PATTERN = /^(?:buscar|pesquisar)\b/i;
 
+// Regex patterns extracted for performance to avoid recompiling in loops
+const PARAGRAPH_PATTERN = /^-\s+paragraph\b/;
+const HEADING_PATTERN = /^-\s+heading\b/;
+const STATUS_PATTERN = /^-\s+status\b/;
+const STATIC_ELEMENTS_PATTERN = /^-\s+(?:button|textbox|image|generic|banner|main|log|separator|sectionheader|radiogroup|radio)\b/;
+const STATIC_TEXT_PATTERN = /^-\s+StaticText\b/;
+
 function parseQuotedText(line: string): string | undefined {
   const match = line.match(/"((?:\\.|[^"\\])*)"/);
   if (!match) {
@@ -33,7 +40,18 @@ function normalizeForComparison(text: string): string {
 function trimSnapshotChrome(lines: string[], query: string): string[] {
   const normalizedQuery = normalizeForComparison(query);
   const filtered = lines.filter((line) => {
-    const normalizedLine = normalizeForComparison(line.replace(/^#{1,6}\s*/, ""));
+    const lineWithoutHeading = line.replace(/^#{1,6}\s*/, "");
+
+    if (SNAPSHOT_PLAN_LINE_PATTERN.test(lineWithoutHeading.trim())) {
+      return false;
+    }
+
+    // FAST PATH: Skip expensive NFD normalization for long paragraphs
+    if (line.length > Math.max(query.length + 50, 200)) {
+      return true;
+    }
+
+    const normalizedLine = normalizeForComparison(lineWithoutHeading);
 
     if (normalizedLine === normalizedQuery) {
       return false;
@@ -79,15 +97,18 @@ function extractAccessibilitySnapshotText(rawText: string, query: string): strin
 
   for (const rawLine of rawText.split(/\r?\n/)) {
     const line = rawLine.trim();
+    if (line.charCodeAt(0) !== 45) { // 45 is '-'
+      continue;
+    }
 
-    if (/^-\s+paragraph\b/.test(line)) {
+    if (PARAGRAPH_PATTERN.test(line)) {
       flushParagraph();
       collectParagraphText = true;
       ignoreStaticText = false;
       continue;
     }
 
-    if (/^-\s+heading\b/.test(line)) {
+    if (HEADING_PATTERN.test(line)) {
       flushParagraph();
       collectParagraphText = false;
       ignoreStaticText = false;
@@ -99,21 +120,21 @@ function extractAccessibilitySnapshotText(rawText: string, query: string): strin
       continue;
     }
 
-    if (/^-\s+status\b/.test(line)) {
+    if (STATUS_PATTERN.test(line)) {
       flushParagraph();
       collectParagraphText = false;
       ignoreStaticText = true;
       continue;
     }
 
-    if (/^-\s+(?:button|textbox|image|generic|banner|main|log|separator|sectionheader|radiogroup|radio)\b/.test(line)) {
+    if (STATIC_ELEMENTS_PATTERN.test(line)) {
       if (!collectParagraphText) {
         ignoreStaticText = true;
       }
       continue;
     }
 
-    if (/^-\s+StaticText\b/.test(line) && collectParagraphText && !ignoreStaticText) {
+    if (STATIC_TEXT_PATTERN.test(line) && collectParagraphText && !ignoreStaticText) {
       const text = parseQuotedText(line);
       if (text) {
         paragraphParts.push(text);

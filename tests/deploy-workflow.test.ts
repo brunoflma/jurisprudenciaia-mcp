@@ -1,43 +1,21 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-describe("deploy-worker workflow", () => {
-  it("checks and synchronizes the required OAuth redirect allowlist secret", () => {
-    const workflow = readFileSync(".github/workflows/deploy-worker.yml", "utf8");
-    const references = workflow.match(/MCP_OAUTH_REDIRECT_URIS/g) ?? [];
+describe("GitHub Actions deployment boundary", () => {
+  it("keeps GitHub Actions as CI-only automation", () => {
+    expect(existsSync(".github/workflows/deploy-worker.yml")).toBe(false);
 
-    expect(references.length).toBeGreaterThanOrEqual(4);
-    expect(workflow).toContain(
-      "MCP_OAUTH_REDIRECT_URIS: ${{ secrets.MCP_OAUTH_REDIRECT_URIS }}"
-    );
+    const ciWorkflow = readFileSync(".github/workflows/ci.yml", "utf8");
+    expect(ciWorkflow).toContain("run: npm run verify");
+    expect(ciWorkflow).toContain("run: npx wrangler deploy --dry-run");
+    expect(ciWorkflow).not.toContain("wrangler secret put");
   });
 
-  it("fails production deploys when required Worker secrets are missing", () => {
-    const workflow = readFileSync(".github/workflows/deploy-worker.yml", "utf8");
+  it("does not duplicate PR CI on every agent branch push", () => {
+    const ciWorkflow = readFileSync(".github/workflows/ci.yml", "utf8");
 
-    expect(workflow).toContain("::error::GitHub secret $name is required for Worker deploy.");
-    expect(workflow).toContain("exit 1");
-    expect(workflow).not.toContain("skipping Worker deploy");
-    expect(workflow).not.toContain("configured=false");
-  });
-
-  it("syncs the Codex bearer token only when the optional secret exists", () => {
-    const workflow = readFileSync(".github/workflows/deploy-worker.yml", "utf8");
-
-    expect(workflow).toContain("MCP_BEARER_TOKEN: ${{ secrets.MCP_BEARER_TOKEN }}");
-    expect(workflow).toContain('if [ -n "$MCP_BEARER_TOKEN" ]; then');
-    expect(workflow).toContain('printf "%s" "$MCP_BEARER_TOKEN" | npx wrangler secret put MCP_BEARER_TOKEN');
-  });
-
-  it("syncs Worker secrets before publishing production code", () => {
-    const workflow = readFileSync(".github/workflows/deploy-worker.yml", "utf8");
-
-    const syncIndex = workflow.indexOf("- name: Sync Worker secrets");
-    const deployIndex = workflow.indexOf("- name: Deploy Worker");
-
-    expect(syncIndex).toBeGreaterThan(-1);
-    expect(deployIndex).toBeGreaterThan(-1);
-    expect(syncIndex).toBeLessThan(deployIndex);
+    expect(ciWorkflow).toMatch(/push:\s*\n\s*branches:\s*\n\s*- master\s*\n\s*- main/m);
+    expect(ciWorkflow).toContain("pull_request:");
   });
 });

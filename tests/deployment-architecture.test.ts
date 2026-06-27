@@ -6,9 +6,7 @@ describe("production deployment architecture", () => {
   it("uses Cloudflare Workers as the only production deployment target", () => {
     expect(existsSync("wrangler.toml")).toBe(true);
     expect(existsSync("render.yaml")).toBe(false);
-
-    const deployWorkflow = readFileSync(".github/workflows/deploy-worker.yml", "utf8");
-    expect(deployWorkflow).toContain("npx wrangler deploy");
+    expect(existsSync(".github/workflows/deploy-worker.yml")).toBe(false);
   });
 
   it("keeps the Node HTTP server scripts explicitly local-only", () => {
@@ -22,6 +20,9 @@ describe("production deployment architecture", () => {
     expect(pkg.scripts["start:server"]).toBe("node dist/src/server.js");
     expect(pkg.scripts["dev:worker"]).toBe("wrangler dev");
     expect(pkg.scripts["deploy:worker"]).toBe("wrangler deploy");
+    expect(pkg.scripts.verify).toBe(
+      "npm run typecheck && npm test && npm audit --audit-level=high && npm run build"
+    );
   });
 
   it("documents the actual Worker health response", () => {

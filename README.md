@@ -32,9 +32,9 @@ O guia mais simples está em [`docs/deploy-guide.html`](docs/deploy-guide.html).
 
 ## Arquitetura de produção
 
-A produção roda somente em Cloudflare Workers. O arquivo `wrangler.toml` e o workflow `Deploy Worker` são a fonte de verdade para publicação, domínio, assets estáticos, logs e segredos do Worker.
+A produção roda somente em Cloudflare Workers. O arquivo `wrangler.toml` é a fonte declarativa para runtime, domínio, assets estáticos e observabilidade. GitHub Actions executa apenas CI e validação por `wrangler deploy --dry-run`; o deploy automático pertence ao Cloudflare Builds no repositório privado.
 
-O servidor Node/Express continua no código para desenvolvimento local e testes, mas não é um alvo de hospedagem de produção neste repositório. A decisão está registrada em [`docs/architecture/adr-001-cloudflare-workers-production.md`](docs/architecture/adr-001-cloudflare-workers-production.md).
+O servidor Node/Express continua no código para desenvolvimento local e testes, mas não é um alvo de hospedagem de produção neste repositório. O espelho público não deve conter workflow de deploy nem segredos. A decisão está registrada em [`docs/architecture/adr-001-cloudflare-workers-production.md`](docs/architecture/adr-001-cloudflare-workers-production.md).
 
 ## Ferramentas incluídas
 
@@ -74,8 +74,8 @@ Depois publique o Worker e conecte o cliente escolhido seguindo um destes guias:
 Depois de publicar o Worker, estes comandos ajudam a confirmar se está tudo certo:
 
 ```powershell
-npm run check:chatgpt-oauth -- https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
-npm run check:codex-http -- https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
+npm run check:chatgpt-oauth -- https://jurisprudenciaia-mcp.claudemux.dpdns.org/mcp
+npm run check:codex-http -- https://jurisprudenciaia-mcp.claudemux.dpdns.org/mcp
 ```
 
 Se o teste listar as ferramentas MCP, o servidor está respondendo corretamente.

@@ -1,3 +1,0 @@
-## 2023-10-27 - Rate Limiter O(N^2) Pruning Explosion
-**Learning:** The `FixedWindowRateLimiter` previously called `pruneExpired` on every single request, iterating over the entire `Map` of tracked users. For high-traffic APIs, this resulted in O(N^2) time complexity. We optimized this to amortized O(1) by lazily cleaning keys on access and only running the full map scan periodically (`nowMs - lastPruneMs >= windowMs`).
-**Action:** Always check if a Map/Set is being iterated over on every single request in hot paths. Use lazy expiration + periodic cleanup instead of eager cleanup on every call. Ensure tests assert on behavior (`.allow()`) rather than internal implementation details (`.size`), as lazy cleanup changes exact map sizes at arbitrary times.

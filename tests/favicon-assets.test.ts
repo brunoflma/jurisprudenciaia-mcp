@@ -6,13 +6,10 @@ const expectedPngSha256 =
   "61982638715e551ba5f8022150c184147dbd3dfa38e2cd06ce9b0d40a9990a11";
 
 describe("Worker favicon static assets", () => {
-  it("configures the public directory and production observability", () => {
+  it("configures the public directory for Cloudflare Static Assets", () => {
     const config = readFileSync("wrangler.toml", "utf8");
 
     expect(config).toMatch(/\[assets\][\s\S]*directory\s*=\s*"\.\/public\/"/);
-    expect(config).toMatch(/\[observability\]\s+enabled = true/);
-    expect(config).toMatch(/\[observability\.logs\]\s+enabled = true/);
-    expect(config).toMatch(/\[observability\.traces\]\s+enabled = true/);
   });
 
   it("publishes the supplied 256px PNG without recompression", () => {

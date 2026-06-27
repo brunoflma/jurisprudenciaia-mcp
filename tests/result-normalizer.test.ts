@@ -134,6 +134,25 @@ describe("normalizeJurisprudenciaIaResult", () => {
     expect(markdown).not.toContain("\nresponsabilidade civil banco contrato\n");
   });
 
+  it("filters long snapshot plan lines before the normalization fast path", () => {
+    const longPlanLine = `Buscar precedentes sobre ${"responsabilidade civil ".repeat(20)}`;
+
+    const markdown = normalizeJurisprudenciaIaResult({
+      query: "responsabilidade civil banco contrato",
+      rawText: [
+        "- paragraph",
+        `- StaticText "${longPlanLine}"`,
+        "- paragraph",
+        "- StaticText \"Trata-se de resposta gerada sobre responsabilidade civil bancária, com análise suficiente para ultrapassar o limite mínimo de texto útil.\""
+      ].join("\n"),
+      sourceUrl: "https://www.jurisprudenciaia.com.br/",
+      executedAtIso: "2026-06-12T15:00:00.000Z"
+    });
+
+    expect(markdown).toContain("Trata-se de resposta gerada");
+    expect(markdown).not.toContain("Buscar precedentes");
+  });
+
   it("adds spacing between adjacent snapshot text nodes", () => {
     const markdown = normalizeJurisprudenciaIaResult({
       query: "dano moral inscricao indevida",

@@ -58,7 +58,7 @@ Na tela `Conectar a um MCP personalizado` ou `Atualizar MCP`:
 ```text
 Nome: jurisprudenciaia-mcp
 Tipo: HTTP com streaming
-URL: https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
+URL: https://jurisprudenciaia-mcp.claudemux.dpdns.org/mcp
 Variável de ambiente de token do portador: MCP_BEARER_TOKEN
 ```
 
@@ -72,7 +72,7 @@ Você também pode configurar diretamente em `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.jurisprudenciaia-mcp]
-url = "https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp"
+url = "https://jurisprudenciaia-mcp.claudemux.dpdns.org/mcp"
 bearer_token_env_var = "MCP_BEARER_TOKEN"
 enabled = true
 tool_timeout_sec = 120
@@ -89,14 +89,14 @@ Windows:
 
 ```powershell
 $env:MCP_BEARER_TOKEN = [Environment]::GetEnvironmentVariable("MCP_BEARER_TOKEN", "User")
-npm run check:codex-http -- https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
+npm run check:codex-http -- https://jurisprudenciaia-mcp.claudemux.dpdns.org/mcp
 ```
 
 macOS:
 
 ```zsh
 export MCP_BEARER_TOKEN="$(launchctl getenv MCP_BEARER_TOKEN)"
-npm run check:codex-http -- https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
+npm run check:codex-http -- https://jurisprudenciaia-mcp.claudemux.dpdns.org/mcp
 ```
 
 Se você configurou o token apenas no `~/.zshrc`, abra um novo Terminal ou rode `source ~/.zshrc` antes do teste.

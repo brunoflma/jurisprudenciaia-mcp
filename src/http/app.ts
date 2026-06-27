@@ -1,6 +1,5 @@
 import express from "express";
 import type { Express } from "express";
-import helmet from "helmet";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { FixedWindowRateLimiter } from "../infra/rate-limit.js";
 import type { JurisprudenciaIaRunner } from "../jurisprudenciaia/types.js";
@@ -30,7 +29,6 @@ export function createApp(options: CreateAppOptions): Express {
     options.rateLimitMaxRequests
   );
 
-  app.use(helmet());
   app.use(express.json({ limit: "1mb" }));
 
   app.get("/healthz", (_req, res) => {
