@@ -2,7 +2,7 @@
 
 Este guia e generico para quem quer hospedar uma copia propria do conector. Nao coloque tokens, account IDs, client secrets, bearer tokens ou URLs privadas em arquivos versionados.
 
-Se voce esta fazendo isso pela primeira vez, comece pelo `docs/deploy-guide.html`. Ele e o Guia para iniciantes do repositorio publico, com checklist, comandos para copiar e alertas sobre onde os secrets devem ficar.
+Se voce esta fazendo isso pela primeira vez, comece pelo `docs/guia-completo.html`. Ele e o Guia para iniciantes do repositorio publico, com checklist, comandos para copiar e alertas sobre onde os secrets devem ficar.
 
 ## Pre-requisitos
 
