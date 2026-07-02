@@ -148,6 +148,15 @@ export async function handleWorkerRequest(
     return json(authorizationServerMetadata(origin, env));
   }
 
+  const decision = getLimiter(env).allow(clientKey(request));
+  if (!decision.allowed) {
+    return json(
+      { error: "rate_limited" },
+      429,
+      { "Retry-After": Math.ceil(decision.retryAfterMs / 1000).toString() }
+    );
+  }
+
   if (request.method === "GET" && url.pathname === AUTHORIZE_PATH) {
     return handleAuthorize(request, env, origin);
   }
@@ -158,15 +167,6 @@ export async function handleWorkerRequest(
 
   if (request.method !== "POST" || url.pathname !== MCP_PATH) {
     return json({ error: "not_found" }, 404);
-  }
-
-  const decision = getLimiter(env).allow(clientKey(request));
-  if (!decision.allowed) {
-    return json(
-      { error: "rate_limited" },
-      429,
-      { "Retry-After": Math.ceil(decision.retryAfterMs / 1000).toString() }
-    );
   }
 
   let payload: unknown;

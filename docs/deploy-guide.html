@@ -305,6 +305,11 @@
 
     .step {
       overflow: hidden;
+      transition: border-color 0.2s ease;
+    }
+
+    .step.is-completed {
+      border-color: rgba(100, 195, 145, 0.5);
     }
 
     .step-head {
@@ -315,6 +320,11 @@
       padding: 1.25rem 1.25rem 0.9rem;
       border-bottom: 1px solid var(--line);
       background: linear-gradient(90deg, rgba(215, 170, 91, 0.12), transparent);
+      transition: background 0.2s ease;
+    }
+
+    .step.is-completed .step-head {
+      background: linear-gradient(90deg, rgba(100, 195, 145, 0.12), transparent);
     }
 
     .number {
@@ -326,6 +336,11 @@
       background: var(--amber);
       color: #16120a;
       font-weight: 900;
+      transition: background-color 0.2s ease;
+    }
+
+    .step.is-completed .number {
+      background: var(--green);
     }
 
     .step-head p {
@@ -412,7 +427,8 @@
       font-size: 0.9rem;
     }
 
-    .client-tab:hover {
+    .client-tab:hover,
+    .client-tab:focus-visible {
       border-color: rgba(215, 170, 91, 0.5);
     }
 
@@ -421,7 +437,8 @@
       background: rgba(42, 67, 52, 0.78);
     }
 
-    .client-tab:hover:not(.is-active) {
+    .client-tab:hover:not(.is-active),
+    .client-tab:focus-visible:not(.is-active) {
       border-color: rgba(100, 195, 145, 0.4);
     }
 
@@ -470,7 +487,8 @@
       transition: border-color 0.2s ease;
     }
 
-    .copy:hover {
+    .copy:hover,
+    .copy:focus-visible {
       border-color: var(--green);
     }
 
@@ -546,7 +564,8 @@
       transition: color 0.2s ease;
     }
 
-    .checkline:hover {
+    .checkline:hover,
+    .checkline:focus-within {
       color: var(--ink);
     }
 
@@ -621,6 +640,28 @@
       text-align: center;
     }
 
+    .skip-link {
+      position: absolute;
+      top: -50px;
+      left: 50%;
+      transform: translateX(-50%);
+      transition: top 0.2s ease;
+      background: var(--green);
+      color: #111211;
+      padding: 0.6rem 1.2rem;
+      border-radius: 0 0 8px 8px;
+      font-weight: bold;
+      z-index: 100;
+      text-decoration: none;
+      box-shadow: var(--shadow);
+    }
+
+    .skip-link:focus-visible {
+      top: 0;
+      outline: 2px solid var(--ink);
+      outline-offset: 2px;
+    }
+
     @media (max-width: 760px) {
       .wrap {
         width: min(100% - 1rem, 980px);
@@ -683,6 +724,7 @@
   </style>
 </head>
 <body>
+  <a href="#main-content" class="skip-link">Pular para o conteúdo principal</a>
   <header>
     <div class="wrap">
       <p class="kicker">Guia para iniciantes</p>
@@ -726,7 +768,7 @@
     </div>
   </div>
 
-  <main>
+  <main id="main-content" tabindex="-1">
     <div class="wrap">
       <section class="intro" aria-labelledby="before-title">
         <h2 id="before-title">Antes de começar</h2>
@@ -1337,7 +1379,7 @@ comparar_teses_juridicas</code></pre>
       if (completed === checks.length) {
         progressText.textContent = "🎉 Todas as etapas concluídas!";
       } else {
-        progressText.textContent = `${completed} de ${checks.length} etapas concluidas`;
+        progressText.textContent = `${completed} de ${checks.length} etapas concluídas`;
       }
       progressBar.style.width = `${(completed / checks.length) * 100}%`;
     }
@@ -1345,10 +1387,16 @@ comparar_teses_juridicas</code></pre>
     const state = readState();
     checks.forEach((input) => {
       input.checked = Boolean(state[input.dataset.check]);
+      if (input.checked) {
+        const step = input.closest('.step');
+        if (step) step.classList.add('is-completed');
+      }
       input.addEventListener("change", () => {
         state[input.dataset.check] = input.checked;
         writeState(state);
         updateProgress();
+        const step = input.closest('.step');
+        if (step) step.classList.toggle('is-completed', input.checked);
       });
     });
     updateProgress();

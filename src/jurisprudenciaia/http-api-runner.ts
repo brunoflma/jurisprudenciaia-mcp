@@ -240,10 +240,14 @@ function parseSseEvents(rawText: string): StreamEvent[] {
   const events: StreamEvent[] = [];
 
   for (const block of rawText.split(/\n\n+/)) {
-    const dataLines = block
-      .split(/\n/)
-      .filter((line) => line.startsWith("data: "))
-      .map((line) => line.slice(6));
+    // Performance optimization: Fusing array iterations into a single loop
+    // to reduce intermediate array allocations and GC overhead for SSE streams.
+    const dataLines: string[] = [];
+    for (const line of block.split(/\n/)) {
+      if (line.startsWith("data: ")) {
+        dataLines.push(line.slice(6));
+      }
+    }
 
     if (dataLines.length === 0) {
       continue;

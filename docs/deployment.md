@@ -159,7 +159,7 @@ npx wrangler secret put MCP_BEARER_TOKEN # opcional para Codex
 
 ## 5. Publicar o Worker
 
-No ambiente de producao deste projeto, Cloudflare Builds deve estar conectado ao repositorio privado de producao e a branch configurada para publicacao.
+No ambiente de producao deste projeto, Cloudflare Builds deve estar conectado ao repositorio privado `brunoflma/jurisprudenciaia-mcp-personal` e a branch `master`.
 
 Se o painel ou a API da Cloudflare retornar `project is disconnected from your Git account`, reconecte o GitHub App em **Workers > Builds** antes de esperar deploy automatico. Esse estado fica fora do Git; alterar o repositorio nao reautoriza a conexao GitHub/Cloudflare.
 

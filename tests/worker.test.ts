@@ -202,6 +202,67 @@ describe("Cloudflare Worker MCP endpoint", () => {
     expect(body.error).toBe("invalid_client");
   });
 
+  it("rate limits OAuth authorize attempts before validating client input", async () => {
+    const limitedEnv = {
+      ...env,
+      RATE_LIMIT_MAX_REQUESTS: "1",
+      RATE_LIMIT_WINDOW_MS: "60000"
+    };
+    const authorizeUrl = new URL("https://worker.test/oauth/authorize");
+
+    authorizeUrl.searchParams.set("response_type", "code");
+    authorizeUrl.searchParams.set("client_id", "unknown-client");
+    authorizeUrl.searchParams.set("redirect_uri", redirectUri);
+
+    const first = await handleWorkerRequest(
+      new Request(authorizeUrl, {
+        headers: { "cf-connecting-ip": "203.0.113.10" }
+      }),
+      limitedEnv
+    );
+    const second = await handleWorkerRequest(
+      new Request(authorizeUrl, {
+        headers: { "cf-connecting-ip": "203.0.113.10" }
+      }),
+      limitedEnv
+    );
+
+    expect(first.status).toBe(400);
+    expect(second.status).toBe(429);
+    expect(second.headers.get("retry-after")).toBe("60");
+    expect(await json(second)).toEqual({ error: "rate_limited" });
+  });
+
+  it("rate limits OAuth token attempts before validating credentials", async () => {
+    const limitedEnv = {
+      ...env,
+      RATE_LIMIT_MAX_REQUESTS: "1",
+      RATE_LIMIT_WINDOW_MS: "60000"
+    };
+    const tokenRequest = () =>
+      new Request("https://worker.test/oauth/token", {
+        method: "POST",
+        headers: {
+          "cf-connecting-ip": "203.0.113.11",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code: "dummy",
+          redirect_uri: redirectUri,
+          client_id: env.MCP_OAUTH_CLIENT_ID
+        })
+      });
+
+    const first = await handleWorkerRequest(tokenRequest(), limitedEnv);
+    const second = await handleWorkerRequest(tokenRequest(), limitedEnv);
+
+    expect(first.status).toBe(401);
+    expect(second.status).toBe(429);
+    expect(second.headers.get("retry-after")).toBe("60");
+    expect(await json(second)).toEqual({ error: "rate_limited" });
+  });
+
   it("rejects MCP requests without a bearer token", async () => {
     const response = await handleWorkerRequest(
       post("/mcp", {
