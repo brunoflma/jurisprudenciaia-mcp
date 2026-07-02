@@ -18,7 +18,7 @@ Este projeto transforma a pesquisa jurisprudencial em uma ferramenta MCP: você 
 - Não exige senha ou login do JurisprudênciaIA dentro do conector.
 - Funciona como servidor MCP remoto, com suporte a OAuth e Bearer token.
 - Mantém a pesquisa em formato fácil de revisar por advogados.
-- Inclui guias de configuração com placeholders para a sua própria hospedagem.
+- Inclui um Guia para iniciantes, em HTML, com passo a passo visual e placeholders para a sua própria hospedagem.
 
 ## Clientes suportados
 
@@ -28,7 +28,7 @@ Este projeto transforma a pesquisa jurisprudencial em uma ferramenta MCP: você 
 | ChatGPT | App em modo desenvolvedor com OAuth |
 | Codex | MCP remoto por HTTP com streaming no Windows ou macOS |
 
-Comece pelo guia de publicação em [`docs/deployment.md`](docs/deployment.md) e depois configure o cliente desejado.
+Comece pelo [Guia para iniciantes](docs/deploy-guide.html). Ele foi escrito para orientar a publicação do Worker e a conexão no Claude.ai, ChatGPT ou Codex com o mínimo de termos técnicos possível.
 
 ## Execução
 
@@ -48,6 +48,8 @@ O conector publica cinco ferramentas MCP:
 
 ## Começo rápido
 
+Para um roteiro guiado, abra [`docs/deploy-guide.html`](docs/deploy-guide.html) no navegador. Esse é o material principal de instruções do repositório público.
+
 Para instalar e validar localmente:
 
 ```powershell
@@ -59,6 +61,7 @@ npm run build
 
 Depois publique o Worker e conecte o cliente escolhido seguindo um destes guias:
 
+- [`docs/deploy-guide.html`](docs/deploy-guide.html): Guia para iniciantes, com checklist visual e comandos prontos para copiar.
 - [`docs/deployment.md`](docs/deployment.md): publicação e variáveis do Worker.
 - [`docs/codex.md`](docs/codex.md): configuração específica do Codex.
 
