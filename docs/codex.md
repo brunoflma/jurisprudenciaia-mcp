@@ -16,7 +16,7 @@ No projeto publicado, grave o token como Cloudflare Worker Secret:
 npx wrangler secret put MCP_BEARER_TOKEN
 ```
 
-Cole um token longo e aleatório quando o Wrangler pedir o valor. O workflow público atual sincroniza os secrets OAuth, mas não sincroniza esse token opcional automaticamente.
+Cole um token longo e aleatório quando o Wrangler pedir o valor. Este repositório não sincroniza secrets automaticamente; mantenha o valor apenas no Worker e no ambiente local onde o Codex roda.
 
 Não use `MCP_ACCESS_TOKEN_SECRET` aqui. Esse secret é interno do OAuth do Worker e não deve ser colado em clientes.
 
@@ -58,7 +58,7 @@ Na tela `Conectar a um MCP personalizado` ou `Atualizar MCP`:
 ```text
 Nome: jurisprudenciaia-mcp
 Tipo: HTTP com streaming
-URL: https://jurisprudenciaia-mcp.claudemux.dpdns.org/mcp
+URL: https://<sua-url-do-worker>/mcp
 Variável de ambiente de token do portador: MCP_BEARER_TOKEN
 ```
 
@@ -72,7 +72,7 @@ Você também pode configurar diretamente em `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.jurisprudenciaia-mcp]
-url = "https://jurisprudenciaia-mcp.claudemux.dpdns.org/mcp"
+url = "https://<sua-url-do-worker>/mcp"
 bearer_token_env_var = "MCP_BEARER_TOKEN"
 enabled = true
 tool_timeout_sec = 120
@@ -89,14 +89,14 @@ Windows:
 
 ```powershell
 $env:MCP_BEARER_TOKEN = [Environment]::GetEnvironmentVariable("MCP_BEARER_TOKEN", "User")
-npm run check:codex-http -- https://jurisprudenciaia-mcp.claudemux.dpdns.org/mcp
+npm run check:codex-http -- https://<sua-url-do-worker>/mcp
 ```
 
 macOS:
 
 ```zsh
 export MCP_BEARER_TOKEN="$(launchctl getenv MCP_BEARER_TOKEN)"
-npm run check:codex-http -- https://jurisprudenciaia-mcp.claudemux.dpdns.org/mcp
+npm run check:codex-http -- https://<sua-url-do-worker>/mcp
 ```
 
 Se você configurou o token apenas no `~/.zshrc`, abra um novo Terminal ou rode `source ~/.zshrc` antes do teste.

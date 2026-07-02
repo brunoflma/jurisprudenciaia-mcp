@@ -18,7 +18,7 @@ Este projeto transforma a pesquisa jurisprudencial em uma ferramenta MCP: você 
 - Não exige senha ou login do JurisprudênciaIA dentro do conector.
 - Funciona como servidor MCP remoto, com suporte a OAuth e Bearer token.
 - Mantém a pesquisa em formato fácil de revisar por advogados.
-- Inclui guias visuais para configurar sem precisar conhecer a parte técnica.
+- Inclui guias de configuração com placeholders para a sua própria hospedagem.
 
 ## Clientes suportados
 
@@ -28,13 +28,13 @@ Este projeto transforma a pesquisa jurisprudencial em uma ferramenta MCP: você 
 | ChatGPT | App em modo desenvolvedor com OAuth |
 | Codex | MCP remoto por HTTP com streaming no Windows ou macOS |
 
-O guia mais simples está em [`docs/deploy-guide.html`](docs/deploy-guide.html). Abra esse arquivo no navegador e escolha a aba do cliente que você quer configurar: Claude.ai, ChatGPT ou Codex.
+Comece pelo guia de publicação em [`docs/deployment.md`](docs/deployment.md) e depois configure o cliente desejado.
 
-## Arquitetura de produção
+## Execução
 
-A produção roda somente em Cloudflare Workers. O arquivo `wrangler.toml` é a fonte declarativa para runtime, domínio, assets estáticos e observabilidade. GitHub Actions executa apenas CI e validação por `wrangler deploy --dry-run`; o deploy automático pertence ao Cloudflare Builds no repositório privado.
+O caminho recomendado para uso remoto é publicar o Worker na sua própria conta Cloudflare. O arquivo `wrangler.toml` fica com defaults genéricos para desenvolvimento e publicação manual; domínios customizados, tokens, secrets e pipelines de deploy devem ser configurados fora do repositório.
 
-O servidor Node/Express continua no código para desenvolvimento local e testes, mas não é um alvo de hospedagem de produção neste repositório. O espelho público não deve conter workflow de deploy nem segredos. A decisão está registrada em [`docs/architecture/adr-001-cloudflare-workers-production.md`](docs/architecture/adr-001-cloudflare-workers-production.md).
+O servidor Node/Express continua no código para desenvolvimento local e testes automatizados.
 
 ## Ferramentas incluídas
 
@@ -48,13 +48,7 @@ O conector publica cinco ferramentas MCP:
 
 ## Começo rápido
 
-Para instalar e publicar, use a versão visual:
-
-```text
-docs/deploy-guide.html
-```
-
-Para quem prefere comandos:
+Para instalar e validar localmente:
 
 ```powershell
 npm install
@@ -65,7 +59,6 @@ npm run build
 
 Depois publique o Worker e conecte o cliente escolhido seguindo um destes guias:
 
-- [`docs/deploy-guide.html`](docs/deploy-guide.html): passo a passo visual.
 - [`docs/deployment.md`](docs/deployment.md): publicação e variáveis do Worker.
 - [`docs/codex.md`](docs/codex.md): configuração específica do Codex.
 
@@ -74,8 +67,8 @@ Depois publique o Worker e conecte o cliente escolhido seguindo um destes guias:
 Depois de publicar o Worker, estes comandos ajudam a confirmar se está tudo certo:
 
 ```powershell
-npm run check:chatgpt-oauth -- https://jurisprudenciaia-mcp.claudemux.dpdns.org/mcp
-npm run check:codex-http -- https://jurisprudenciaia-mcp.claudemux.dpdns.org/mcp
+npm run check:chatgpt-oauth -- https://<sua-url-do-worker>/mcp
+npm run check:codex-http -- https://<sua-url-do-worker>/mcp
 ```
 
 Se o teste listar as ferramentas MCP, o servidor está respondendo corretamente.
