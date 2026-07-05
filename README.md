@@ -18,7 +18,7 @@ Este projeto transforma a pesquisa jurisprudencial em uma ferramenta MCP: você 
 - Não exige senha ou login do JurisprudênciaIA dentro do conector.
 - Funciona como servidor MCP remoto, com suporte a OAuth e Bearer token.
 - Mantém a pesquisa em formato fácil de revisar por advogados.
-- Inclui um Guia para iniciantes, em HTML, com passo a passo visual e placeholders para a sua própria hospedagem.
+- Inclui guias visuais para configurar sem precisar conhecer a parte técnica.
 
 ## Clientes suportados
 
@@ -28,13 +28,13 @@ Este projeto transforma a pesquisa jurisprudencial em uma ferramenta MCP: você 
 | ChatGPT | App em modo desenvolvedor com OAuth |
 | Codex | MCP remoto por HTTP com streaming no Windows ou macOS |
 
-Comece pelo [Guia para iniciantes](docs/guia-completo.html). Ele foi escrito para orientar a publicação do Worker e a conexão no Claude.ai, ChatGPT ou Codex com o mínimo de termos técnicos possível.
+O guia mais simples está em [`docs/deploy-guide.html`](docs/deploy-guide.html). Abra esse arquivo no navegador e escolha a aba do cliente que você quer configurar: Claude.ai, ChatGPT ou Codex.
 
-## Execução
+## Arquitetura de produção
 
-O caminho recomendado para uso remoto é publicar o Worker na sua própria conta Cloudflare. O arquivo `wrangler.toml` fica com defaults genéricos para desenvolvimento e publicação manual; domínios customizados, tokens, secrets e pipelines de deploy devem ser configurados fora do repositório.
+A produção roda somente em Cloudflare Workers. O arquivo `wrangler.toml` é a fonte declarativa para runtime, domínio, assets estáticos e observabilidade. GitHub Actions executa apenas CI e validação por `wrangler deploy --dry-run`; o deploy de produção deve ter um único controlador. Hoje o caminho operacional é publicação controlada por Wrangler. Uma integração de build do provedor só deve ser usada se substituir Wrangler como controlador único.
 
-O servidor Node/Express continua no código para desenvolvimento local e testes automatizados.
+O servidor Node/Express continua no código para desenvolvimento local e testes, mas não é um alvo de hospedagem de produção neste repositório. O repositório público não deve conter workflow de deploy nem segredos.
 
 ## Ferramentas incluídas
 
@@ -48,9 +48,13 @@ O conector publica cinco ferramentas MCP:
 
 ## Começo rápido
 
-Para um roteiro guiado, abra [`docs/guia-completo.html`](docs/guia-completo.html) no navegador. Esse é o material principal de instruções do repositório público.
+Para instalar e publicar, use a versão visual:
 
-Para instalar e validar localmente:
+```text
+docs/deploy-guide.html
+```
+
+Para quem prefere comandos:
 
 ```powershell
 npm install
@@ -61,7 +65,7 @@ npm run build
 
 Depois publique o Worker e conecte o cliente escolhido seguindo um destes guias:
 
-- [`docs/guia-completo.html`](docs/guia-completo.html): Guia para iniciantes, com checklist visual e comandos prontos para copiar.
+- [`docs/deploy-guide.html`](docs/deploy-guide.html): passo a passo visual.
 - [`docs/deployment.md`](docs/deployment.md): publicação e variáveis do Worker.
 - [`docs/codex.md`](docs/codex.md): configuração específica do Codex.
 
@@ -70,8 +74,8 @@ Depois publique o Worker e conecte o cliente escolhido seguindo um destes guias:
 Depois de publicar o Worker, estes comandos ajudam a confirmar se está tudo certo:
 
 ```powershell
-npm run check:chatgpt-oauth -- https://<sua-url-do-worker>/mcp
-npm run check:codex-http -- https://<sua-url-do-worker>/mcp
+npm run check:chatgpt-oauth -- https://<seu-worker>/mcp
+npm run check:codex-http -- https://<seu-worker>/mcp
 ```
 
 Se o teste listar as ferramentas MCP, o servidor está respondendo corretamente.

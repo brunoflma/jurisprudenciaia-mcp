@@ -199,4 +199,24 @@ describe("normalizeJurisprudenciaIaResult", () => {
       });
     }
   });
+
+  it("filters preamble lines before the first generated text marker", () => {
+    const markdown = normalizeJurisprudenciaIaResult({
+      query: "responsabilidade civil",
+      rawText: [
+        "- paragraph",
+        "- StaticText \"Some noisy UI element\"",
+        "- paragraph",
+        "- StaticText \"responsabilidade civil\"",
+        "- paragraph",
+        "- StaticText \"O entendimento consolidado sobre responsabilidade civil indica que houve progresso na tese, o que gera bastante conteudo util e ultrapassa a marca minima.\"",
+      ].join("\n"),
+      sourceUrl: "https://www.jurisprudenciaia.com.br/",
+      executedAtIso: "2026-06-12T15:00:00.000Z"
+    });
+
+    expect(markdown).toContain("O entendimento consolidado sobre responsabilidade civil");
+    expect(markdown).not.toContain("Some noisy UI element");
+    expect(markdown).not.toContain("\nresponsabilidade civil\n");
+  });
 });

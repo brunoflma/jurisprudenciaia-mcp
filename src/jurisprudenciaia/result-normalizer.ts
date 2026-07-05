@@ -39,32 +39,41 @@ function normalizeForComparison(text: string): string {
 
 function trimSnapshotChrome(lines: string[], query: string): string[] {
   const normalizedQuery = normalizeForComparison(query);
-  const filtered = lines.filter((line) => {
+  const result: string[] = [];
+  let foundGeneratedStart = false;
+
+  // Performance optimization: Fusing filter, findIndex, and slice operations
+  // into a single loop to reduce intermediate array allocations and GC overhead.
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const lineWithoutHeading = line.replace(/^#{1,6}\s*/, "");
 
     if (SNAPSHOT_PLAN_LINE_PATTERN.test(lineWithoutHeading.trim())) {
-      return false;
+      continue;
     }
 
+    let keep = false;
     // FAST PATH: Skip expensive NFD normalization for long paragraphs
     if (line.length > Math.max(query.length + 50, 200)) {
-      return true;
+      keep = true;
+    } else {
+      const normalizedLine = normalizeForComparison(lineWithoutHeading);
+
+      if (normalizedLine !== normalizedQuery && !SNAPSHOT_PLAN_LINE_PATTERN.test(normalizedLine)) {
+        keep = true;
+      }
     }
 
-    const normalizedLine = normalizeForComparison(lineWithoutHeading);
-
-    if (normalizedLine === normalizedQuery) {
-      return false;
+    if (keep) {
+      if (!foundGeneratedStart && SNAPSHOT_GENERATED_START_PATTERN.test(line)) {
+        result.length = 0;
+        foundGeneratedStart = true;
+      }
+      result.push(line);
     }
+  }
 
-    return !SNAPSHOT_PLAN_LINE_PATTERN.test(normalizedLine);
-  });
-
-  const firstGeneratedLineIndex = filtered.findIndex((line) =>
-    SNAPSHOT_GENERATED_START_PATTERN.test(line)
-  );
-
-  return firstGeneratedLineIndex >= 0 ? filtered.slice(firstGeneratedLineIndex) : filtered;
+  return result;
 }
 
 function joinSnapshotParagraph(parts: string[]): string {

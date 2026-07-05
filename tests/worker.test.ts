@@ -202,6 +202,80 @@ describe("Cloudflare Worker MCP endpoint", () => {
     expect(body.error).toBe("invalid_client");
   });
 
+  it("rejects oversized token requests based on the actual body size", async () => {
+    const response = await handleWorkerRequest(
+      new Request("https://worker.test/oauth/token", {
+        method: "POST",
+        headers: {
+          "content-length": "1",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code: "x".repeat(4 * 1024 * 1024),
+          redirect_uri: redirectUri,
+          client_id: env.MCP_OAUTH_CLIENT_ID,
+          client_secret: env.MCP_OAUTH_CLIENT_SECRET
+        })
+      }),
+      env
+    );
+
+    expect(response.status).toBe(413);
+    const body = await json(response);
+    expect(body.error).toBe("invalid_request");
+    expect(body.error_description).toBe("Payload too large");
+  });
+
+  it("rejects oversized token requests without a Content-Length header", async () => {
+    const request = new Request("https://worker.test/oauth/token", {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded"
+      },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code: "x".repeat(4 * 1024 * 1024),
+        redirect_uri: redirectUri,
+        client_id: env.MCP_OAUTH_CLIENT_ID,
+        client_secret: env.MCP_OAUTH_CLIENT_SECRET
+      })
+    });
+    request.headers.delete("content-length");
+
+    const response = await handleWorkerRequest(request, env);
+
+    expect(response.status).toBe(413);
+    const body = await json(response);
+    expect(body.error).toBe("invalid_request");
+    expect(body.error_description).toBe("Payload too large");
+  });
+
+  it("rejects oversized token requests with an invalid Content-Length header", async () => {
+    const response = await handleWorkerRequest(
+      new Request("https://worker.test/oauth/token", {
+        method: "POST",
+        headers: {
+          "content-length": "not-a-number",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code: "x".repeat(4 * 1024 * 1024),
+          redirect_uri: redirectUri,
+          client_id: env.MCP_OAUTH_CLIENT_ID,
+          client_secret: env.MCP_OAUTH_CLIENT_SECRET
+        })
+      }),
+      env
+    );
+
+    expect(response.status).toBe(413);
+    const body = await json(response);
+    expect(body.error).toBe("invalid_request");
+    expect(body.error_description).toBe("Payload too large");
+  });
+
   it("rate limits OAuth authorize attempts before validating client input", async () => {
     const limitedEnv = {
       ...env,
@@ -642,6 +716,66 @@ describe("Cloudflare Worker MCP endpoint", () => {
           }
         ]
       }
+    });
+  });
+
+  it("rejects oversized MCP requests to prevent DoS", async () => {
+    const request = post("/mcp", { jsonrpc: "2.0", id: 1, method: "ping" });
+    request.headers.set("content-length", "4194305"); // 4MB + 1 byte
+
+    const response = await handleWorkerRequest(request, env);
+
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({
+      jsonrpc: "2.0",
+      id: null,
+      error: { code: -32700, message: "Payload too large" }
+    });
+  });
+
+  it("rejects oversized MCP requests when Content-Length is missing", async () => {
+    const body = JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "ping",
+      params: { padding: "x".repeat(4 * 1024 * 1024) }
+    });
+    const request = new Request("https://worker.test/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body
+    });
+
+    const response = await handleWorkerRequest(request, env);
+
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({
+      jsonrpc: "2.0",
+      id: null,
+      error: { code: -32700, message: "Payload too large" }
+    });
+  });
+
+  it("rejects oversized MCP requests when Content-Length is understated", async () => {
+    const body = JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "ping",
+      params: { padding: "x".repeat(4 * 1024 * 1024) }
+    });
+    const request = new Request("https://worker.test/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json", "content-length": "1" },
+      body
+    });
+
+    const response = await handleWorkerRequest(request, env);
+
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({
+      jsonrpc: "2.0",
+      id: null,
+      error: { code: -32700, message: "Payload too large" }
     });
   });
 

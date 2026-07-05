@@ -93,6 +93,7 @@ const MCP_SERVER_TITLE = "JurisprudenciaIA MCP";
 const MCP_SERVER_DESCRIPTION =
   "Conector MCP auto-hospedado para consultar jurisprudencia via JurisprudenciaIA.";
 const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
+const MAX_REQUEST_BODY_BYTES = 4 * 1024 * 1024;
 const PUBLIC_MCP_METHODS = new Set(["initialize", "ping"]);
 
 let limiter: FixedWindowRateLimiter | undefined;
@@ -169,10 +170,17 @@ export async function handleWorkerRequest(
     return json({ error: "not_found" }, 404);
   }
 
+  if (isOversizedByContentLength(request)) {
+    return json(jsonRpcError(null, -32700, "Payload too large"), 413);
+  }
+
   let payload: unknown;
   try {
-    payload = await request.json();
-  } catch {
+    payload = await readLimitedJson(request, MAX_REQUEST_BODY_BYTES);
+  } catch (error) {
+    if (error instanceof PayloadTooLargeError) {
+      return json(jsonRpcError(null, -32700, "Payload too large"), 413);
+    }
     return json(jsonRpcError(null, -32700, "Parse error"), 400);
   }
 
@@ -386,11 +394,18 @@ async function handleAuthorize(request: Request, env: WorkerEnv, origin: string)
 
 async function handleToken(request: Request, env: WorkerEnv, origin: string): Promise<Response> {
   const settings = oauthSettings(env);
-  let form: FormData;
+  if (isOversizedByContentLength(request)) {
+    return oauthTokenError("invalid_request", "Payload too large", 413);
+  }
+
+  let form: URLSearchParams;
 
   try {
-    form = await request.formData();
-  } catch {
+    form = await readLimitedUrlEncodedForm(request, MAX_REQUEST_BODY_BYTES);
+  } catch (error) {
+    if (error instanceof PayloadTooLargeError) {
+      return oauthTokenError("invalid_request", "Payload too large", 413);
+    }
     return oauthTokenError("invalid_request", "Expected form encoded body.");
   }
 
@@ -450,12 +465,19 @@ async function handleToken(request: Request, env: WorkerEnv, origin: string): Pr
     settings.signingSecret
   );
 
-  return json({
-    access_token: accessToken,
-    token_type: "Bearer",
-    expires_in: ttl,
-    scope: payload.scope ?? OAUTH_SCOPE
-  });
+  return json(
+    {
+      access_token: accessToken,
+      token_type: "Bearer",
+      expires_in: ttl,
+      scope: payload.scope ?? OAUTH_SCOPE
+    },
+    200,
+    {
+      "cache-control": "no-store",
+      pragma: "no-cache"
+    }
+  );
 }
 
 async function authorizeMcpRequest(
@@ -557,7 +579,7 @@ function configuredBearerToken(env: WorkerEnv): string | undefined {
   return token;
 }
 
-function oauthClientCredentials(request: Request, form: FormData): { id?: string; secret?: string } {
+function oauthClientCredentials(request: Request, form: URLSearchParams): { id?: string; secret?: string } {
   const authorization = request.headers.get("authorization") ?? "";
   const match = /^Basic\s+(.+)$/i.exec(authorization);
 
@@ -603,7 +625,10 @@ function oauthRedirectError(
 }
 
 function oauthTokenError(error: string, description: string, status = 400): Response {
-  return json({ error, error_description: description }, status);
+  return json({ error, error_description: description }, status, {
+    "cache-control": "no-store",
+    pragma: "no-cache"
+  });
 }
 
 function unauthorized(origin: string): Response {
@@ -668,14 +693,26 @@ async function hmacVerify(data: string, signature: Uint8Array, secret: string): 
   return crypto.subtle.verify("HMAC", key, signatureBuffer, TEXT_ENCODER.encode(data));
 }
 
+// ⚡ Bolt: Cache imported HMAC keys at the module level to avoid the overhead of
+// repeated crypto.subtle.importKey calls during hot paths (OAuth/JWT sign/verify).
+// The cache is keyed by the secret and usages. In Cloudflare Workers, module-level
+// variables persist across requests within the same isolate, providing safe caching.
+const hmacKeyCache = new Map<string, CryptoKey>();
+
 async function hmacKey(secret: string, usages: KeyUsage[]): Promise<CryptoKey> {
-  return crypto.subtle.importKey(
-    "raw",
-    TEXT_ENCODER.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    usages
-  );
+  const cacheKey = `${secret}:${usages.join(",")}`;
+  let key = hmacKeyCache.get(cacheKey);
+  if (!key) {
+    key = await crypto.subtle.importKey(
+      "raw",
+      TEXT_ENCODER.encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      usages
+    );
+    hmacKeyCache.set(cacheKey, key);
+  }
+  return key;
 }
 
 async function pkceChallenge(verifier: string): Promise<string> {
@@ -713,9 +750,91 @@ function base64UrlDecodeBytes(value: string): Uint8Array {
   }
 }
 
-function formValue(form: FormData, name: string): string | undefined {
+class PayloadTooLargeError extends Error {}
+
+function isOversizedByContentLength(request: Request): boolean {
+  const value = request.headers.get("content-length");
+  if (!value) return false;
+
+  const contentLength = Number(value);
+  return Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BODY_BYTES;
+}
+
+async function readLimitedUrlEncodedForm(request: Request, maxBytes: number): Promise<URLSearchParams> {
+  const contentType = request.headers.get("content-type") ?? "";
+  if (!contentType.toLowerCase().startsWith("application/x-www-form-urlencoded")) {
+    throw new Error("Unsupported token request content type.");
+  }
+
+  const reader = request.body?.getReader();
+  if (!reader) {
+    return new URLSearchParams();
+  }
+
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+
+    total += value.byteLength;
+    if (total > maxBytes) {
+      throw new PayloadTooLargeError("Request body exceeds maximum size.");
+    }
+    chunks.push(value);
+  }
+
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return new URLSearchParams(TEXT_DECODER.decode(body));
+}
+
+async function readLimitedJson(request: Request, maxBytes: number): Promise<unknown> {
+  const contentType = request.headers.get("content-type") ?? "";
+  if (!contentType.toLowerCase().startsWith("application/json")) {
+    throw new Error("Unsupported JSON request content type.");
+  }
+
+  const reader = request.body?.getReader();
+  if (!reader) {
+    throw new Error("Missing JSON request body.");
+  }
+
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+
+    total += value.byteLength;
+    if (total > maxBytes) {
+      throw new PayloadTooLargeError("Request body exceeds maximum size.");
+    }
+    chunks.push(value);
+  }
+
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return JSON.parse(TEXT_DECODER.decode(body));
+}
+
+function formValue(form: URLSearchParams, name: string): string | undefined {
   const value = form.get(name);
-  return typeof value === "string" ? value : undefined;
+  return value ?? undefined;
 }
 
 function safeDecode(value: string): string {

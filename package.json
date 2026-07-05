@@ -9,6 +9,7 @@
     "dev:stdio": "tsx src/stdio.ts",
     "dev:worker": "wrangler dev",
     "build": "tsc -p tsconfig.json",
+    "deploy:worker": "wrangler deploy",
     "start:server": "node dist/src/server.js",
     "start:stdio": "node dist/src/stdio.js",
     "check:codex-http": "node scripts/check-codex-http.mjs",

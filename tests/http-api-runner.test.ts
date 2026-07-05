@@ -62,6 +62,43 @@ describe("parseJurisprudenciaIaStream", () => {
       "Nesse sentido: [J7 - TJSP](https://example.test/tjsp-j7)."
     );
   });
+
+  it("ignores malformed JSON blocks without throwing", () => {
+    const parsed = parseJurisprudenciaIaStream(
+      'data: {"type":"text-delta","delta":"Valid part 1."}\n\n' +
+      'data: {"type":"text-delta","delta": malformed }\n\n' +
+      'data: {"type":"text-delta","delta":" Valid part 2."}\n\n'
+    );
+    expect(parsed.answer).toBe("Valid part 1. Valid part 2.");
+  });
+
+  it("ignores empty and non-data blocks without throwing", () => {
+    const parsed = parseJurisprudenciaIaStream(
+      'data: {"type":"text-delta","delta":"Valid part 1."}\n\n' +
+      '\n\n' +
+      'event: ping\ndata: \n\n' +
+      'data: {"type":"text-delta","delta":" Valid part 2."}\n\n'
+    );
+    expect(parsed.answer).toBe("Valid part 1. Valid part 2.");
+  });
+
+  it("returns empty answer but preserves references when no text-deltas are present", () => {
+    const parsed = parseJurisprudenciaIaStream(
+      'data: {"type":"data-registry-update","data":{"ref":"J1","tribunal":"stj","titulo":"AgInt no AREsp 1234567"}}\n\n'
+    );
+    expect(parsed.answer).toBe("");
+    expect(parsed.references).toHaveLength(1);
+    expect(parsed.references[0]).toMatchObject({ ref: "J1" });
+  });
+
+  it("overwrites duplicate references, keeping the latest update", () => {
+    const parsed = parseJurisprudenciaIaStream(
+      'data: {"type":"data-registry-update","data":{"ref":"J1","tribunal":"stj","titulo":"Old Title"}}\n\n' +
+      'data: {"type":"data-registry-update","data":{"ref":"J1","tribunal":"stj","titulo":"New Title"}}\n\n'
+    );
+    expect(parsed.references).toHaveLength(1);
+    expect(parsed.references[0]).toMatchObject({ ref: "J1", titulo: "New Title" });
+  });
 });
 
 describe("HttpApiJurisprudenciaIaRunner", () => {

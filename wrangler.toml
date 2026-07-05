@@ -8,7 +8,18 @@ directory = "./public/"
 
 [observability]
 enabled = true
-head_sampling_rate = 0.1
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1
+persist = true
 
 [vars]
 JURISPRUDENCIAIA_URL = "https://www.jurisprudenciaia.com.br/"
