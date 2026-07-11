@@ -150,7 +150,12 @@ describe("createJurisprudenciaIaMcpServer", () => {
           "pesquisar_jurisprudencia",
           "buscar_precedentes",
           "analisar_tese_juridica",
-          "comparar_teses_juridicas"
+          "comparar_teses_juridicas",
+          "buscar_por_cnj",
+          "pesquisar_legislacao",
+          "buscar_informativos",
+          "analisar_jurimetria",
+          "linha_do_tempo_precedentes"
         ]);
         expect(tool).toMatchObject({
           name: "consultar_jurisprudenciaia",
@@ -359,6 +364,67 @@ describe("createJurisprudenciaIaMcpServer", () => {
           maxWaitSeconds: 120,
           includeDebug: false
         });
+      }
+    );
+  });
+
+  it("maps the CNJ lookup tool arguments into a guided JurisprudenciaIA query", async () => {
+    let receivedInput: Required<JurisprudenciaIaQuery> | undefined;
+
+    await withMcpClient(
+      {
+        async search(input) {
+          receivedInput = input;
+
+          return {
+            markdown: "# Resultado JurisprudenciaIA\n\nTexto consolidado."
+          };
+        }
+      },
+      async (client) => {
+        const result = await client.callTool({
+          name: "buscar_por_cnj",
+          arguments: {
+            numero_cnj: "0001234-56.2023.8.26.0100"
+          }
+        });
+
+        expect(result).not.toMatchObject({ isError: true });
+        expect(receivedInput?.query).toContain(
+          "processo de numero CNJ: 0001234-56.2023.8.26.0100"
+        );
+      }
+    );
+  });
+
+  it("maps the jurimetrics tool arguments into a guided JurisprudenciaIA query", async () => {
+    let receivedInput: Required<JurisprudenciaIaQuery> | undefined;
+
+    await withMcpClient(
+      {
+        async search(input) {
+          receivedInput = input;
+
+          return {
+            markdown: "# Resultado JurisprudenciaIA\n\nTexto consolidado."
+          };
+        }
+      },
+      async (client) => {
+        const result = await client.callTool({
+          name: "analisar_jurimetria",
+          arguments: {
+            tema: "revisao de clausula abusiva em plano de saude",
+            tribunal: "STJ",
+            recorte: "resultado predominante"
+          }
+        });
+
+        expect(result).not.toMatchObject({ isError: true });
+        expect(receivedInput?.query).toContain("Tribunal de interesse: STJ.");
+        expect(receivedInput?.query).toContain(
+          "Recorte estatistico solicitado: resultado predominante."
+        );
       }
     );
   });

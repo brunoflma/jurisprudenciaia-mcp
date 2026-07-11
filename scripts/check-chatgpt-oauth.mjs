@@ -10,6 +10,11 @@ const expectedTools = [
   "buscar_precedentes",
   "analisar_tese_juridica",
   "comparar_teses_juridicas",
+  "buscar_por_cnj",
+  "pesquisar_legislacao",
+  "buscar_informativos",
+  "analisar_jurimetria",
+  "linha_do_tempo_precedentes",
 ];
 
 const scope = "jurisprudenciaia:search";

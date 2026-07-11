@@ -38,13 +38,20 @@ O servidor Node/Express continua no código para desenvolvimento local e testes,
 
 ## Ferramentas incluídas
 
-O conector publica cinco ferramentas MCP:
+O conector publica dez ferramentas MCP. As cinco primeiras cobrem pesquisa e análise de teses; as cinco seguintes foram desenhadas a partir de capacidades equivalentes disponíveis nos conectores IAJus e JusRatio (busca por CNJ, legislação, informativos, jurimetria e linha do tempo de precedentes), adaptadas ao mecanismo de busca do JurisprudênciaIA.
 
 - `consultar_jurisprudenciaia`: consulta livre ao JurisprudênciaIA.
 - `pesquisar_jurisprudencia`: pesquisa direta por jurisprudência.
 - `buscar_precedentes`: busca precedentes por tema e tribunais preferenciais.
 - `analisar_tese_juridica`: avalia uma tese a partir dos resultados encontrados.
 - `comparar_teses_juridicas`: compara duas teses para a mesma questão jurídica.
+- `buscar_por_cnj`: localiza decisões e andamentos de um processo pelo número único CNJ.
+- `pesquisar_legislacao`: pesquisa referências a uma norma ou dispositivo e solicita texto e interpretação conforme a cobertura da fonte.
+- `buscar_informativos`: localiza informativos de jurisprudência de tribunais superiores sobre um tema.
+- `analisar_jurimetria`: estima um panorama da amostra de julgados encontrada; não representa estatística oficial ou exaustiva do tribunal.
+- `linha_do_tempo_precedentes`: monta uma linha do tempo cronológica dos principais precedentes sobre um tema, apontando mudanças de entendimento.
+
+As ferramentas especializadas são modos de consulta: elas transformam os campos recebidos em instruções estruturadas e usam o mesmo mecanismo de pesquisa do JurisprudênciaIA. Preferências, recortes e tribunais orientam a pesquisa textual; não são filtros, séries estatísticas ou bases legislativas independentes do serviço de origem.
 
 ## Começo rápido
 
@@ -79,6 +86,7 @@ npm run check:codex-http -- https://<seu-worker>/mcp
 ```
 
 Se o teste listar as ferramentas MCP, o servidor está respondendo corretamente.
+Use `npm run check:codex-http:all -- <URL_MCP>` para também executar uma chamada real de todas as ferramentas publicadas.
 
 ## Uso responsável
 

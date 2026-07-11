@@ -80,6 +80,35 @@ const compareInputSchema = z.object({
   max_wait_seconds: z.number().int().positive().optional()
 });
 
+const cnjInputSchema = z.object({
+  numero_cnj: z.string(),
+  max_wait_seconds: z.number().int().positive().optional()
+});
+
+const legislationInputSchema = z.object({
+  norma: z.string(),
+  contexto: z.string().optional(),
+  max_wait_seconds: z.number().int().positive().optional()
+});
+
+const informativesInputSchema = z.object({
+  tema: z.string(),
+  tribunais: z.array(z.string()).optional(),
+  max_wait_seconds: z.number().int().positive().optional()
+});
+
+const jurimetricsInputSchema = z.object({
+  tema: z.string(),
+  tribunal: z.string().optional(),
+  recorte: z.string().optional(),
+  max_wait_seconds: z.number().int().positive().optional()
+});
+
+const timelineInputSchema = z.object({
+  tema: z.string(),
+  max_wait_seconds: z.number().int().positive().optional()
+});
+
 const genericZodToolInputSchema = {
   query: z.string().describe(QUERY_DESCRIPTION),
   max_wait_seconds: z
@@ -249,6 +278,174 @@ const compareJsonToolInputSchema = {
   additionalProperties: false
 } as const satisfies JsonToolInputSchema;
 
+const cnjZodToolInputSchema = {
+  numero_cnj: z.string().describe("Numero unico do processo no padrao CNJ (NNNNNNN-DD.AAAA.J.TR.OOOO)."),
+  max_wait_seconds: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .describe(MAX_WAIT_DESCRIPTION)
+};
+
+const cnjJsonToolInputSchema = {
+  type: "object",
+  properties: {
+    numero_cnj: {
+      type: "string",
+      description: "Numero unico do processo no padrao CNJ (NNNNNNN-DD.AAAA.J.TR.OOOO)."
+    },
+    max_wait_seconds: {
+      type: "integer",
+      minimum: 1,
+      maximum: 120,
+      description: MAX_WAIT_DESCRIPTION
+    }
+  },
+  required: ["numero_cnj"],
+  additionalProperties: false
+} as const satisfies JsonToolInputSchema;
+
+const legislationZodToolInputSchema = {
+  norma: z.string().describe("Norma, artigo ou dispositivo legal a ser consultado, por exemplo 'CDC art. 6, V'."),
+  contexto: z.string().optional().describe("Contexto do caso para orientar a interpretacao do dispositivo."),
+  max_wait_seconds: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .describe(MAX_WAIT_DESCRIPTION)
+};
+
+const legislationJsonToolInputSchema = {
+  type: "object",
+  properties: {
+    norma: {
+      type: "string",
+      description: "Norma, artigo ou dispositivo legal a ser consultado, por exemplo 'CDC art. 6, V'."
+    },
+    contexto: {
+      type: "string",
+      description: "Contexto do caso para orientar a interpretacao do dispositivo."
+    },
+    max_wait_seconds: {
+      type: "integer",
+      minimum: 1,
+      maximum: 120,
+      description: MAX_WAIT_DESCRIPTION
+    }
+  },
+  required: ["norma"],
+  additionalProperties: false
+} as const satisfies JsonToolInputSchema;
+
+const informativesZodToolInputSchema = {
+  tema: z.string().describe("Tema juridico para localizar informativos de tribunais superiores."),
+  tribunais: z
+    .array(z.string())
+    .optional()
+    .describe("Tribunais preferenciais para os informativos, por exemplo STF ou STJ."),
+  max_wait_seconds: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .describe(MAX_WAIT_DESCRIPTION)
+};
+
+const informativesJsonToolInputSchema = {
+  type: "object",
+  properties: {
+    tema: {
+      type: "string",
+      description: "Tema juridico para localizar informativos de tribunais superiores."
+    },
+    tribunais: {
+      type: "array",
+      items: { type: "string" },
+      description: "Tribunais preferenciais para os informativos, por exemplo STF ou STJ."
+    },
+    max_wait_seconds: {
+      type: "integer",
+      minimum: 1,
+      maximum: 120,
+      description: MAX_WAIT_DESCRIPTION
+    }
+  },
+  required: ["tema"],
+  additionalProperties: false
+} as const satisfies JsonToolInputSchema;
+
+const jurimetricsZodToolInputSchema = {
+  tema: z.string().describe("Tema ou classe processual para o levantamento jurimetrico."),
+  tribunal: z.string().optional().describe("Tribunal de interesse para o levantamento, por exemplo TJSP ou STJ."),
+  recorte: z
+    .string()
+    .optional()
+    .describe("Recorte estatistico desejado, por exemplo resultado, relator, orgao julgador ou tempo de tramitacao."),
+  max_wait_seconds: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .describe(MAX_WAIT_DESCRIPTION)
+};
+
+const jurimetricsJsonToolInputSchema = {
+  type: "object",
+  properties: {
+    tema: {
+      type: "string",
+      description: "Tema ou classe processual para o levantamento jurimetrico."
+    },
+    tribunal: {
+      type: "string",
+      description: "Tribunal de interesse para o levantamento, por exemplo TJSP ou STJ."
+    },
+    recorte: {
+      type: "string",
+      description:
+        "Recorte estatistico desejado, por exemplo resultado, relator, orgao julgador ou tempo de tramitacao."
+    },
+    max_wait_seconds: {
+      type: "integer",
+      minimum: 1,
+      maximum: 120,
+      description: MAX_WAIT_DESCRIPTION
+    }
+  },
+  required: ["tema"],
+  additionalProperties: false
+} as const satisfies JsonToolInputSchema;
+
+const timelineZodToolInputSchema = {
+  tema: z.string().describe("Tema juridico para montar a linha do tempo de precedentes."),
+  max_wait_seconds: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .describe(MAX_WAIT_DESCRIPTION)
+};
+
+const timelineJsonToolInputSchema = {
+  type: "object",
+  properties: {
+    tema: {
+      type: "string",
+      description: "Tema juridico para montar a linha do tempo de precedentes."
+    },
+    max_wait_seconds: {
+      type: "integer",
+      minimum: 1,
+      maximum: 120,
+      description: MAX_WAIT_DESCRIPTION
+    }
+  },
+  required: ["tema"],
+  additionalProperties: false
+} as const satisfies JsonToolInputSchema;
+
 export const TOOL_DEFINITIONS: JurisprudenciaIaToolDefinition[] = [
   {
     name: "consultar_jurisprudenciaia",
@@ -351,6 +548,130 @@ export const TOOL_DEFINITIONS: JurisprudenciaIaToolDefinition[] = [
           `Tese A: ${normalizeQuery(parsed.tese_a)}.`,
           `Tese B: ${normalizeQuery(parsed.tese_b)}.`,
           "Indique qual tese tem melhor apoio jurisprudencial, precedentes relevantes, divergencias e riscos de cada posicao.",
+          STRUCTURED_RESULT_INSTRUCTION
+        ]),
+        maxWaitSeconds: normalizeMaxWait(parsed.max_wait_seconds),
+        includeDebug: false
+      };
+    }
+  },
+  {
+    name: "buscar_por_cnj",
+    title: "Buscar por numero CNJ",
+    description:
+      "Localiza decisoes e andamentos relevantes de um processo a partir do numero unico CNJ.",
+    inputSchema: cnjZodToolInputSchema,
+    jsonInputSchema: cnjJsonToolInputSchema,
+    normalizeInput(input) {
+      const parsed = cnjInputSchema.parse(input);
+      const numeroCnj = normalizeQuery(parsed.numero_cnj);
+
+      return {
+        query: joinParts([
+          `Localize decisoes, andamentos e publicacoes disponiveis para o processo de numero CNJ: ${numeroCnj}.`,
+          "Se o numero informado nao for localizado, informe isso explicitamente e nao invente dados do processo.",
+          DIRECT_ANSWER_INSTRUCTION,
+          STRUCTURED_RESULT_INSTRUCTION
+        ]),
+        maxWaitSeconds: normalizeMaxWait(parsed.max_wait_seconds),
+        includeDebug: false
+      };
+    }
+  },
+  {
+    name: "pesquisar_legislacao",
+    title: "Pesquisar legislacao",
+    description:
+      "Pesquisa referencias a uma norma ou dispositivo e solicita texto, alteracoes e interpretacao jurisprudencial, conforme a cobertura da fonte.",
+    inputSchema: legislationZodToolInputSchema,
+    jsonInputSchema: legislationJsonToolInputSchema,
+    normalizeInput(input) {
+      const parsed = legislationInputSchema.parse(input);
+      const norma = normalizeQuery(parsed.norma);
+      const contexto = normalizeOptionalText(parsed.contexto);
+
+      return {
+        query: joinParts([
+          `Traga o texto vigente e a interpretacao jurisprudencial dominante do seguinte dispositivo legal: ${norma}.`,
+          contexto ? `Contexto do caso: ${contexto}.` : undefined,
+          "Informe alteracoes legislativas relevantes, se houver, e a fonte oficial do texto normativo.",
+          DIRECT_ANSWER_INSTRUCTION,
+          STRUCTURED_RESULT_INSTRUCTION
+        ]),
+        maxWaitSeconds: normalizeMaxWait(parsed.max_wait_seconds),
+        includeDebug: false
+      };
+    }
+  },
+  {
+    name: "buscar_informativos",
+    title: "Buscar informativos",
+    description:
+      "Localiza informativos de jurisprudencia de tribunais superiores sobre um tema juridico.",
+    inputSchema: informativesZodToolInputSchema,
+    jsonInputSchema: informativesJsonToolInputSchema,
+    normalizeInput(input) {
+      const parsed = informativesInputSchema.parse(input);
+      const tema = normalizeQuery(parsed.tema);
+      const tribunais = normalizeTribunais(parsed.tribunais);
+
+      return {
+        query: joinParts([
+          `Busque informativos de jurisprudencia sobre: ${tema}.`,
+          "Identifique o numero do informativo, o tribunal, a data de publicacao e o acordao ou julgado de origem.",
+          DIRECT_ANSWER_INSTRUCTION,
+          STRUCTURED_RESULT_INSTRUCTION,
+          tribunais.length > 0 ? `Tribunais de interesse: ${tribunais.join(", ")}.` : undefined
+        ]),
+        maxWaitSeconds: normalizeMaxWait(parsed.max_wait_seconds),
+        includeDebug: false
+      };
+    }
+  },
+  {
+    name: "analisar_jurimetria",
+    title: "Analisar jurimetria",
+    description:
+      "Estima um panorama da amostra de julgados encontrada, sem representar estatistica oficial ou exaustiva do tribunal.",
+    inputSchema: jurimetricsZodToolInputSchema,
+    jsonInputSchema: jurimetricsJsonToolInputSchema,
+    normalizeInput(input) {
+      const parsed = jurimetricsInputSchema.parse(input);
+      const tema = normalizeQuery(parsed.tema);
+      const tribunal = normalizeOptionalText(parsed.tribunal);
+      const recorte = normalizeOptionalText(parsed.recorte);
+
+      return {
+        query: joinParts([
+          `Levante um panorama jurimetrico sobre: ${tema}.`,
+          "Estime volume de decisoes, resultado predominante, orgaos julgadores e relatores mais recorrentes com base nos julgados encontrados.",
+          "Deixe claro que o levantamento e uma estimativa a partir da amostra de decisoes encontrada, nao um dado oficial de tribunal.",
+          tribunal ? `Tribunal de interesse: ${tribunal}.` : undefined,
+          recorte ? `Recorte estatistico solicitado: ${recorte}.` : undefined,
+          DIRECT_ANSWER_INSTRUCTION,
+          STRUCTURED_RESULT_INSTRUCTION
+        ]),
+        maxWaitSeconds: normalizeMaxWait(parsed.max_wait_seconds),
+        includeDebug: false
+      };
+    }
+  },
+  {
+    name: "linha_do_tempo_precedentes",
+    title: "Linha do tempo de precedentes",
+    description:
+      "Monta uma linha do tempo cronologica dos principais precedentes sobre um tema, apontando mudancas de entendimento.",
+    inputSchema: timelineZodToolInputSchema,
+    jsonInputSchema: timelineJsonToolInputSchema,
+    normalizeInput(input) {
+      const parsed = timelineInputSchema.parse(input);
+      const tema = normalizeQuery(parsed.tema);
+
+      return {
+        query: joinParts([
+          `Monte uma linha do tempo cronologica dos principais precedentes sobre: ${tema}.`,
+          "Ordene por data de julgamento e indique quando um precedente supera, distingue ou reafirma entendimento anterior.",
+          DIRECT_ANSWER_INSTRUCTION,
           STRUCTURED_RESULT_INSTRUCTION
         ]),
         maxWaitSeconds: normalizeMaxWait(parsed.max_wait_seconds),

@@ -101,6 +101,8 @@ npm run check:codex-http -- https://<seu-worker>/mcp
 
 Se você configurou o token apenas no `~/.zshrc`, abra um novo Terminal ou rode `source ~/.zshrc` antes do teste.
 
+Para validar em produção uma chamada real de cada ferramenta, use `npm run check:codex-http:all -- <URL_MCP>`. O comando padrão chama apenas `consultar_jurisprudenciaia` para ser mais rápido.
+
 O teste deve listar estas ferramentas e fazer uma chamada real:
 
 ```text
@@ -109,6 +111,11 @@ pesquisar_jurisprudencia
 buscar_precedentes
 analisar_tese_juridica
 comparar_teses_juridicas
+buscar_por_cnj
+pesquisar_legislacao
+buscar_informativos
+analisar_jurimetria
+linha_do_tempo_precedentes
 ```
 
 Se o teste mostrar `MCP_BEARER_TOKEN não está definido`, o Codex também não conseguirá autenticar. Se mostrar `HTTP 401` ou `HTTP 403`, o token local e o secret do Worker não são o mesmo valor. Se a conexão funcionar mas a chamada der timeout, aumente o tempo de espera da chamada ou confira a disponibilidade da API do JurisprudênciaIA.

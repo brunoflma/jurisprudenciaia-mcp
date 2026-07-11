@@ -12,14 +12,33 @@ const expectedTools = [
   "buscar_precedentes",
   "analisar_tese_juridica",
   "comparar_teses_juridicas",
+  "buscar_por_cnj",
+  "pesquisar_legislacao",
+  "buscar_informativos",
+  "analisar_jurimetria",
+  "linha_do_tempo_precedentes",
 ];
 
 const usage = `Uso:
   npm run check:codex-http -- https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
+  npm run check:codex-http:all -- https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
 
 Variáveis usadas:
   MCP_BEARER_TOKEN  mesmo valor configurado como Cloudflare Worker Secret
   URL_MCP           alternativa para informar a URL sem argumento`;
+
+const smokeCalls = [
+  ["consultar_jurisprudenciaia", { query: "responsabilidade civil por negativacao indevida dano moral" }],
+  ["pesquisar_jurisprudencia", { query: "responsabilidade civil por negativacao indevida dano moral" }],
+  ["buscar_precedentes", { tema: "responsabilidade civil por negativacao indevida", tribunais: ["STJ"] }],
+  ["analisar_tese_juridica", { tese: "a negativacao indevida gera dano moral presumido", contexto: "relacao de consumo" }],
+  ["comparar_teses_juridicas", { questao: "a negativacao indevida gera dano moral presumido", tese_a: "o dano moral e presumido", tese_b: "o dano moral exige prova concreta" }],
+  ["buscar_por_cnj", { numero_cnj: "0000000-00.2024.8.26.0000" }],
+  ["pesquisar_legislacao", { norma: "artigo 14 do Codigo de Defesa do Consumidor" }],
+  ["buscar_informativos", { tema: "responsabilidade civil por negativacao indevida", tribunais: ["STJ"] }],
+  ["analisar_jurimetria", { tema: "responsabilidade civil por negativacao indevida", tribunal: "STJ", recorte: "resultado predominante" }],
+  ["linha_do_tempo_precedentes", { tema: "dano moral por negativacao indevida" }],
+];
 
 function fail(message, code = 1) {
   console.error(message);
@@ -119,25 +138,25 @@ async function main() {
       return;
     }
 
-    const result = await client.callTool({
-      name: "consultar_jurisprudenciaia",
-      arguments: {
-        query: "responsabilidade civil por negativacao indevida dano moral",
-        max_wait_seconds: 45,
-      },
-    });
+    const calls = process.argv.includes("--all-tools") ? smokeCalls : smokeCalls.slice(0, 1);
+    for (const [name, arguments_] of calls) {
+      const result = await client.callTool({
+        name,
+        arguments: { ...arguments_, max_wait_seconds: 45 },
+      });
 
-    if (result.isError) {
-      fail("Erro: a ferramenta respondeu com isError=true. A autenticacao MCP funcionou, mas a consulta falhou.");
-      return;
+      if (result.isError) {
+        fail(`Erro: ${name} respondeu com isError=true. A autenticacao MCP funcionou, mas a consulta falhou.`);
+        return;
+      }
+
+      const text = result.content
+        ?.filter((item) => item.type === "text")
+        .map((item) => item.text)
+        .join("\n") ?? "";
+
+      console.log(`Chamada real OK: ${name} retornou ${text.length} caracteres.`);
     }
-
-    const text = result.content
-      ?.filter((item) => item.type === "text")
-      .map((item) => item.text)
-      .join("\n") ?? "";
-
-    console.log(`Chamada real OK: consultar_jurisprudenciaia retornou ${text.length} caracteres.`);
   } catch (error) {
     fail(describeError(error));
   } finally {

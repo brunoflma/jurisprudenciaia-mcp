@@ -13,6 +13,7 @@
     "start:server": "node dist/src/server.js",
     "start:stdio": "node dist/src/stdio.js",
     "check:codex-http": "node scripts/check-codex-http.mjs",
+    "check:codex-http:all": "node scripts/check-codex-http.mjs --all-tools",
     "check:chatgpt-oauth": "node scripts/check-chatgpt-oauth.mjs",
     "verify": "npm run typecheck && npm test && npm audit --audit-level=high && npm run build",
     "test": "vitest run",
