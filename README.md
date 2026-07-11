@@ -38,7 +38,7 @@ O servidor Node/Express continua no código para desenvolvimento local e testes,
 
 ## Ferramentas incluídas
 
-O conector publica quatorze ferramentas MCP. As cinco primeiras cobrem pesquisa e análise de teses; as demais foram desenhadas a partir de capacidades equivalentes disponíveis nos conectores IAJus e JusRatio, adaptadas ao mecanismo de busca do JurisprudênciaIA.
+O conector publica quatorze ferramentas MCP.
 
 - `consultar_jurisprudenciaia`: consulta livre ao JurisprudênciaIA.
 - `pesquisar_jurisprudencia`: pesquisa direta por jurisprudência.
