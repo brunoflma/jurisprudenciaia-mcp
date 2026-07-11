@@ -601,7 +601,11 @@ describe("Cloudflare Worker MCP endpoint", () => {
       "pesquisar_legislacao",
       "buscar_informativos",
       "analisar_jurimetria",
-      "linha_do_tempo_precedentes"
+      "linha_do_tempo_precedentes",
+      "buscar_citacoes_dispositivo",
+      "historico_alteracoes_norma",
+      "listar_overruling_tema",
+      "buscar_precedentes_qualificados"
     ]);
   });
 

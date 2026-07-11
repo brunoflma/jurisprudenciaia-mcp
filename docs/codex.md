@@ -116,6 +116,10 @@ pesquisar_legislacao
 buscar_informativos
 analisar_jurimetria
 linha_do_tempo_precedentes
+buscar_citacoes_dispositivo
+historico_alteracoes_norma
+listar_overruling_tema
+buscar_precedentes_qualificados
 ```
 
 Se o teste mostrar `MCP_BEARER_TOKEN não está definido`, o Codex também não conseguirá autenticar. Se mostrar `HTTP 401` ou `HTTP 403`, o token local e o secret do Worker não são o mesmo valor. Se a conexão funcionar mas a chamada der timeout, aumente o tempo de espera da chamada ou confira a disponibilidade da API do JurisprudênciaIA.

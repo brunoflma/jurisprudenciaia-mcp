@@ -17,6 +17,10 @@ const expectedTools = [
   "buscar_informativos",
   "analisar_jurimetria",
   "linha_do_tempo_precedentes",
+  "buscar_citacoes_dispositivo",
+  "historico_alteracoes_norma",
+  "listar_overruling_tema",
+  "buscar_precedentes_qualificados",
 ];
 
 const usage = `Uso:
@@ -38,6 +42,10 @@ const smokeCalls = [
   ["buscar_informativos", { tema: "responsabilidade civil por negativacao indevida", tribunais: ["STJ"] }],
   ["analisar_jurimetria", { tema: "responsabilidade civil por negativacao indevida", tribunal: "STJ", recorte: "resultado predominante" }],
   ["linha_do_tempo_precedentes", { tema: "dano moral por negativacao indevida" }],
+  ["buscar_citacoes_dispositivo", { dispositivo: "CDC art. 51, IV" }],
+  ["historico_alteracoes_norma", { norma: "artigo 1.831 do Codigo Civil" }],
+  ["listar_overruling_tema", { tema: "prisao civil do depositario infiel" }],
+  ["buscar_precedentes_qualificados", { tema: "fornecimento de medicamento pelo Estado" }],
 ];
 
 function fail(message, code = 1) {

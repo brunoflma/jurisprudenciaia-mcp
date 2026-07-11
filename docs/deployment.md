@@ -274,6 +274,10 @@ O Claude deve executar o fluxo OAuth, receber um Bearer token e listar estas fer
 - `buscar_informativos`
 - `analisar_jurimetria`
 - `linha_do_tempo_precedentes`
+- `buscar_citacoes_dispositivo`
+- `historico_alteracoes_norma`
+- `listar_overruling_tema`
+- `buscar_precedentes_qualificados`
 
 ## 9. Configurar no Codex
 

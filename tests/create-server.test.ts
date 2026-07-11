@@ -155,7 +155,11 @@ describe("createJurisprudenciaIaMcpServer", () => {
           "pesquisar_legislacao",
           "buscar_informativos",
           "analisar_jurimetria",
-          "linha_do_tempo_precedentes"
+          "linha_do_tempo_precedentes",
+          "buscar_citacoes_dispositivo",
+          "historico_alteracoes_norma",
+          "listar_overruling_tema",
+          "buscar_precedentes_qualificados"
         ]);
         expect(tool).toMatchObject({
           name: "consultar_jurisprudenciaia",
@@ -425,6 +429,45 @@ describe("createJurisprudenciaIaMcpServer", () => {
         expect(receivedInput?.query).toContain(
           "Recorte estatistico solicitado: resultado predominante."
         );
+      }
+    );
+  });
+
+  it.each([
+    [
+      "buscar_citacoes_dispositivo",
+      { dispositivo: "CDC art. 51, IV" },
+      "citem ou apliquem o seguinte dispositivo legal: CDC art. 51, IV"
+    ],
+    [
+      "historico_alteracoes_norma",
+      { norma: "artigo 1.831 do Codigo Civil" },
+      "historico de alteracoes legislativas da seguinte norma ou dispositivo: artigo 1.831 do Codigo Civil"
+    ],
+    [
+      "listar_overruling_tema",
+      { tema: "prisao civil do depositario infiel" },
+      "entendimentos jurisprudenciais superados ou revistos sobre: prisao civil do depositario infiel"
+    ],
+    [
+      "buscar_precedentes_qualificados",
+      { tema: "fornecimento de medicamento pelo Estado" },
+      "precedentes vinculantes ou qualificados sobre: fornecimento de medicamento pelo Estado"
+    ]
+  ])("maps %s arguments into a guided query", async (name, arguments_, expectedText) => {
+    let receivedInput: Required<JurisprudenciaIaQuery> | undefined;
+
+    await withMcpClient(
+      {
+        async search(input) {
+          receivedInput = input;
+          return { markdown: "# Resultado JurisprudenciaIA\n\nTexto consolidado." };
+        }
+      },
+      async (client) => {
+        const result = await client.callTool({ name, arguments: arguments_ });
+        expect(result).not.toMatchObject({ isError: true });
+        expect(receivedInput?.query).toContain(expectedText);
       }
     );
   });

@@ -109,6 +109,26 @@ const timelineInputSchema = z.object({
   max_wait_seconds: z.number().int().positive().optional()
 });
 
+const citationsByStatuteInputSchema = z.object({
+  dispositivo: z.string(),
+  max_wait_seconds: z.number().int().positive().optional()
+});
+
+const statuteHistoryInputSchema = z.object({
+  norma: z.string(),
+  max_wait_seconds: z.number().int().positive().optional()
+});
+
+const overrulingInputSchema = z.object({
+  tema: z.string(),
+  max_wait_seconds: z.number().int().positive().optional()
+});
+
+const qualifiedPrecedentsInputSchema = z.object({
+  tema: z.string(),
+  max_wait_seconds: z.number().int().positive().optional()
+});
+
 const genericZodToolInputSchema = {
   query: z.string().describe(QUERY_DESCRIPTION),
   max_wait_seconds: z
@@ -446,6 +466,66 @@ const timelineJsonToolInputSchema = {
   additionalProperties: false
 } as const satisfies JsonToolInputSchema;
 
+function singleTextZodToolInputSchema(field: string, description: string): ZodToolInputSchema {
+  return {
+    [field]: z.string().describe(description),
+    max_wait_seconds: z.number().int().positive().optional().describe(MAX_WAIT_DESCRIPTION)
+  };
+}
+
+function singleTextJsonToolInputSchema(
+  field: string,
+  description: string
+): JsonToolInputSchema {
+  return {
+    type: "object",
+    properties: {
+      [field]: { type: "string", description },
+      max_wait_seconds: {
+        type: "integer",
+        minimum: 1,
+        maximum: 120,
+        description: MAX_WAIT_DESCRIPTION
+      }
+    },
+    required: [field],
+    additionalProperties: false
+  };
+}
+
+const citationsByStatuteZodToolInputSchema = singleTextZodToolInputSchema(
+  "dispositivo",
+  "Dispositivo legal cujas citacoes em precedentes devem ser pesquisadas."
+);
+const citationsByStatuteJsonToolInputSchema = singleTextJsonToolInputSchema(
+  "dispositivo",
+  "Dispositivo legal cujas citacoes em precedentes devem ser pesquisadas."
+);
+const statuteHistoryZodToolInputSchema = singleTextZodToolInputSchema(
+  "norma",
+  "Norma ou dispositivo cujo historico legislativo deve ser pesquisado."
+);
+const statuteHistoryJsonToolInputSchema = singleTextJsonToolInputSchema(
+  "norma",
+  "Norma ou dispositivo cujo historico legislativo deve ser pesquisado."
+);
+const overrulingZodToolInputSchema = singleTextZodToolInputSchema(
+  "tema",
+  "Tema juridico para pesquisar superacao ou revisao de entendimentos."
+);
+const overrulingJsonToolInputSchema = singleTextJsonToolInputSchema(
+  "tema",
+  "Tema juridico para pesquisar superacao ou revisao de entendimentos."
+);
+const qualifiedPrecedentsZodToolInputSchema = singleTextZodToolInputSchema(
+  "tema",
+  "Tema juridico para priorizar precedentes vinculantes ou qualificados."
+);
+const qualifiedPrecedentsJsonToolInputSchema = singleTextJsonToolInputSchema(
+  "tema",
+  "Tema juridico para priorizar precedentes vinculantes ou qualificados."
+);
+
 export const TOOL_DEFINITIONS: JurisprudenciaIaToolDefinition[] = [
   {
     name: "consultar_jurisprudenciaia",
@@ -671,6 +751,101 @@ export const TOOL_DEFINITIONS: JurisprudenciaIaToolDefinition[] = [
         query: joinParts([
           `Monte uma linha do tempo cronologica dos principais precedentes sobre: ${tema}.`,
           "Ordene por data de julgamento e indique quando um precedente supera, distingue ou reafirma entendimento anterior.",
+          DIRECT_ANSWER_INSTRUCTION,
+          STRUCTURED_RESULT_INSTRUCTION
+        ]),
+        maxWaitSeconds: normalizeMaxWait(parsed.max_wait_seconds),
+        includeDebug: false
+      };
+    }
+  },
+  {
+    name: "buscar_citacoes_dispositivo",
+    title: "Buscar citacoes de dispositivo",
+    description:
+      "Pesquisa precedentes que citam ou aplicam um dispositivo legal, conforme a cobertura da fonte.",
+    inputSchema: citationsByStatuteZodToolInputSchema,
+    jsonInputSchema: citationsByStatuteJsonToolInputSchema,
+    normalizeInput(input) {
+      const parsed = citationsByStatuteInputSchema.parse(input);
+      const dispositivo = normalizeQuery(parsed.dispositivo);
+
+      return {
+        query: joinParts([
+          `Busque precedentes que citem ou apliquem o seguinte dispositivo legal: ${dispositivo}.`,
+          "Transcreva o trecho verificavel em que o dispositivo aparece e diferencie citacao literal, aplicacao inferida e mera referencia lateral.",
+          DIRECT_ANSWER_INSTRUCTION,
+          STRUCTURED_RESULT_INSTRUCTION
+        ]),
+        maxWaitSeconds: normalizeMaxWait(parsed.max_wait_seconds),
+        includeDebug: false
+      };
+    }
+  },
+  {
+    name: "historico_alteracoes_norma",
+    title: "Historico de alteracoes de norma",
+    description:
+      "Pesquisa alteracoes legislativas de uma norma e solicita fontes oficiais, conforme a cobertura da fonte.",
+    inputSchema: statuteHistoryZodToolInputSchema,
+    jsonInputSchema: statuteHistoryJsonToolInputSchema,
+    normalizeInput(input) {
+      const parsed = statuteHistoryInputSchema.parse(input);
+      const norma = normalizeQuery(parsed.norma);
+
+      return {
+        query: joinParts([
+          `Pesquise o historico de alteracoes legislativas da seguinte norma ou dispositivo: ${norma}.`,
+          "Indique ato alterador, numero, data, dispositivo afetado, redacoes anteriores, revogacoes, vigencia e links de fontes oficiais quando disponiveis.",
+          "Nao invente versoes ou datas que nao estejam documentadas na fonte.",
+          DIRECT_ANSWER_INSTRUCTION,
+          STRUCTURED_RESULT_INSTRUCTION
+        ]),
+        maxWaitSeconds: normalizeMaxWait(parsed.max_wait_seconds),
+        includeDebug: false
+      };
+    }
+  },
+  {
+    name: "listar_overruling_tema",
+    title: "Listar overruling por tema",
+    description:
+      "Pesquisa entendimentos superados ou revistos sobre um tema e os precedentes posteriores relacionados.",
+    inputSchema: overrulingZodToolInputSchema,
+    jsonInputSchema: overrulingJsonToolInputSchema,
+    normalizeInput(input) {
+      const parsed = overrulingInputSchema.parse(input);
+      const tema = normalizeQuery(parsed.tema);
+
+      return {
+        query: joinParts([
+          `Pesquise entendimentos jurisprudenciais superados ou revistos sobre: ${tema}.`,
+          "Para cada caso, identifique os precedentes anterior e posterior, as datas e o trecho que evidencia a superacao ou revisao.",
+          "Diferencie overruling, distinguishing, superacao legislativa e mera divergencia.",
+          DIRECT_ANSWER_INSTRUCTION,
+          STRUCTURED_RESULT_INSTRUCTION
+        ]),
+        maxWaitSeconds: normalizeMaxWait(parsed.max_wait_seconds),
+        includeDebug: false
+      };
+    }
+  },
+  {
+    name: "buscar_precedentes_qualificados",
+    title: "Buscar precedentes qualificados",
+    description:
+      "Prioriza precedentes vinculantes ou qualificados sobre um tema e informa a autoridade identificada.",
+    inputSchema: qualifiedPrecedentsZodToolInputSchema,
+    jsonInputSchema: qualifiedPrecedentsJsonToolInputSchema,
+    normalizeInput(input) {
+      const parsed = qualifiedPrecedentsInputSchema.parse(input);
+      const tema = normalizeQuery(parsed.tema);
+
+      return {
+        query: joinParts([
+          `Busque precedentes vinculantes ou qualificados sobre: ${tema}.`,
+          "Priorize Sumula Vinculante, controle concentrado, repercussao geral, recursos repetitivos, IRDR e IAC antes de acordaos comuns.",
+          "Identifique categoria, tema, sumula ou incidente, numero, tese, situacao atual e alcance vinculante ou persuasivo; nao atribua qualificacao sem identificador verificavel.",
           DIRECT_ANSWER_INSTRUCTION,
           STRUCTURED_RESULT_INSTRUCTION
         ]),

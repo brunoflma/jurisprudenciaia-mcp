@@ -38,7 +38,7 @@ O servidor Node/Express continua no código para desenvolvimento local e testes,
 
 ## Ferramentas incluídas
 
-O conector publica dez ferramentas MCP. As cinco primeiras cobrem pesquisa e análise de teses; as cinco seguintes foram desenhadas a partir de capacidades equivalentes disponíveis nos conectores IAJus e JusRatio (busca por CNJ, legislação, informativos, jurimetria e linha do tempo de precedentes), adaptadas ao mecanismo de busca do JurisprudênciaIA.
+O conector publica quatorze ferramentas MCP. As cinco primeiras cobrem pesquisa e análise de teses; as demais foram desenhadas a partir de capacidades equivalentes disponíveis nos conectores IAJus e JusRatio, adaptadas ao mecanismo de busca do JurisprudênciaIA.
 
 - `consultar_jurisprudenciaia`: consulta livre ao JurisprudênciaIA.
 - `pesquisar_jurisprudencia`: pesquisa direta por jurisprudência.
@@ -50,6 +50,10 @@ O conector publica dez ferramentas MCP. As cinco primeiras cobrem pesquisa e an�
 - `buscar_informativos`: localiza informativos de jurisprudência de tribunais superiores sobre um tema.
 - `analisar_jurimetria`: estima um panorama da amostra de julgados encontrada; não representa estatística oficial ou exaustiva do tribunal.
 - `linha_do_tempo_precedentes`: monta uma linha do tempo cronológica dos principais precedentes sobre um tema, apontando mudanças de entendimento.
+- `buscar_citacoes_dispositivo`: pesquisa precedentes que citem ou apliquem um dispositivo legal.
+- `historico_alteracoes_norma`: pesquisa alterações legislativas documentadas de uma norma.
+- `listar_overruling_tema`: pesquisa entendimentos expressamente superados ou revistos sobre um tema.
+- `buscar_precedentes_qualificados`: prioriza precedentes vinculantes ou qualificados e explicita sua categoria.
 
 As ferramentas especializadas são modos de consulta: elas transformam os campos recebidos em instruções estruturadas e usam o mesmo mecanismo de pesquisa do JurisprudênciaIA. Preferências, recortes e tribunais orientam a pesquisa textual; não são filtros, séries estatísticas ou bases legislativas independentes do serviço de origem.
 
