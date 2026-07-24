@@ -22,6 +22,9 @@ type ChatSession = {
 type StreamEvent = {
   type?: string;
   delta?: string;
+  toolCallId?: string;
+  toolName?: string;
+  inputTextDelta?: string;
   data?: RegistryUpdate;
 };
 
@@ -50,6 +53,12 @@ type RegistryUpdate = {
 type ParsedStream = {
   answer: string;
   references: RegistryUpdate[];
+  requiresClarification: boolean;
+};
+
+type ClarificationRequest = {
+  pergunta?: string;
+  opcoes?: string[];
 };
 
 const CITATION_PATTERN = /\u27e6\s*(?:=\s*)?([A-Z]\d+)[^\u27e7]*\u27e7/g;
@@ -215,6 +224,8 @@ function isAbortError(error: unknown): boolean {
 
 export function parseJurisprudenciaIaStream(rawText: string): ParsedStream {
   const references = new Map<string, RegistryUpdate>();
+  const toolNames = new Map<string, string>();
+  const clarificationInputs = new Map<string, string>();
   let answer = "";
 
   for (const event of parseSseEvents(rawText)) {
@@ -223,17 +234,81 @@ export function parseJurisprudenciaIaStream(rawText: string): ParsedStream {
       continue;
     }
 
+    if (event.type === "tool-input-start" && event.toolCallId && event.toolName) {
+      toolNames.set(event.toolCallId, event.toolName);
+      continue;
+    }
+
+    if (
+      event.type === "tool-input-delta" &&
+      event.toolCallId &&
+      toolNames.get(event.toolCallId) === "perguntar_ao_usuario" &&
+      typeof event.inputTextDelta === "string"
+    ) {
+      clarificationInputs.set(
+        event.toolCallId,
+        `${clarificationInputs.get(event.toolCallId) ?? ""}${event.inputTextDelta}`
+      );
+    }
+
     if (event.type === "data-registry-update" && event.data?.ref) {
       references.set(event.data.ref, event.data);
     }
   }
 
   const sortedReferences = Array.from(references.values()).sort(compareReferences);
+  const clarification = formatClarificationRequest(clarificationInputs);
 
   return {
-    answer: formatInlineCitations(answer, sortedReferences).trim(),
-    references: sortedReferences
+    answer: formatInlineCitations(answer, sortedReferences).trim() || clarification,
+    references: sortedReferences,
+    requiresClarification: !!clarification && !answer.trim()
   };
+}
+
+function formatClarificationRequest(inputs: Map<string, string>): string {
+  for (const rawInput of inputs.values()) {
+    const request = parseClarificationRequest(rawInput);
+    const question = request?.pergunta?.trim();
+
+    if (!question) {
+      continue;
+    }
+
+    const options = request?.opcoes
+      ?.filter((option): option is string => typeof option === "string" && !!option.trim())
+      .map((option) => `- ${option.trim()}`);
+
+    return [
+      "A fonte solicitou um recorte antes de executar a pesquisa:",
+      "",
+      question,
+      ...(options?.length ? ["", "Opcoes sugeridas:", "", ...options] : []),
+      "",
+      "Reformule a consulta com esse recorte para obter jurisprudencia, teses e referencias mais precisas."
+    ].join("\n");
+  }
+
+  return "";
+}
+
+function parseClarificationRequest(value: string): ClarificationRequest | undefined {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return undefined;
+    }
+
+    const request = parsed as Record<string, unknown>;
+    return {
+      pergunta: typeof request.pergunta === "string" ? request.pergunta : undefined,
+      opcoes: Array.isArray(request.opcoes)
+        ? request.opcoes.filter((option): option is string => typeof option === "string")
+        : undefined
+    };
+  } catch {
+    return undefined;
+  }
 }
 
 function parseSseEvents(rawText: string): StreamEvent[] {
@@ -349,6 +424,20 @@ function formatJurisprudenciaIaMarkdown(input: {
     );
   }
 
+  if (input.parsed.requiresClarification) {
+    return [
+      "# Resultado JurisprudenciaIA",
+      "",
+      `Consulta: ${input.query}`,
+      `Executado em: ${input.executedAtIso}`,
+      `Fonte: ${input.sourceUrl}`,
+      "",
+      "## Recorte necessario",
+      "",
+      answer
+    ].join("\n");
+  }
+
   return [
     "# Resultado JurisprudenciaIA",
     "",
@@ -409,62 +498,70 @@ function formatReferences(references: RegistryUpdate[]): string[] {
     return [];
   }
 
-  return [
+  const result: string[] = [
     "",
     "## Precedentes citados",
-    "",
-    ...references.flatMap((reference) => {
-      const ref = reference.ref ?? "sem-ref";
-      const title = reference.titulo?.trim();
-      const tribunal = reference.tribunal?.toUpperCase();
-      const date = formatDate(reference.precedente?.data_julgamento);
-      const link = referenceLink(reference);
-      const ementa = reference.precedente?.texto_ementa?.trim();
-      const inteiroTeor = referenceFullText(reference);
-      const missingMetadata: string[] = [];
-      const lines = [`### Precedente ${ref}`];
-
-      if (!title) {
-        missingMetadata.push("tipo/numero");
-      }
-
-      if (!date) {
-        missingMetadata.push("data de julgamento");
-      }
-
-      if (!link) {
-        missingMetadata.push("link");
-      }
-
-      if (!ementa) {
-        missingMetadata.push("ementa");
-      }
-
-      if (!inteiroTeor) {
-        missingMetadata.push("inteiro teor");
-      }
-
-      lines.push(
-        `- Tribunal: ${tribunal ?? "nao informado"}`,
-        `- Tipo/numero: ${title ?? "nao informado"}`,
-        `- Data de julgamento: ${date ?? "nao informada"}`,
-        `- Link: ${link ?? "nao informado"}`,
-        `- Ementa: ${ementa ?? "nao informada"}`
-      );
-
-      if (inteiroTeor) {
-        lines.push("", "#### Inteiro teor", "", inteiroTeor);
-      } else {
-        lines.push("- Inteiro teor: nao informado pela fonte consultada");
-      }
-
-      if (missingMetadata.length > 0) {
-        lines.push(`- Metadados ausentes: ${missingMetadata.join(", ")}`);
-      }
-
-      return [...lines, ""];
-    })
+    ""
   ];
+
+  // ⚡ Bolt: Use a for loop instead of flatMap and spread operators to prevent
+  // excessive intermediate array allocations and reduce GC overhead during
+  // text formatting.
+  for (let i = 0; i < references.length; i++) {
+    const reference = references[i];
+    const ref = reference.ref ?? "sem-ref";
+    const title = reference.titulo?.trim();
+    const tribunal = reference.tribunal?.toUpperCase();
+    const date = formatDate(reference.precedente?.data_julgamento);
+    const link = referenceLink(reference);
+    const ementa = reference.precedente?.texto_ementa?.trim();
+    const inteiroTeor = referenceFullText(reference);
+    const missingMetadata: string[] = [];
+
+    result.push(`### Precedente ${ref}`);
+
+    if (!title) {
+      missingMetadata.push("tipo/numero");
+    }
+
+    if (!date) {
+      missingMetadata.push("data de julgamento");
+    }
+
+    if (!link) {
+      missingMetadata.push("link");
+    }
+
+    if (!ementa) {
+      missingMetadata.push("ementa");
+    }
+
+    if (!inteiroTeor) {
+      missingMetadata.push("inteiro teor");
+    }
+
+    result.push(
+      `- Tribunal: ${tribunal ?? "nao informado"}`,
+      `- Tipo/numero: ${title ?? "nao informado"}`,
+      `- Data de julgamento: ${date ?? "nao informada"}`,
+      `- Link: ${link ?? "nao informado"}`,
+      `- Ementa: ${ementa ?? "nao informada"}`
+    );
+
+    if (inteiroTeor) {
+      result.push("", "#### Inteiro teor", "", inteiroTeor);
+    } else {
+      result.push("- Inteiro teor: nao informado pela fonte consultada");
+    }
+
+    if (missingMetadata.length > 0) {
+      result.push(`- Metadados ausentes: ${missingMetadata.join(", ")}`);
+    }
+
+    result.push("");
+  }
+
+  return result;
 }
 
 function formatDate(value: string | null | undefined): string | undefined {

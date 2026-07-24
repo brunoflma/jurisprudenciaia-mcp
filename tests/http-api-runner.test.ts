@@ -91,6 +91,20 @@ describe("parseJurisprudenciaIaStream", () => {
     expect(parsed.references[0]).toMatchObject({ ref: "J1" });
   });
 
+  it("returns a clarification request emitted through perguntar_ao_usuario", () => {
+    const parsed = parseJurisprudenciaIaStream([
+      'data: {"type":"tool-input-start","toolCallId":"call-1","toolName":"perguntar_ao_usuario"}',
+      "",
+      'data: {"type":"tool-input-delta","toolCallId":"call-1","inputTextDelta":"{\\"pergunta\\":\\"Qual aspecto especifico voce deseja pesquisar?\\",\\"opcoes\\":[\\"Inscricao indevida\\",\\"Atraso de voo\\"]}"}',
+      ""
+    ].join("\n"));
+
+    expect(parsed.requiresClarification).toBe(true);
+    expect(parsed.answer).toContain("Qual aspecto especifico voce deseja pesquisar?");
+    expect(parsed.answer).toContain("- Inscricao indevida");
+    expect(parsed.answer).toContain("Reformule a consulta");
+  });
+
   it("overwrites duplicate references, keeping the latest update", () => {
     const parsed = parseJurisprudenciaIaStream(
       'data: {"type":"data-registry-update","data":{"ref":"J1","tribunal":"stj","titulo":"Old Title"}}\n\n' +
@@ -299,5 +313,36 @@ describe("HttpApiJurisprudenciaIaRunner", () => {
     ).rejects.toMatchObject({
       code: "no_result_detected"
     });
+  });
+
+  it("formats a clarification request instead of treating it as an empty result", async () => {
+    const clarificationStream = [
+      'data: {"type":"tool-input-start","toolCallId":"call-1","toolName":"perguntar_ao_usuario"}',
+      "",
+      'data: {"type":"tool-input-delta","toolCallId":"call-1","inputTextDelta":"{\\"pergunta\\":\\"Qual recorte do dano moral voce deseja pesquisar?\\",\\"opcoes\\":[\\"Negativacao indevida\\",\\"Mero aborrecimento\\"]}"}',
+      ""
+    ].join("\n");
+    const fetch = vi.fn(async (input: string | URL) => {
+      if (String(input).endsWith("/api/chat-jurisprudencia/session")) {
+        return new Response(JSON.stringify(session), { status: 200 });
+      }
+
+      return new Response(clarificationStream, { status: 200 });
+    });
+    const runner = new HttpApiJurisprudenciaIaRunner({
+      sourceUrl: "https://www.jurisprudenciaia.com.br/",
+      requestTimeoutMs: 120000,
+      fetch
+    });
+
+    const result = await runner.search({
+      query: "doutrina e jurisprudencia sobre dano moral",
+      maxWaitSeconds: 60,
+      includeDebug: false
+    });
+
+    expect(result.markdown).toContain("## Recorte necessario");
+    expect(result.markdown).toContain("Qual recorte do dano moral voce deseja pesquisar?");
+    expect(result.markdown).toContain("- Negativacao indevida");
   });
 });

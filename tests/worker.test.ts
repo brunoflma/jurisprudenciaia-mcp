@@ -276,6 +276,34 @@ describe("Cloudflare Worker MCP endpoint", () => {
     expect(body.error_description).toBe("Payload too large");
   });
 
+  it("prevents rate limit bypass via spoofed x-forwarded-for", async () => {
+    const limitedEnv = {
+      ...env,
+      RATE_LIMIT_MAX_REQUESTS: "1",
+      RATE_LIMIT_WINDOW_MS: "60000"
+    };
+    const authorizeUrl = new URL("https://worker.test/oauth/authorize");
+    authorizeUrl.searchParams.set("response_type", "code");
+    authorizeUrl.searchParams.set("client_id", "unknown-client");
+    authorizeUrl.searchParams.set("redirect_uri", redirectUri);
+
+    const first = await handleWorkerRequest(
+      new Request(authorizeUrl, {
+        headers: { "x-forwarded-for": "10.0.0.1" }
+      }),
+      limitedEnv
+    );
+    const second = await handleWorkerRequest(
+      new Request(authorizeUrl, {
+        headers: { "x-forwarded-for": "10.0.0.2" }
+      }),
+      limitedEnv
+    );
+
+    expect(first.status).toBe(400); // Invalid client, but not rate limited
+    expect(second.status).toBe(429); // Rate limited, despite different x-forwarded-for
+  });
+
   it("rate limits OAuth authorize attempts before validating client input", async () => {
     const limitedEnv = {
       ...env,
@@ -725,6 +753,26 @@ describe("Cloudflare Worker MCP endpoint", () => {
           }
         ]
       }
+    });
+  });
+
+  it("rejects JSON-RPC batches that exceed the maximum size to prevent DoS", async () => {
+    const batch = Array.from({ length: 11 }).map((_, i) => ({
+      jsonrpc: "2.0",
+      id: i,
+      method: "ping"
+    }));
+
+    const response = await handleWorkerRequest(
+      post("/mcp", batch),
+      env
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      jsonrpc: "2.0",
+      id: null,
+      error: { code: -32600, message: "Batch size exceeds limit" }
     });
   });
 

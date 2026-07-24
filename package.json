@@ -15,7 +15,7 @@
     "check:codex-http": "node scripts/check-codex-http.mjs",
     "check:codex-http:all": "node scripts/check-codex-http.mjs --all-tools",
     "check:chatgpt-oauth": "node scripts/check-chatgpt-oauth.mjs",
-    "verify": "npm run typecheck && npm test && npm audit --audit-level=high && npm run build",
+    "verify": "npm run typecheck && npm test && npm audit --audit-level=high --omit=dev && npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit"
@@ -23,6 +23,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "express": "^5.1.0",
+    "helmet": "^8.3.0",
     "zod": "^4.1.13"
   },
   "devDependencies": {
@@ -33,9 +34,10 @@
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vitest": "^4.0.15",
-    "wrangler": "4.103.0"
+    "wrangler": "4.114.0"
   },
   "overrides": {
+    "@hono/node-server": "2.0.11",
     "esbuild": "0.28.1"
   },
   "engines": {

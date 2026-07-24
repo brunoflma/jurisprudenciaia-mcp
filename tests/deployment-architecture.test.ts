@@ -21,7 +21,7 @@ describe("production deployment architecture", () => {
     expect(pkg.scripts["dev:worker"]).toBe("wrangler dev");
     expect(pkg.scripts["deploy:worker"]).toBe("wrangler deploy");
     expect(pkg.scripts.verify).toBe(
-      "npm run typecheck && npm test && npm audit --audit-level=high && npm run build"
+      "npm run typecheck && npm test && npm audit --audit-level=high --omit=dev && npm run build"
     );
   });
 
@@ -33,5 +33,14 @@ describe("production deployment architecture", () => {
     expect(deploymentGuide).not.toContain('"runtime":"cloudflare-workers"');
     expect(visualGuide).toContain('{"ok":true,"service":"jurisprudenciaia-mcp"}');
     expect(visualGuide).not.toContain('"runtime":"cloudflare-workers"');
+  });
+
+  it("keeps the skip-link target visible below the sticky progress header", () => {
+    const visualGuide = readFileSync("docs/deploy-guide.html", "utf8");
+
+    expect(visualGuide).toContain("scroll-padding-top: 5.5rem");
+    expect(visualGuide).toContain('<a href="#main-content" class="skip-link">');
+    expect(visualGuide).toContain('<main id="main-content" tabindex="-1">');
+    expect(visualGuide).not.toMatch(/main:focus-visible\s*{\s*outline:\s*none/);
   });
 });

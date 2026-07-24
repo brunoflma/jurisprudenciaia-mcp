@@ -29,6 +29,7 @@
 
     html {
       scroll-behavior: smooth;
+      scroll-padding-top: 5.5rem;
     }
 
     body {
@@ -163,6 +164,8 @@
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 0.75rem;
       margin-top: 1.6rem;
+      padding: 0;
+      list-style: none;
     }
 
     .route-item {
@@ -301,15 +304,19 @@
     .steps {
       display: grid;
       gap: 1rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
     }
 
     .step {
       overflow: hidden;
-      transition: border-color 0.2s ease;
+      transition: border-color 0.2s ease, background-color 0.2s ease;
     }
 
     .step.is-completed {
       border-color: rgba(100, 195, 145, 0.5);
+      background-color: rgba(33, 43, 37, 0.5);
     }
 
     .step-head {
@@ -369,6 +376,16 @@
 
     .step-body {
       padding: 1.25rem;
+      transition: opacity 0.2s ease;
+    }
+
+    .step.is-completed .step-body {
+      opacity: 0.65;
+    }
+
+    .step.is-completed:hover .step-body,
+    .step.is-completed:focus-within .step-body {
+      opacity: 1;
     }
 
     .literal {
@@ -467,6 +484,11 @@
       border-radius: 8px;
       background: rgba(25, 26, 24, 0.95);
       padding: 1rem;
+    }
+
+    .client-panel:focus-visible {
+      outline: 2px solid var(--green);
+      outline-offset: 2px;
     }
 
     .client-panel[hidden] {
@@ -577,15 +599,21 @@
       gap: 0.65rem;
       align-items: flex-start;
       margin-top: 1rem;
+      padding: 0.85rem 1rem;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(25, 26, 24, 0.4);
       color: var(--muted);
       font-weight: 700;
       cursor: pointer;
-      transition: color 0.2s ease;
+      transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
     }
 
     .checkline:hover,
     .checkline:focus-within {
       color: var(--ink);
+      border-color: rgba(100, 195, 145, 0.4);
+      background: rgba(100, 195, 145, 0.08);
     }
 
     .checkline input {
@@ -752,23 +780,23 @@
         Um roteiro guiado para preparar os secrets, publicar o Worker e conectar o MCP
         no Claude.ai, ChatGPT ou Codex com segurança e previsibilidade.
       </p>
-      <div class="route" aria-label="Resumo do fluxo de deploy">
-        <div class="route-item">
-          <span>1</span>
+      <ol class="route" aria-label="Resumo do fluxo de deploy">
+        <li class="route-item">
+          <span aria-hidden="true">1</span>
           <strong>Preparar</strong>
           <p>Separe os valores temporários e gere os secrets do MCP.</p>
-        </div>
-        <div class="route-item">
-          <span>2</span>
+        </li>
+        <li class="route-item">
+          <span aria-hidden="true">2</span>
           <strong>Publicar</strong>
           <p>Configure os Worker secrets e publique pelo controlador de deploy escolhido.</p>
-        </div>
-        <div class="route-item">
-          <span>3</span>
+        </li>
+        <li class="route-item">
+          <span aria-hidden="true">3</span>
           <strong>Conectar</strong>
           <p>Teste o Worker e registre o conector no Claude.ai, ChatGPT ou Codex.</p>
-        </div>
-      </div>
+        </li>
+      </ol>
       <ul class="quick-rules">
         <li>Quando o guia mostrar texto entre <code class="nowrap">&lt;assim&gt;</code>, substitua pelo valor correspondente.</li>
         <li>Quando um campo pedir um secret, cole somente o valor, sem aspas e sem espaços extras.</li>
@@ -783,7 +811,7 @@
         <strong id="progressText">0 de 9 etapas concluídas</strong><br>
         <small>Os marcadores ficam salvos apenas neste navegador.</small>
       </div>
-      <div class="bar" aria-hidden="true"><span id="progressBar"></span></div>
+      <div id="progressContainer" class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="9" aria-valuenow="0" aria-labelledby="progressText"><span id="progressBar"></span></div>
     </div>
   </div>
 
@@ -813,10 +841,10 @@
         </div>
       </section>
 
-      <div class="steps">
-        <section class="step" aria-labelledby="step-1-title">
+      <ol class="steps" aria-label="Etapas de deploy">
+        <li class="step" aria-labelledby="step-1-title">
           <div class="step-head">
-            <span class="number">1</span>
+            <span class="number" aria-hidden="true">1</span>
             <div>
               <h2 id="step-1-title">Crie sua folha de anotação temporária</h2>
               <p>Esta folha serve apenas para copiar e colar durante o processo.</p>
@@ -852,11 +880,11 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
               Já colei o modelo no Bloco de Notas.
             </label>
           </div>
-        </section>
+        </li>
 
-        <section class="step" aria-labelledby="step-2-title">
+        <li class="step" aria-labelledby="step-2-title">
           <div class="step-head">
-            <span class="number">2</span>
+            <span class="number" aria-hidden="true">2</span>
             <div>
               <h2 id="step-2-title">Gere os secrets do MCP</h2>
               <p>Esses valores protegem OAuth no Claude/ChatGPT e Bearer no Codex.</p>
@@ -901,14 +929,14 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
               Já tenho os secrets do MCP anotados.
             </label>
           </div>
-        </section>
+        </li>
 
-        <section class="step" aria-labelledby="step-3-title">
+        <li class="step" aria-labelledby="step-3-title">
           <div class="step-head">
-            <span class="number">3</span>
+            <span class="number" aria-hidden="true">3</span>
             <div>
               <h2 id="step-3-title">Crie o token de deploy no Cloudflare</h2>
-              <p>Esse token só é necessário para publicação manual via Wrangler fora de uma integração de build do provedor.</p>
+              <p>Esse token só é necessário para publicação manual via Wrangler.</p>
             </div>
           </div>
           <div class="step-body">
@@ -933,11 +961,11 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
               Já tenho o CLOUDFLARE_API_TOKEN anotado.
             </label>
           </div>
-        </section>
+        </li>
 
-        <section class="step" aria-labelledby="step-4-title">
+        <li class="step" aria-labelledby="step-4-title">
           <div class="step-head">
-            <span class="number">4</span>
+            <span class="number" aria-hidden="true">4</span>
             <div>
               <h2 id="step-4-title">Copie o Account ID do Cloudflare</h2>
               <p>O Account ID identifica onde o Worker será publicado.</p>
@@ -959,11 +987,11 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
               Já tenho o CLOUDFLARE_ACCOUNT_ID anotado.
             </label>
           </div>
-        </section>
+        </li>
 
-        <section class="step" aria-labelledby="step-5-title">
+        <li class="step" aria-labelledby="step-5-title">
           <div class="step-head">
-            <span class="number">5</span>
+            <span class="number" aria-hidden="true">5</span>
             <div>
               <h2 id="step-5-title">Cadastre os secrets no Worker</h2>
               <p>Crie um Worker secret por vez. O nome precisa ser idêntico ao da tabela.</p>
@@ -1015,23 +1043,23 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
               Já cadastrei os secrets necessários no Worker.
             </label>
           </div>
-        </section>
+        </li>
 
-        <section class="step" aria-labelledby="step-6-title">
+        <li class="step" aria-labelledby="step-6-title">
           <div class="step-head">
-            <span class="number">6</span>
+            <span class="number" aria-hidden="true">6</span>
             <div>
               <h2 id="step-6-title">Publique pelo controlador escolhido</h2>
-              <p>O GitHub valida o projeto; o controlador de deploy publica no Cloudflare Workers.</p>
+              <p>Valide o projeto e publique no Cloudflare Workers pelo mecanismo configurado no seu ambiente.</p>
             </div>
           </div>
           <div class="step-body">
             <ol class="literal">
-              <li>No Cloudflare, abra <strong>Workers & Pages</strong> e selecione o projeto conectado ao repositório de origem autorizado.</li>
-              <li>Confirme que a branch de produção configurada está correta.</li>
+              <li>No Cloudflare, abra <strong>Workers & Pages</strong> e selecione o projeto conectado ao repositório privado.</li>
+              <li>Confirme que a branch de produção é <strong>master</strong>.</li>
               <li>Confirme que o build usa <code>npm run verify</code>.</li>
               <li>Confirme que o deploy usa <code>npx wrangler deploy</code>.</li>
-              <li>Dispare o build no controlador escolhido ou aguarde o build do commit de produção.</li>
+              <li>Execute o build e o deploy pelo mecanismo configurado no seu ambiente.</li>
               <li>Espere o build e o deploy ficarem verdes.</li>
               <li>Procure a URL publicada, parecida com <code>https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev</code>.</li>
               <li>Copie essa URL e preencha as linhas <code>URL_WORKER=</code> e <code>URL_MCP=</code> na anotação.</li>
@@ -1062,11 +1090,11 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
               O deploy no Cloudflare terminou verde e eu anotei a URL.
             </label>
           </div>
-        </section>
+        </li>
 
-        <section class="step" aria-labelledby="step-7-title">
+        <li class="step" aria-labelledby="step-7-title">
           <div class="step-head">
-            <span class="number">7</span>
+            <span class="number" aria-hidden="true">7</span>
             <div>
               <h2 id="step-7-title">Teste se o Worker está online</h2>
               <p>Este teste confirma que a URL publicada responde antes de configurar o cliente MCP.</p>
@@ -1094,18 +1122,18 @@ URL_MCP=https://jurisprudenciaia-mcp.&lt;seu-subdominio&gt;.workers.dev/mcp</cod
             </div>
             <p class="note success">
               Se a resposta acima aparecer, o Worker está online. Se der erro 404, 500 ou página em branco,
-              volte ao passo 6 e abra o log do controlador de deploy.
+              volte ao passo 6 e abra o log do mecanismo de publicação configurado.
             </p>
             <label class="checkline">
               <input type="checkbox" data-check="7">
               A página /healthz respondeu com ok true.
             </label>
           </div>
-        </section>
+        </li>
 
-        <section class="step" aria-labelledby="step-8-title">
+        <li class="step" aria-labelledby="step-8-title">
           <div class="step-head">
-            <span class="number">8</span>
+            <span class="number" aria-hidden="true">8</span>
             <div>
               <h2 id="step-8-title">Conecte o MCP no cliente</h2>
               <p>Use a URL com <code>/mcp</code> no final. Escolha um caminho: Claude.ai e ChatGPT usam OAuth; Codex usa Bearer por variável local.</p>
@@ -1288,11 +1316,11 @@ OAuth Client Secret: &lt;mesmo valor do Worker Secret MCP_OAUTH_CLIENT_SECRET&gt
               Conectei o MCP no cliente escolhido sem erro.
             </label>
           </div>
-        </section>
+        </li>
 
-        <section class="step" aria-labelledby="step-9-title">
+        <li class="step" aria-labelledby="step-9-title">
           <div class="step-head">
-            <span class="number">9</span>
+            <span class="number" aria-hidden="true">9</span>
             <div>
               <h2 id="step-9-title">Faça o primeiro teste no cliente escolhido</h2>
               <p>Agora confirme que as ferramentas aparecem e que a consulta retorna Markdown.</p>
@@ -1341,14 +1369,14 @@ buscar_precedentes_qualificados</code></pre>
               Fiz o teste no cliente escolhido e as ferramentas apareceram.
             </label>
           </div>
-        </section>
-      </div>
+        </li>
+      </ol>
 
       <section class="trouble" aria-labelledby="trouble-title">
         <h2 id="trouble-title">Se algo der errado</h2>
         <ul class="trouble-list">
           <li>
-            <strong>O controlador de build falhou antes do deploy.</strong>
+            <strong>O mecanismo de publicação falhou antes do deploy.</strong>
             Abra o log. Se aparecer erro de secrets ausentes, volte ao passo 5 e confira os nomes obrigatórios no Worker.
           </li>
           <li>
@@ -1389,6 +1417,7 @@ buscar_precedentes_qualificados</code></pre>
     const clientPanels = Array.from(document.querySelectorAll("[data-client-panel]"));
     const progressText = document.querySelector("#progressText");
     const progressBar = document.querySelector("#progressBar");
+    const progressContainer = document.querySelector("#progressContainer");
 
     function readState() {
       try {
@@ -1410,6 +1439,9 @@ buscar_precedentes_qualificados</code></pre>
         progressText.textContent = `${completed} de ${checks.length} etapas concluídas`;
       }
       progressBar.style.width = `${(completed / checks.length) * 100}%`;
+      if (progressContainer) {
+        progressContainer.setAttribute("aria-valuenow", completed);
+      }
     }
 
     const state = readState();
@@ -1457,6 +1489,12 @@ buscar_precedentes_qualificados</code></pre>
           e.preventDefault();
         } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
           newIndex = (index - 1 + clientTabs.length) % clientTabs.length;
+          e.preventDefault();
+        } else if (e.key === "Home") {
+          newIndex = 0;
+          e.preventDefault();
+        } else if (e.key === "End") {
+          newIndex = clientTabs.length - 1;
           e.preventDefault();
         }
 

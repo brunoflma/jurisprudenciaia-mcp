@@ -58,7 +58,7 @@ Na tela `Conectar a um MCP personalizado` ou `Atualizar MCP`:
 ```text
 Nome: jurisprudenciaia-mcp
 Tipo: HTTP com streaming
-URL: https://<seu-worker>/mcp
+URL: https://<seu-worker>.workers.dev/mcp
 Variável de ambiente de token do portador: MCP_BEARER_TOKEN
 ```
 
@@ -72,7 +72,7 @@ Você também pode configurar diretamente em `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.jurisprudenciaia-mcp]
-url = "https://<seu-worker>/mcp"
+url = "https://<seu-worker>.workers.dev/mcp"
 bearer_token_env_var = "MCP_BEARER_TOKEN"
 enabled = true
 tool_timeout_sec = 120
@@ -89,14 +89,14 @@ Windows:
 
 ```powershell
 $env:MCP_BEARER_TOKEN = [Environment]::GetEnvironmentVariable("MCP_BEARER_TOKEN", "User")
-npm run check:codex-http -- https://<seu-worker>/mcp
+npm run check:codex-http -- https://<seu-worker>.workers.dev/mcp
 ```
 
 macOS:
 
 ```zsh
 export MCP_BEARER_TOKEN="$(launchctl getenv MCP_BEARER_TOKEN)"
-npm run check:codex-http -- https://<seu-worker>/mcp
+npm run check:codex-http -- https://<seu-worker>.workers.dev/mcp
 ```
 
 Se você configurou o token apenas no `~/.zshrc`, abra um novo Terminal ou rode `source ~/.zshrc` antes do teste.

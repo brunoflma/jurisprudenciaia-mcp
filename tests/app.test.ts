@@ -99,6 +99,20 @@ describe("createApp", () => {
     expect(response.body).toEqual({ ok: true, service: "jurisprudenciaia-mcp" });
   });
 
+  it("sets security headers on HTTP responses", async () => {
+    const app = createApp({
+      connectorPath,
+      rateLimitWindowMs: 60000,
+      rateLimitMaxRequests: 4
+    });
+
+    const response = await request(app).get("/healthz");
+
+    expect(response.headers["x-content-type-options"]).toBe("nosniff");
+    expect(response.headers["x-frame-options"]).toBe("SAMEORIGIN");
+    expect(response.headers["strict-transport-security"]).toContain("max-age=");
+  });
+
   it("does not expose the MCP endpoint at a generic path", async () => {
     const app = createApp({
       connectorPath,

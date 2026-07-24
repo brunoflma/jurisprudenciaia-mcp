@@ -94,6 +94,7 @@ const MCP_SERVER_DESCRIPTION =
   "Conector MCP auto-hospedado para consultar jurisprudencia via JurisprudenciaIA.";
 const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
 const MAX_REQUEST_BODY_BYTES = 4 * 1024 * 1024;
+const MAX_JSON_RPC_BATCH_SIZE = 10;
 const PUBLIC_MCP_METHODS = new Set(["initialize", "ping"]);
 
 let limiter: FixedWindowRateLimiter | undefined;
@@ -182,6 +183,10 @@ export async function handleWorkerRequest(
       return json(jsonRpcError(null, -32700, "Payload too large"), 413);
     }
     return json(jsonRpcError(null, -32700, "Parse error"), 400);
+  }
+
+  if (Array.isArray(payload) && payload.length > MAX_JSON_RPC_BATCH_SIZE) {
+    return json(jsonRpcError(null, -32600, "Batch size exceeds limit"), 400);
   }
 
   // Discovery methods (initialize/ping/notifications) stay public so connector
@@ -389,7 +394,14 @@ async function handleAuthorize(request: Request, env: WorkerEnv, origin: string)
     target.searchParams.set("state", state);
   }
 
-  return Response.redirect(target.toString(), 302);
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: target.toString(),
+      "Cache-Control": "no-store",
+      Pragma: "no-cache"
+    }
+  });
 }
 
 async function handleToken(request: Request, env: WorkerEnv, origin: string): Promise<Response> {
@@ -547,9 +559,18 @@ function oauthSettings(env: WorkerEnv): OAuthSettings {
   const clientSecret = required(env.MCP_OAUTH_CLIENT_SECRET, "MCP_OAUTH_CLIENT_SECRET");
   const signingSecret = required(env.MCP_ACCESS_TOKEN_SECRET, "MCP_ACCESS_TOKEN_SECRET");
   const redirectUrisRaw = env.MCP_OAUTH_REDIRECT_URIS?.trim();
-  const redirectUris = redirectUrisRaw
-    ? redirectUrisRaw.split(",").map((item) => item.trim()).filter((item) => item.length > 0)
-    : [];
+
+  const redirectUris: string[] = [];
+  if (redirectUrisRaw) {
+    // ⚡ Bolt: Fusing split, map, and filter into a single loop
+    // to reduce intermediate array allocations on the hot path.
+    for (const item of redirectUrisRaw.split(",")) {
+      const trimmed = item.trim();
+      if (trimmed.length > 0) {
+        redirectUris.push(trimmed);
+      }
+    }
+  }
 
   if (clientId.length < 8) {
     throw new Error("MCP_OAUTH_CLIENT_ID must have at least 8 characters");
@@ -621,7 +642,14 @@ function oauthRedirectError(
     target.searchParams.set("state", state);
   }
 
-  return Response.redirect(target.toString(), 302);
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: target.toString(),
+      "Cache-Control": "no-store",
+      Pragma: "no-cache"
+    }
+  });
 }
 
 function oauthTokenError(error: string, description: string, status = 400): Response {
@@ -721,9 +749,16 @@ async function pkceChallenge(verifier: string): Promise<string> {
 }
 
 function base64UrlEncodeBytes(bytes: Uint8Array): string {
+  // ⚡ Bolt: Use chunked String.fromCharCode.apply to avoid byte-by-byte string
+  // concatenation and reduce intermediate array allocations, improving throughput
+  // and avoiding V8 call stack limits for large byte arrays.
   let binary = "";
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(
+      null,
+      bytes.subarray(i, i + chunkSize) as unknown as number[]
+    );
   }
 
   return btoa(binary)
@@ -989,11 +1024,7 @@ function epochSeconds(): number {
 }
 
 function clientKey(request: Request): string {
-  return (
-    request.headers.get("cf-connecting-ip") ??
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    "unknown"
-  );
+  return request.headers.get("cf-connecting-ip") ?? "unknown";
 }
 
 function json(body: unknown, status = 200, headers: HeadersInit = {}): Response {

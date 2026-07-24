@@ -9,7 +9,7 @@ O fluxo recomendado e:
 1. Gerar os segredos OAuth e Bearer localmente.
 2. Gravar os segredos no Cloudflare Worker, sem coloca-los no repositorio publico.
 3. Manter GitHub Actions como CI somente.
-4. Publicar por um unico controlador de deploy. O estado atual verificado e publicacao controlada por Wrangler; uma integracao de build do provedor so deve ser usada se substituir Wrangler como controlador unico.
+4. Publicar por um unico controlador de deploy e manter os segredos fora do repositorio.
 5. Cadastrar a URL final no Claude.ai, ChatGPT ou Codex.
 
 ## 1. Gerar os segredos do MCP
@@ -97,7 +97,7 @@ Use o nome exato da conta Cloudflare onde o Worker sera publicado.
 8. Clique em `Create Token`.
 9. Copie o token gerado imediatamente.
 
-Esse valor sera usado pela integracao de build do provedor ou pela sessao local do Wrangler:
+Esse valor sera usado pela sessao local do Wrangler ou pelo controlador de deploy configurado:
 
 ```text
 CLOUDFLARE_API_TOKEN
@@ -114,7 +114,7 @@ No Cloudflare Dashboard:
 3. Procure `Account ID` na visao geral ou na lateral direita da pagina.
 4. Copie o valor.
 
-Esse valor sera usado pela integracao de build do provedor ou pela sessao local do Wrangler:
+Esse valor sera usado pela sessao local do Wrangler ou pelo controlador de deploy configurado:
 
 ```text
 CLOUDFLARE_ACCOUNT_ID
@@ -161,9 +161,7 @@ npx wrangler secret put MCP_BEARER_TOKEN # opcional para Codex
 
 No ambiente de producao deste projeto, Cloudflare Workers e o unico runtime de producao. O controlador de deploy deve ser unico por vez.
 
-O estado atual verificado e publicacao controlada por Wrangler. Se uma integracao de build do provedor for ativada no futuro, ela deve substituir o deploy manual por Wrangler como controlador unico, conectada ao repositorio de origem autorizado e a branch de producao configurada.
-
-A instalacao GitHub App da Cloudflare pode permanecer com acesso aos repositorios definidos pela conta para facilitar novos projetos. A restricao operacional deste projeto e por configuracao efetiva de build/deploy: nao habilite triggers de build aqui enquanto Wrangler for o controlador escolhido.
+O deploy deve ser controlado por um único mecanismo configurado no ambiente responsável pela publicação. Não armazene tokens, secrets ou identificadores de infraestrutura neste repositório.
 
 Configuracao esperada:
 

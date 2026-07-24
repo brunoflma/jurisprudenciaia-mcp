@@ -32,9 +32,9 @@ O guia mais simples está em [`docs/deploy-guide.html`](docs/deploy-guide.html).
 
 ## Arquitetura de produção
 
-A produção roda somente em Cloudflare Workers. O arquivo `wrangler.toml` é a fonte declarativa para runtime, domínio, assets estáticos e observabilidade. GitHub Actions executa apenas CI e validação por `wrangler deploy --dry-run`; o deploy de produção deve ter um único controlador. Hoje o caminho operacional é publicação controlada por Wrangler. Uma integração de build do provedor só deve ser usada se substituir Wrangler como controlador único.
+A produção roda em Cloudflare Workers. O arquivo `wrangler.toml` é a fonte declarativa para runtime, assets estáticos e observabilidade. O deploy deve ter um único controlador e os segredos devem permanecer fora do repositório.
 
-O servidor Node/Express continua no código para desenvolvimento local e testes, mas não é um alvo de hospedagem de produção neste repositório. O repositório público não deve conter workflow de deploy nem segredos.
+O servidor Node/Express continua no código para desenvolvimento local e testes, mas não é um alvo de hospedagem de produção neste repositório. Mantenha workflows de publicação e segredos fora do código distribuído.
 
 ## Ferramentas incluídas
 
@@ -85,8 +85,8 @@ Depois publique o Worker e conecte o cliente escolhido seguindo um destes guias:
 Depois de publicar o Worker, estes comandos ajudam a confirmar se está tudo certo:
 
 ```powershell
-npm run check:chatgpt-oauth -- https://<seu-worker>/mcp
-npm run check:codex-http -- https://<seu-worker>/mcp
+npm run check:chatgpt-oauth -- https://<seu-worker>.workers.dev/mcp
+npm run check:codex-http -- https://<seu-worker>.workers.dev/mcp
 ```
 
 Se o teste listar as ferramentas MCP, o servidor está respondendo corretamente.
