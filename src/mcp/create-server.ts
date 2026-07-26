@@ -16,7 +16,7 @@ export function createJurisprudenciaIaMcpServer(runner: JurisprudenciaIaRunner):
   const server = new McpServer(
     {
       name: "jurisprudenciaia-mcp",
-      version: "0.2.0"
+      version: "0.1.0"
     },
     {
       instructions: MCP_SERVER_INSTRUCTIONS
@@ -30,7 +30,7 @@ export function createJurisprudenciaIaMcpServer(runner: JurisprudenciaIaRunner):
         title: definition.title,
         description: definition.description,
         inputSchema: definition.inputSchema,
-        outputSchema: definition.outputSchema ?? TOOL_OUTPUT_SCHEMA,
+        outputSchema: TOOL_OUTPUT_SCHEMA,
         annotations: TOOL_ANNOTATIONS
       },
       async (input) => runTool(definition, input, runner)
@@ -51,23 +51,6 @@ async function runTool(
     const text = normalized.includeDebug && result.rawText
       ? `${result.markdown}\n\n## Debug\n\n\`\`\`text\n${result.rawText}\n\`\`\``
       : result.markdown;
-
-    if (definition.structuredOutput) {
-      if (!result.structured) {
-        return {
-          isError: true,
-          content: [{
-            type: "text" as const,
-            text: "A fonte nao retornou o contrato estruturado esperado."
-          }]
-        };
-      }
-
-      return {
-        structuredContent: { markdown: text, ...result.structured },
-        content: [{ type: "text" as const, text }]
-      };
-    }
 
     return {
       structuredContent: { markdown: text },

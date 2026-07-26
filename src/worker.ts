@@ -248,7 +248,7 @@ async function handleJsonRpc(
         serverInfo: {
           name: MCP_SERVER_NAME,
           title: MCP_SERVER_TITLE,
-          version: "0.2.0",
+          version: "0.1.0",
           description: MCP_SERVER_DESCRIPTION,
           icons: [
             {
@@ -279,7 +279,7 @@ async function handleJsonRpc(
           title: definition.title,
           description: definition.description,
           inputSchema: definition.jsonInputSchema,
-          outputSchema: definition.jsonOutputSchema ?? JSON_TOOL_OUTPUT_SCHEMA,
+          outputSchema: JSON_TOOL_OUTPUT_SCHEMA,
           annotations: TOOL_ANNOTATIONS
         }))
       });
@@ -310,11 +310,8 @@ async function callTool(
       ? `${result.markdown}\n\n## Debug\n\n\`\`\`text\n${result.rawText}\n\`\`\``
       : result.markdown;
 
-    const structuredContent = definition.structuredOutput && result.structured
-      ? { markdown: text, ...result.structured }
-      : { markdown: text };
     return jsonRpcResult(id, {
-      structuredContent,
+      structuredContent: { markdown: text },
       content: [{ type: "text", text }]
     });
   } catch (error) {

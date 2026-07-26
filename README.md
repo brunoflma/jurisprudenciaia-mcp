@@ -38,7 +38,7 @@ O servidor Node/Express continua no código para desenvolvimento local e testes,
 
 ## Ferramentas incluídas
 
-O conector publica quinze ferramentas MCP. As quatorze anteriores permanecem compatíveis.
+O conector publica quatorze ferramentas MCP.
 
 - `consultar_jurisprudenciaia`: consulta livre ao JurisprudênciaIA.
 - `pesquisar_jurisprudencia`: pesquisa direta por jurisprudência.
@@ -54,7 +54,6 @@ O conector publica quinze ferramentas MCP. As quatorze anteriores permanecem com
 - `historico_alteracoes_norma`: pesquisa alterações legislativas documentadas de uma norma.
 - `listar_overruling_tema`: pesquisa entendimentos expressamente superados ou revistos sobre um tema.
 - `buscar_precedentes_qualificados`: prioriza precedentes vinculantes ou qualificados e explicita sua categoria.
-- `pesquisar_jurisprudencia_estruturada`: devolve Markdown e dados tipados dos precedentes, com `schema_version`, `request_id`, estado completo/parcial/sem resultado, metadados ausentes e cautelas.
 
 As ferramentas especializadas são modos de consulta: elas transformam os campos recebidos em instruções estruturadas e usam o mesmo mecanismo de pesquisa do JurisprudênciaIA. Preferências, recortes e tribunais orientam a pesquisa textual; não são filtros, séries estatísticas ou bases legislativas independentes do serviço de origem.
 

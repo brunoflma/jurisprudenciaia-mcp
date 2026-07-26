@@ -159,8 +159,7 @@ describe("createJurisprudenciaIaMcpServer", () => {
           "buscar_citacoes_dispositivo",
           "historico_alteracoes_norma",
           "listar_overruling_tema",
-          "buscar_precedentes_qualificados",
-          "pesquisar_jurisprudencia_estruturada"
+          "buscar_precedentes_qualificados"
         ]);
         expect(tool).toMatchObject({
           name: "consultar_jurisprudenciaia",
@@ -430,81 +429,6 @@ describe("createJurisprudenciaIaMcpServer", () => {
         expect(receivedInput?.query).toContain(
           "Recorte estatistico solicitado: resultado predominante."
         );
-      }
-    );
-  });
-
-  it("returns typed precedent data from the structured search tool", async () => {
-    await withMcpClient(
-      {
-        async search() {
-          return {
-            markdown: "# Resultado JurisprudenciaIA\n\nTexto consolidado.",
-            structured: {
-              schema_version: "amf.jurisprudenciaia.result.v1",
-              request_id: "req-test",
-              status: "complete",
-              query: "responsabilidade civil por dano moral",
-              executed_at: "2026-07-25T20:00:00.000Z",
-              source_url: "https://www.jurisprudenciaia.com.br/",
-              answer: "O STJ exige dano, nexo e conduta.",
-              precedents: [
-                {
-                  reference: "J1",
-                  court: "STJ",
-                  case_number: "AgInt no AREsp 1234567",
-                  judgment_date: "2025-03-24",
-                  syllabus: "EMENTA: responsabilidade civil.",
-                  full_text: null,
-                  official_url: "https://example.test/acordao.pdf",
-                  missing_metadata: ["inteiro teor"]
-                }
-              ],
-              cautions: ["Confira a fonte oficial antes de citar."]
-            }
-          };
-        }
-      },
-      async (client) => {
-        const { tools } = await client.listTools();
-        const tool = tools.find(
-          (item) => item.name === "pesquisar_jurisprudencia_estruturada"
-        );
-
-        expect(tool?.outputSchema).toMatchObject({
-          type: "object",
-          required: [
-            "markdown",
-            "schema_version",
-            "request_id",
-            "status",
-            "query",
-            "executed_at",
-            "source_url",
-            "answer",
-            "precedents",
-            "cautions"
-          ]
-        });
-
-        const result = await client.callTool({
-          name: "pesquisar_jurisprudencia_estruturada",
-          arguments: { query: "responsabilidade civil por dano moral" }
-        });
-
-        expect(result).not.toMatchObject({ isError: true });
-        expect(result.structuredContent).toMatchObject({
-          schema_version: "amf.jurisprudenciaia.result.v1",
-          request_id: "req-test",
-          status: "complete",
-          precedents: [
-            {
-              reference: "J1",
-              court: "STJ",
-              case_number: "AgInt no AREsp 1234567"
-            }
-          ]
-        });
       }
     );
   });

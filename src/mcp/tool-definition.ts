@@ -23,65 +23,12 @@ export const TOOL_OUTPUT_SCHEMA = {
   markdown: z.string().describe("Resultado consolidado da consulta em Markdown.")
 };
 
-export const STRUCTURED_TOOL_OUTPUT_SCHEMA = {
-  markdown: z.string().describe("Resultado consolidado da consulta em Markdown."),
-  schema_version: z.literal("amf.jurisprudenciaia.result.v1"),
-  request_id: z.string(),
-  status: z.enum(["complete", "partial", "no_results", "clarification_required"]),
-  query: z.string(),
-  executed_at: z.string(),
-  source_url: z.string(),
-  answer: z.string(),
-  precedents: z.array(z.object({
-    reference: z.string(),
-    court: z.string().nullable(),
-    case_number: z.string().nullable(),
-    judgment_date: z.string().nullable(),
-    syllabus: z.string().nullable(),
-    full_text: z.string().nullable(),
-    official_url: z.string().nullable(),
-    missing_metadata: z.array(z.string())
-  })),
-  cautions: z.array(z.string())
-};
-
 export const JSON_TOOL_OUTPUT_SCHEMA = {
   type: "object",
   properties: {
     markdown: { type: "string" }
   },
   required: ["markdown"],
-  additionalProperties: false
-} as const;
-
-export const JSON_STRUCTURED_TOOL_OUTPUT_SCHEMA = {
-  type: "object",
-  properties: {
-    markdown: { type: "string" },
-    schema_version: { const: "amf.jurisprudenciaia.result.v1" },
-    request_id: { type: "string" },
-    status: { enum: ["complete", "partial", "no_results", "clarification_required"] },
-    query: { type: "string" },
-    executed_at: { type: "string" },
-    source_url: { type: "string" },
-    answer: { type: "string" },
-    precedents: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          reference: { type: "string" }, court: { type: ["string", "null"] },
-          case_number: { type: ["string", "null"] }, judgment_date: { type: ["string", "null"] },
-          syllabus: { type: ["string", "null"] }, full_text: { type: ["string", "null"] },
-          official_url: { type: ["string", "null"] }, missing_metadata: { type: "array", items: { type: "string" } }
-        },
-        required: ["reference", "court", "case_number", "judgment_date", "syllabus", "full_text", "official_url", "missing_metadata"],
-        additionalProperties: false
-      }
-    },
-    cautions: { type: "array", items: { type: "string" } }
-  },
-  required: ["markdown", "schema_version", "request_id", "status", "query", "executed_at", "source_url", "answer", "precedents", "cautions"],
   additionalProperties: false
 } as const;
 
@@ -98,9 +45,6 @@ export type JurisprudenciaIaToolDefinition = {
   description: string;
   inputSchema: ZodToolInputSchema;
   jsonInputSchema: JsonToolInputSchema;
-  jsonOutputSchema?: Record<string, unknown>;
-  outputSchema?: ZodToolInputSchema;
-  structuredOutput?: boolean;
   normalizeInput(input: unknown): Required<JurisprudenciaIaQuery>;
 };
 
@@ -905,27 +849,6 @@ export const TOOL_DEFINITIONS: JurisprudenciaIaToolDefinition[] = [
           DIRECT_ANSWER_INSTRUCTION,
           STRUCTURED_RESULT_INSTRUCTION
         ]),
-        maxWaitSeconds: normalizeMaxWait(parsed.max_wait_seconds),
-        includeDebug: false
-      };
-    }
-  },
-  {
-    name: "pesquisar_jurisprudencia_estruturada",
-    title: "Pesquisar jurisprudencia estruturada",
-    description:
-      "Consulta o JurisprudenciaIA e retorna Markdown mais precedentes tipados para integracao deterministica.",
-    inputSchema: searchZodToolInputSchema,
-    jsonInputSchema: searchJsonToolInputSchema,
-    outputSchema: STRUCTURED_TOOL_OUTPUT_SCHEMA,
-    jsonOutputSchema: JSON_STRUCTURED_TOOL_OUTPUT_SCHEMA,
-    structuredOutput: true,
-    normalizeInput(input) {
-      const parsed = searchInputSchema.parse(input);
-      const query = normalizeQuery(parsed.query);
-
-      return {
-        query: buildDirectSearchQuery(query),
         maxWaitSeconds: normalizeMaxWait(parsed.max_wait_seconds),
         includeDebug: false
       };

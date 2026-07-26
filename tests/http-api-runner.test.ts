@@ -180,25 +180,6 @@ describe("HttpApiJurisprudenciaIaRunner", () => {
       "INTEIRO TEOR: acordam os ministros em reconhecer a necessidade de demonstracao do dano"
     );
     expect(result.markdown).toContain("## Pontos de cautela");
-    expect(result.structured).toMatchObject({
-      schema_version: "amf.jurisprudenciaia.result.v1",
-      status: "complete",
-      query: "responsabilidade civil por dano moral",
-      source_url: "https://www.jurisprudenciaia.com.br/",
-      answer: expect.stringContaining("responsabilidade civil depende"),
-      precedents: [
-        {
-          reference: "J1",
-          court: "STJ",
-          case_number: "AgInt no AREsp 1234567",
-          judgment_date: "2025-03-24",
-          syllabus: "EMENTA: responsabilidade civil e dano moral.",
-          official_url: "https://example.test/acordao.pdf",
-          missing_metadata: []
-        }
-      ]
-    });
-    expect(result.structured?.request_id).toMatch(/^req_[0-9a-f-]{36}$/);
   });
 
   it("keeps precedent output useful when some metadata is missing", async () => {

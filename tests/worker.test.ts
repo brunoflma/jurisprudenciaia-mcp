@@ -571,7 +571,7 @@ describe("Cloudflare Worker MCP endpoint", () => {
         serverInfo: {
           name: "jurisprudenciaia-mcp",
           title: "JurisprudenciaIA MCP",
-          version: "0.2.0",
+          version: "0.1.0",
           description: expect.stringContaining("Conector MCP"),
           icons: [
             {
@@ -633,38 +633,8 @@ describe("Cloudflare Worker MCP endpoint", () => {
       "buscar_citacoes_dispositivo",
       "historico_alteracoes_norma",
       "listar_overruling_tema",
-      "buscar_precedentes_qualificados",
-      "pesquisar_jurisprudencia_estruturada"
+      "buscar_precedentes_qualificados"
     ]);
-  });
-
-  it("returns typed content through the Worker for the structured tool", async () => {
-    const structuredRunner: JurisprudenciaIaRunner = {
-      async search() {
-        return {
-          markdown: "# Resultado estruturado",
-          structured: {
-            schema_version: "amf.jurisprudenciaia.result.v1",
-            request_id: "req_test",
-            status: "complete",
-            query: "dano moral",
-            executed_at: "2026-07-25T00:00:00.000Z",
-            source_url: "https://www.jurisprudenciaia.com.br/",
-            answer: "Resposta",
-            precedents: [],
-            cautions: []
-          }
-        };
-      }
-    };
-    const response = await handleWorkerRequest(
-      await mcpRequest({ jsonrpc: "2.0", id: 2, method: "tools/call", params: {
-        name: "pesquisar_jurisprudencia_estruturada", arguments: { query: "dano moral" }
-      } }), env, structuredRunner
-    );
-    expect(await json(response)).toMatchObject({ result: { structuredContent: {
-      schema_version: "amf.jurisprudenciaia.result.v1", request_id: "req_test"
-    } } });
   });
 
   it("calls the tool and returns generated Markdown", async () => {

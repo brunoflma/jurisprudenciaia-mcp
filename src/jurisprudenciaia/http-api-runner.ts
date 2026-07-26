@@ -2,9 +2,7 @@ import { OperationalError } from "../errors.js";
 import type {
   JurisprudenciaIaQuery,
   JurisprudenciaIaRunner,
-  JurisprudenciaIaSearchResult,
-  JurisprudenciaIaStructuredPrecedent,
-  JurisprudenciaIaStructuredResult
+  JurisprudenciaIaSearchResult
 } from "./types.js";
 
 type FetchLike = (input: string | URL, init?: RequestInit) => Promise<Response>;
@@ -79,21 +77,14 @@ export class HttpApiJurisprudenciaIaRunner implements JurisprudenciaIaRunner {
     const session = await this.createSession(timeoutMs);
     const rawText = await this.callChat(input.query, session, timeoutMs);
     const parsed = parseJurisprudenciaIaStream(rawText);
-    const executedAtIso = new Date().toISOString();
     const markdown = formatJurisprudenciaIaMarkdown({
       query: input.query,
       sourceUrl: this.options.sourceUrl,
-      executedAtIso,
-      parsed
-    });
-    const structured = formatJurisprudenciaIaStructuredResult({
-      query: input.query,
-      sourceUrl: this.options.sourceUrl,
-      executedAtIso,
+      executedAtIso: new Date().toISOString(),
       parsed
     });
 
-    return input.includeDebug ? { markdown, rawText, structured } : { markdown, structured };
+    return input.includeDebug ? { markdown, rawText } : { markdown };
   }
 
   private async createSession(timeoutMs: number): Promise<ChatSession> {
@@ -470,65 +461,6 @@ function formatJurisprudenciaIaMarkdown(input: {
     "- Verifique se tribunal, data, ementa, inteiro teor e link correspondem ao caso concreto.",
     "- Quando algum metadado estiver ausente, valide a fonte no JurisprudenciaIA ou no site oficial do tribunal."
   ].join("\n");
-}
-
-function formatJurisprudenciaIaStructuredResult(input: {
-  query: string;
-  sourceUrl: string;
-  executedAtIso: string;
-  parsed: ParsedStream;
-}): JurisprudenciaIaStructuredResult {
-  const cited = filterCitedReferences(input.parsed.references, input.parsed.answer);
-  const precedents = cited.map(toStructuredPrecedent);
-  const status = input.parsed.requiresClarification
-    ? "clarification_required"
-    : input.parsed.answer.length < 40
-      ? "no_results"
-      : precedents.some((item) => item.missing_metadata.length > 0)
-        ? "partial"
-        : "complete";
-
-  return {
-    schema_version: "amf.jurisprudenciaia.result.v1",
-    request_id: `req_${crypto.randomUUID()}`,
-    status,
-    query: input.query,
-    executed_at: input.executedAtIso,
-    source_url: input.sourceUrl,
-    answer: input.parsed.answer,
-    precedents,
-    cautions: [
-      "Confira o inteiro teor e a fonte oficial antes de usar o precedente.",
-      "Metadados ausentes impedem que o resultado seja tratado como verificacao oficial."
-    ]
-  };
-}
-
-function toStructuredPrecedent(reference: RegistryUpdate): JurisprudenciaIaStructuredPrecedent {
-  const court = reference.tribunal?.trim().toUpperCase() || null;
-  const caseNumber = reference.titulo?.trim() || null;
-  const judgmentDate = formatDate(reference.precedente?.data_julgamento) ?? null;
-  const syllabus = reference.precedente?.texto_ementa?.trim() || null;
-  const fullText = referenceFullText(reference) ?? null;
-  const officialUrl = referenceLink(reference) ?? null;
-  const missingMetadata: string[] = [];
-
-  if (!caseNumber) missingMetadata.push("tipo/numero");
-  if (!judgmentDate) missingMetadata.push("data de julgamento");
-  if (!officialUrl) missingMetadata.push("link");
-  if (!syllabus) missingMetadata.push("ementa");
-  if (!fullText) missingMetadata.push("inteiro teor");
-
-  return {
-    reference: reference.ref ?? "sem-ref",
-    court,
-    case_number: caseNumber,
-    judgment_date: judgmentDate,
-    syllabus,
-    full_text: fullText,
-    official_url: officialUrl,
-    missing_metadata: missingMetadata
-  };
 }
 
 function summarizeMainThesis(answer: string): string {
