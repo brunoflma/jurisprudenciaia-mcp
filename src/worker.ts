@@ -1044,9 +1044,10 @@ function html(body: string, status = 200): Response {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "public, max-age=300",
-      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'",
+      "content-security-policy": "default-src 'none'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
       "referrer-policy": "no-referrer",
-      "x-content-type-options": "nosniff"
+      "x-content-type-options": "nosniff",
+      "strict-transport-security": "max-age=31536000; includeSubDomains; preload"
     }
   });
 }
@@ -1057,7 +1058,8 @@ function svg(body: string, status = 200): Response {
     headers: {
       "content-type": "image/svg+xml; charset=utf-8",
       "cache-control": "public, max-age=86400, immutable",
-      "x-content-type-options": "nosniff"
+      "x-content-type-options": "nosniff",
+      "strict-transport-security": "max-age=31536000; includeSubDomains; preload"
     }
   });
 }
@@ -1070,7 +1072,8 @@ function png(body: Uint8Array, status = 200): Response {
     headers: {
       "content-type": "image/png",
       "cache-control": "public, max-age=86400, immutable",
-      "x-content-type-options": "nosniff"
+      "x-content-type-options": "nosniff",
+      "strict-transport-security": "max-age=31536000; includeSubDomains; preload"
     }
   });
 }
@@ -1083,7 +1086,8 @@ function ico(body: Uint8Array, status = 200): Response {
     headers: {
       "content-type": "image/x-icon",
       "cache-control": "public, max-age=86400, immutable",
-      "x-content-type-options": "nosniff"
+      "x-content-type-options": "nosniff",
+      "strict-transport-security": "max-age=31536000; includeSubDomains; preload"
     }
   });
 }
@@ -1100,7 +1104,7 @@ function landingPage(): string {
     `<link rel="icon" href="${FAVICON_PNG_PATH}" type="image/png" sizes="96x96">`,
     `<link rel="icon" href="${FAVICON_SVG_PATH}" type="image/svg+xml">`,
     `<link rel="alternate icon" href="${FAVICON_ICO_PATH}" type="image/x-icon">`,
-    "<style>:root{color-scheme:dark}html,body{height:100%}body{margin:0;display:flex;align-items:center;justify-content:center;padding:2rem;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:radial-gradient(120% 120% at 50% 0%,#0b211e 0%,#071614 60%,#040d0c 100%);color:#e9e2cf}main{text-align:center}img{width:64px;height:64px}h1{margin:.9rem 0 .35rem;font-size:1.3rem;letter-spacing:.2px}p{margin:0;color:#8aa79c;font-size:.9rem}</style>",
+    `<link rel="stylesheet" href="/landing.css">`,
     "</head>",
     "<body>",
     "<main>",
