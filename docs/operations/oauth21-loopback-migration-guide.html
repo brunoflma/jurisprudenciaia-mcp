@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Guia OAuth 2.1 para MCPs</title>
+  <style>
+    :root { color-scheme: dark; --navy:#081326; --panel:#101f39; --line:#2c4163; --gold:#d7ae67; --text:#f2f0eb; --muted:#b3c0d5; --ok:#8cd7ac; --warn:#ffd584; --danger:#ff9b9b; }
+    * { box-sizing:border-box; } body { margin:0; font:16px/1.58 Inter,ui-sans-serif,system-ui,sans-serif; background:linear-gradient(145deg,#07101f,#0c1930 45%,#07101f); color:var(--text); }
+    main { max-width:980px; margin:auto; padding:48px 24px 72px; } .eyebrow { color:var(--gold); font:600 12px/1 ui-monospace,monospace; letter-spacing:.14em; text-transform:uppercase; }
+    h1 { max-width:760px; margin:12px 0; font-size:clamp(34px,6vw,62px); line-height:1.02; letter-spacing:-.04em; } h2 { margin:42px 0 14px; font-size:25px; } h3 { margin:0 0 8px; font-size:18px; }
+    p,li { color:var(--muted); } .lead { max-width:760px; font-size:19px; } .card { margin:22px 0; padding:24px; border:1px solid var(--line); border-radius:14px; background:rgba(16,31,57,.86); box-shadow:0 18px 48px rgba(0,0,0,.16); }
+    .flow { display:grid; gap:12px; grid-template-columns:repeat(5,1fr); align-items:center; text-align:center; } .flow span { padding:13px 8px; border:1px solid var(--line); border-radius:10px; color:var(--text); background:#0a172c; } .flow b { color:var(--gold); }
+    table { width:100%; border-collapse:collapse; margin:14px 0; } th,td { padding:13px; border:1px solid var(--line); text-align:left; vertical-align:top; } th { color:var(--text); background:#132541; }
+    code,pre { font:13px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace; } code { color:#ffe5ae; } pre { overflow:auto; padding:17px; border-radius:10px; background:#060d1b; border:1px solid #203554; color:#e6edf8; white-space:pre-wrap; }
+    .warning { border-left:4px solid var(--warn); } .danger { border-left:4px solid var(--danger); } .tag { display:inline-block; margin-right:6px; padding:3px 8px; border-radius:999px; font:600 11px ui-monospace,monospace; background:#213757; color:#dbeaff; }
+    .checklist { list-style:none; padding:0; } .checklist li { padding:10px 0 10px 34px; position:relative; border-bottom:1px solid var(--line); } .checklist li::before { content:'□'; position:absolute; left:4px; color:var(--gold); font-size:21px; line-height:1; }
+    @media (max-width:700px) { .flow { grid-template-columns:1fr; } .flow b { transform:rotate(90deg); } table { display:block; overflow-x:auto; } }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">MCPs privados · Cloudflare Workers</p>
+  <h1>Como deixar todos os MCPs prontos para OAuth 2.1 e aplicativos locais</h1>
+  <p class="lead">Este roteiro permite usar o mesmo MCP no Claude web e em aplicativos locais, como Claude-3p com <code>mcp-remote</code>, sem abrir callbacks inseguros.</p>
+
+  <section class="card">
+    <div class="flow"><span>Claude-3p</span><b>→</b><span>mcp-remote</span><b>→</b><span>Worker MCP</span></div>
+    <p>O <code>mcp-remote</code> inicia um pequeno servidor no seu computador. Ele escolhe uma porta livre, por exemplo <code>127.0.0.1:3334</code>, recebe o retorno do login e entrega a conexão ao Claude-3p.</p>
+  </section>
+
+  <h2>O que precisa mudar</h2>
+  <p>O Worker precisa aceitar dois tipos seguros de retorno após o login:</p>
+  <table>
+    <thead><tr><th>Uso</th><th>Callback aceito</th><th>Proteção</th></tr></thead>
+    <tbody>
+      <tr><td>Claude na web</td><td><code>https://claude.ai/api/mcp/auth_callback</code> ou <code>https://claude.com/api/mcp/auth_callback</code></td><td>URL HTTPS exata</td></tr>
+      <tr><td>Claude-3p e aplicativo local</td><td><code>http://127.0.0.1:&lt;porta&gt;/oauth/callback</code> ou <code>http://localhost:&lt;porta&gt;/oauth/callback</code></td><td>Cliente público + PKCE S256</td></tr>
+    </tbody>
+  </table>
+  <section class="card danger"><span class="tag">NÃO ACEITAR</span> IP de rede, <code>0.0.0.0</code>, IPv6, caminhos diferentes, parâmetros na URL ou domínios parecidos. O loopback é seguro porque aponta de volta para o computador do próprio usuário.</section>
+
+  <h2>Passo a passo</h2>
+  <section class="card"><h3>1. Trabalhar no local certo</h3><p>Faça a migração somente no repositório privado. Não publique o código no repositório público enquanto a validação não estiver concluída. Nunca coloque tokens, Client Secrets ou chaves em arquivos versionados.</p></section>
+  <section class="card"><h3>2. Ajustar a regra OAuth</h3><p>O código deve aceitar somente os callbacks da tabela. Para aplicativo local, a porta pode mudar; por isso o Worker valida o host, uma porta válida e o caminho exato <code>/oauth/callback</code>.</p><p>O nome declarado pelo aplicativo, como “Claude”, não prova sua identidade e não deve ser usado como regra de segurança.</p></section>
+  <section class="card"><h3>3. Exigir proteção extra no aplicativo local</h3><p>O cliente local não usa Client Secret. Ele deve usar OAuth Authorization Code com PKCE S256. Essa proteção impede o uso indevido de um código de autorização interceptado.</p></section>
+  <section class="card"><h3>4. Manter Google e a allowlist</h3><p>O Google continua retornando para o domínio HTTPS público do Worker. O Worker então entrega o resultado ao callback local autorizado. A lista privada de e-mails permitidos continua obrigatória.</p></section>
+  <section class="card"><h3>5. Rodar testes antes de publicar</h3><pre>npm test -- tests/worker.test.ts tests/oauth-google.test.ts
+npx wrangler deploy --dry-run</pre><p>Os testes provam que callbacks corretos funcionam e os inseguros são recusados. O dry-run confere bundle e configurações sem publicar nada.</p></section>
+  <section class="card"><h3>6. Publicar só o Worker</h3><pre>npx wrangler deploy</pre><p>Esse comando atualiza a Cloudflare, mas não faz commit nem envia código ao GitHub.</p></section>
+  <section class="card"><h3>7. Conferir a produção</h3><pre>npm run check:loopback-oauth</pre><p>O resultado correto é:</p><pre>Loopback OAuth OK: discovery, DCR publico, porta dinamica e PKCE S256 validados.</pre></section>
+
+  <h2>Configurar o Claude-3p</h2>
+  <pre>{
+  "mcpServers": {
+    "nome-do-mcp": {
+      "command": "npx",
+      "args": [
+        "-y", "mcp-remote@latest", "https://SEU-DOMINIO/mcp",
+        "--host", "127.0.0.1", "--transport", "http-only", "--auth-timeout", "120"
+      ]
+    }
+  }
+}</pre>
+  <ol>
+    <li>Salve a configuração e reinicie o Claude-3p.</li>
+    <li>Quando o navegador abrir, confirme o aviso de <strong>Aplicativo local</strong>.</li>
+    <li>Entre com uma conta Google presente na allowlist.</li>
+    <li>Volte ao Claude-3p e confirme que as ferramentas aparecem.</li>
+  </ol>
+
+  <h2>Problemas comuns</h2>
+  <section class="card warning"><h3>“Callback ou metadados OAuth não permitidos”</h3><p>O Worker publicado ainda está com a regra antiga ou o callback não segue o formato seguro. Rode o teste público, confira o domínio e publique o bundle validado. Não libere qualquer URL local para contornar isso.</p></section>
+  <section class="card warning"><h3>“Autorização inválida” depois do Google</h3><p>Confira se a conta está na allowlist, se os secrets Google existem e se o callback HTTPS cadastrado no Google coincide exatamente com o domínio do Worker.</p></section>
+  <section class="card warning"><h3>O secret parece salvo, mas o Worker não funciona</h3><p>No Windows, não envie secrets por pipeline para <code>wrangler secret put</code>. Digite o valor no prompt interativo e valide o Worker depois do deploy. A mensagem de sucesso não prova o conteúdo do secret.</p></section>
+  <section class="card warning"><h3>O Claude-3p insiste em conexão antiga</h3><p>Feche o aplicativo e limpe apenas o estado daquele MCP na pasta local <code>.mcp-auth</code>. Não apague a configuração dos outros conectores.</p></section>
+
+  <h2>Checklist final</h2>
+  <ul class="checklist">
+    <li>Callbacks web exatos continuam funcionando.</li>
+    <li>Loopback aceita somente <code>127.0.0.1</code> ou <code>localhost</code>, porta dinâmica e <code>/oauth/callback</code>.</li>
+    <li>Loopback exige cliente público e PKCE S256.</li>
+    <li>Testes e dry-run passaram.</li>
+    <li>Worker privado foi publicado e o teste público passou.</li>
+    <li>Claude-3p concluiu o login e carregou as ferramentas.</li>
+    <li>Nenhum segredo foi exposto e nenhum repositório público foi atualizado antes da validação.</li>
+  </ul>
+</main>
+</body>
+</html>
+

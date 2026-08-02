@@ -275,9 +275,15 @@ function formatClarificationRequest(inputs: Map<string, string>): string {
       continue;
     }
 
-    const options = request?.opcoes
-      ?.filter((option): option is string => typeof option === "string" && !!option.trim())
-      .map((option) => `- ${option.trim()}`);
+    // ⚡ Bolt: Fused filter and map into a single loop to reduce intermediate array allocations
+    const options: string[] = [];
+    if (request?.opcoes) {
+      for (const option of request.opcoes) {
+        if (typeof option === "string" && option.trim()) {
+          options.push(`- ${option.trim()}`);
+        }
+      }
+    }
 
     return [
       "A fonte solicitou um recorte antes de executar a pesquisa:",

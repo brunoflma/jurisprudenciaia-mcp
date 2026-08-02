@@ -1,1172 +1,339 @@
-import { isOperationalError } from "./errors.js";
-import { FixedWindowRateLimiter } from "./infra/rate-limit.js";
+import OAuthProvider from "@cloudflare/workers-oauth-provider";
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import { timingSafeEqual as nodeTimingSafeEqual } from "node:crypto";
+import { createJurisprudenciaIaMcpServer } from "./mcp/create-server.js";
 import { HttpApiJurisprudenciaIaRunner } from "./jurisprudenciaia/http-api-runner.js";
 import type { JurisprudenciaIaRunner } from "./jurisprudenciaia/types.js";
-import { MCP_SERVER_INSTRUCTIONS } from "./mcp/instructions.js";
-import {
-  findToolDefinition,
-  JSON_TOOL_OUTPUT_SCHEMA,
-  TOOL_ANNOTATIONS,
-  TOOL_DEFINITIONS
-} from "./mcp/tool-definition.js";
+import { classifyOAuthRedirectUri } from "./oauth/client-policy.js";
+import { handleGoogleAuth } from "./oauth/google-auth.js";
+import { validateMcpClientRegistration } from "./oauth/client-registration.js";
+import { OAuthStateStore } from "./oauth/state-store.js";
+import { FixedWindowRateLimiter } from "./infra/rate-limit.js";
 
-type WorkerEnv = {
-  MCP_OAUTH_CLIENT_ID?: string;
-  MCP_OAUTH_CLIENT_SECRET?: string;
-  MCP_ACCESS_TOKEN_SECRET?: string;
-  MCP_OAUTH_REDIRECT_URIS?: string;
-  MCP_BEARER_TOKEN?: string;
-  MCP_ACCESS_TOKEN_TTL_SECONDS?: string;
-  JURISPRUDENCIAIA_URL?: string;
-  REQUEST_TIMEOUT_MS?: string;
-  RATE_LIMIT_WINDOW_MS?: string;
-  RATE_LIMIT_MAX_REQUESTS?: string;
-  MCP_ICON_URL?: string;
-};
+import type { Env } from "./types.js";
 
-type JsonRpcRequest = {
-  jsonrpc?: string;
-  id?: string | number | null;
-  method?: string;
-  params?: Record<string, unknown>;
-};
+export { OAuthStateStore };
+export { classifyOAuthRedirectUri };
+export { validateMcpClientRegistration } from "./oauth/client-registration.js";
 
-type JsonRpcResponse = {
-  jsonrpc: "2.0";
-  id: string | number | null;
-  result?: unknown;
-  error?: {
-    code: number;
-    message: string;
-  };
-};
-
-type WorkerHandler = {
-  fetch(request: Request, env: WorkerEnv): Promise<Response>;
-};
-
-type OAuthSettings = {
-  clientId: string;
-  clientSecret: string;
-  signingSecret: string;
-  redirectUris: string[];
-};
-
-type SignedTokenPayload = {
-  typ: "authorization_code" | "access_token";
-  client_id: string;
-  exp: number;
-  iat: number;
-  aud?: string;
-  redirect_uri?: string;
-  code_challenge?: string;
-  code_challenge_method?: string;
-  nonce?: string;
-  scope?: string;
-};
-
-
-// ⚡ Bolt: Cache TextEncoder and TextDecoder globally to avoid the overhead of repeated instantiations
-// during hot paths and cryptographic operations. This improves string encoding performance by ~3x.
-const TEXT_ENCODER = new TextEncoder();
-const TEXT_DECODER = new TextDecoder();
 const MCP_PATH = "/mcp";
-const AUTHORIZE_PATH = "/oauth/authorize";
-const TOKEN_PATH = "/oauth/token";
-const PROTECTED_RESOURCE_METADATA_PATH = "/.well-known/oauth-protected-resource";
-const AUTHORIZATION_SERVER_METADATA_PATH = "/.well-known/oauth-authorization-server";
-const FAVICON_SVG_PATH = "/favicon.svg";
-const FAVICON_PNG_PATH = "/favicon.png";
-const FAVICON_ICO_PATH = "/favicon.ico";
-const APPLE_TOUCH_ICON_PATH = "/apple-touch-icon.png";
-const FAVICON_REVISION = "61982638";
-const FAVICON_PNG_URL_PATH = `${FAVICON_PNG_PATH}?v=${FAVICON_REVISION}`;
-const FAVICON_ICO_URL_PATH = `${FAVICON_ICO_PATH}?v=${FAVICON_REVISION}`;
-const APPLE_TOUCH_ICON_URL_PATH = `${APPLE_TOUCH_ICON_PATH}?v=${FAVICON_REVISION}`;
-const FAVICON_PNG_BASE64 =
-  "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";
-const FAVICON_ICO_BASE64 =
-  "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";
-const OAUTH_SCOPE = "jurisprudenciaia:search";
-const MCP_SERVER_NAME = "jurisprudenciaia-mcp";
-const MCP_SERVER_TITLE = "JurisprudenciaIA MCP";
-const MCP_SERVER_DESCRIPTION =
-  "Conector MCP auto-hospedado para consultar jurisprudencia via JurisprudenciaIA.";
-const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
-const MAX_REQUEST_BODY_BYTES = 4 * 1024 * 1024;
-const MAX_JSON_RPC_BATCH_SIZE = 10;
-const PUBLIC_MCP_METHODS = new Set(["initialize", "ping"]);
-
-let limiter: FixedWindowRateLimiter | undefined;
-let limiterConfigKey = "";
-
-export default {
-  async fetch(request, env) {
-    return handleWorkerRequest(request, env);
-  }
-} satisfies WorkerHandler;
-
-export async function handleWorkerRequest(
-  request: Request,
-  env: WorkerEnv,
-  runner?: JurisprudenciaIaRunner
-): Promise<Response> {
-  const url = new URL(request.url);
-  const origin = url.origin;
-
-  if (request.method === "GET" && url.pathname === "/healthz") {
-    return json({ ok: true, service: MCP_SERVER_NAME });
-  }
-
-  if (request.method === "GET" && url.pathname === "/") {
-    return html(landingPage());
-  }
-
-  if (request.method === "GET" && url.pathname === FAVICON_SVG_PATH) {
-    return svg(faviconSvg());
-  }
-
-  if (request.method === "GET" && url.pathname === FAVICON_PNG_PATH) {
-    return png(faviconPngBytes());
-  }
-
-  if (request.method === "GET" && url.pathname === FAVICON_ICO_PATH) {
-    return ico(faviconIcoBytes());
-  }
-
-  if (
-    request.method === "GET" &&
-    (url.pathname === PROTECTED_RESOURCE_METADATA_PATH ||
-      url.pathname === `${PROTECTED_RESOURCE_METADATA_PATH}${MCP_PATH}`)
-  ) {
-    return json(protectedResourceMetadata(origin, env));
-  }
-
-  if (
-    request.method === "GET" &&
-    (url.pathname === AUTHORIZATION_SERVER_METADATA_PATH ||
-      url.pathname === `${AUTHORIZATION_SERVER_METADATA_PATH}${MCP_PATH}`)
-  ) {
-    return json(authorizationServerMetadata(origin, env));
-  }
-
-  const decision = getLimiter(env).allow(clientKey(request));
-  if (!decision.allowed) {
-    return json(
-      { error: "rate_limited" },
-      429,
-      { "Retry-After": Math.ceil(decision.retryAfterMs / 1000).toString() }
-    );
-  }
-
-  if (request.method === "GET" && url.pathname === AUTHORIZE_PATH) {
-    return handleAuthorize(request, env, origin);
-  }
-
-  if (request.method === "POST" && url.pathname === TOKEN_PATH) {
-    return handleToken(request, env, origin);
-  }
-
-  if (request.method !== "POST" || url.pathname !== MCP_PATH) {
-    return json({ error: "not_found" }, 404);
-  }
-
-  if (isOversizedByContentLength(request)) {
-    return json(jsonRpcError(null, -32700, "Payload too large"), 413);
-  }
-
-  let payload: unknown;
-  try {
-    payload = await readLimitedJson(request, MAX_REQUEST_BODY_BYTES);
-  } catch (error) {
-    if (error instanceof PayloadTooLargeError) {
-      return json(jsonRpcError(null, -32700, "Payload too large"), 413);
-    }
-    return json(jsonRpcError(null, -32700, "Parse error"), 400);
-  }
-
-  if (Array.isArray(payload) && payload.length > MAX_JSON_RPC_BATCH_SIZE) {
-    return json(jsonRpcError(null, -32600, "Batch size exceeds limit"), 400);
-  }
-
-  // Discovery methods (initialize/ping/notifications) stay public so connector
-  // clients can read serverInfo (name, title, icons) before completing OAuth.
-  // Anything that touches data (tools/list, tools/call) still requires a token.
-  if (requiresAuthorization(payload)) {
-    const unauthorized = await authorizeMcpRequest(request, env, origin);
-    if (unauthorized) {
-      return unauthorized;
-    }
-  }
-
-  const activeRunner = runner ?? createRunner(env);
-  const responses = Array.isArray(payload)
-    ? await Promise.all(payload.map((item) => handleJsonRpc(item, activeRunner, origin, env)))
-    : [await handleJsonRpc(payload, activeRunner, origin, env)];
-  const visibleResponses = responses.filter((item): item is JsonRpcResponse => item !== null);
-
-  if (visibleResponses.length === 0) {
-    return new Response(null, { status: 202 });
-  }
-
-  return json(Array.isArray(payload) ? visibleResponses : visibleResponses[0]);
-}
-
-function createRunner(env: WorkerEnv): JurisprudenciaIaRunner {
-  return new HttpApiJurisprudenciaIaRunner({
-    sourceUrl: env.JURISPRUDENCIAIA_URL?.trim() || "https://www.jurisprudenciaia.com.br/",
-    requestTimeoutMs: positiveInteger(env.REQUEST_TIMEOUT_MS, 120000)
-  });
-}
-
-async function handleJsonRpc(
-  payload: unknown,
-  runner: JurisprudenciaIaRunner,
-  origin: string,
-  env: WorkerEnv
-): Promise<JsonRpcResponse | null> {
-  if (!isJsonRpcRequest(payload)) {
-    return jsonRpcError(null, -32600, "Invalid Request");
-  }
-
-  const id = payload.id ?? null;
-  if (payload.id === undefined) {
-    return null;
-  }
-
-  switch (payload.method) {
-    case "initialize": {
-      const pngIconUri = logoUri(origin, env);
-      const icoIconUri = `${origin}${FAVICON_ICO_URL_PATH}`;
-
-      return jsonRpcResult(id, {
-        protocolVersion: "2025-11-25",
-        capabilities: {
-          tools: {}
-        },
-        instructions: MCP_SERVER_INSTRUCTIONS,
-        serverInfo: {
-          name: MCP_SERVER_NAME,
-          title: MCP_SERVER_TITLE,
-          version: "0.1.0",
-          description: MCP_SERVER_DESCRIPTION,
-          icons: [
-            {
-              src: pngIconUri,
-              mimeType: "image/png",
-              sizes: ["256x256"]
-            },
-            {
-              src: icoIconUri,
-              mimeType: "image/x-icon",
-              sizes: ["16x16"]
-            }
-          ],
-          websiteUrl: `${origin}/`
-        },
-        _meta: {
-          "jurisprudenciaia-mcp/logo_uri": pngIconUri,
-          "jurisprudenciaia-mcp/icon_uri": pngIconUri,
-          "jurisprudenciaia-mcp/favicon_uri": icoIconUri
-        }
-      });
-    }
-
-    case "tools/list":
-      return jsonRpcResult(id, {
-        tools: TOOL_DEFINITIONS.map((definition) => ({
-          name: definition.name,
-          title: definition.title,
-          description: definition.description,
-          inputSchema: definition.jsonInputSchema,
-          outputSchema: JSON_TOOL_OUTPUT_SCHEMA,
-          annotations: TOOL_ANNOTATIONS
-        }))
-      });
-
-    case "tools/call":
-      return callTool(id, payload.params, runner);
-
-    default:
-      return jsonRpcError(id, -32601, "Method not found");
-  }
-}
-
-async function callTool(
-  id: string | number | null,
-  params: Record<string, unknown> | undefined,
-  runner: JurisprudenciaIaRunner
-): Promise<JsonRpcResponse> {
-  const definition = findToolDefinition(params?.name);
-
-  if (!definition) {
-    return jsonRpcError(id, -32602, "Unknown tool");
-  }
-
-  try {
-    const input = definition.normalizeInput(params?.arguments);
-    const result = await runner.search(input);
-    const text = input.includeDebug && result.rawText
-      ? `${result.markdown}\n\n## Debug\n\n\`\`\`text\n${result.rawText}\n\`\`\``
-      : result.markdown;
-
-    return jsonRpcResult(id, {
-      structuredContent: { markdown: text },
-      content: [{ type: "text", text }]
-    });
-  } catch (error) {
-    const text = isOperationalError(error)
-      ? `Falha ao consultar JurisprudenciaIA (${error.code}): ${error.message}`
-      : "Falha inesperada ao consultar JurisprudenciaIA. Tente novamente mais tarde.";
-
-    return jsonRpcResult(id, {
-      isError: true,
-      content: [{ type: "text", text }]
-    });
-  }
-}
-
-async function handleAuthorize(request: Request, env: WorkerEnv, origin: string): Promise<Response> {
-  const settings = oauthSettings(env);
-  const url = new URL(request.url);
-  const redirectUri = url.searchParams.get("redirect_uri") ?? "";
-  const state = url.searchParams.get("state") ?? undefined;
-
-  if (!isHttpUrl(redirectUri)) {
-    return json({ error: "invalid_request", error_description: "Invalid redirect_uri." }, 400);
-  }
-
-  if (url.searchParams.get("client_id") !== settings.clientId) {
-    return json({ error: "invalid_client", error_description: "Unknown OAuth client." }, 400);
-  }
-
-  if (!settings.redirectUris.includes(redirectUri)) {
-    return json({ error: "invalid_request", error_description: "Unauthorized redirect_uri." }, 400);
-  }
-
-  const fail = (error: string, description: string) =>
-    oauthRedirectError(redirectUri, state, error, description);
-
-  if (url.searchParams.get("response_type") !== "code") {
-    return fail("unsupported_response_type", "Only authorization code flow is supported.");
-  }
-
-  const resource = url.searchParams.get("resource") ?? mcpResource(origin);
-  if (resource !== mcpResource(origin)) {
-    return fail("invalid_target", "Invalid resource.");
-  }
-
-  const codeChallenge = url.searchParams.get("code_challenge") ?? undefined;
-  const codeChallengeMethod = url.searchParams.get("code_challenge_method") ?? undefined;
-  if (codeChallenge && codeChallengeMethod !== "S256") {
-    return fail("invalid_request", "Only PKCE S256 is supported.");
-  }
-  if (!codeChallenge && codeChallengeMethod) {
-    return fail("invalid_request", "code_challenge_method requires code_challenge.");
-  }
-
-  const requestedScope = url.searchParams.get("scope")?.trim();
-  const scope = requestedScope || OAUTH_SCOPE;
-  if (!scope.split(/\s+/).every((item) => item === OAUTH_SCOPE)) {
-    return fail("invalid_scope", `Only ${OAUTH_SCOPE} is supported.`);
-  }
-
-  const now = epochSeconds();
-  const code = await signToken(
-    {
-      typ: "authorization_code",
-      client_id: settings.clientId,
-      redirect_uri: redirectUri,
-      code_challenge: codeChallenge,
-      code_challenge_method: codeChallenge ? "S256" : undefined,
-      aud: resource,
-      scope,
-      iat: now,
-      exp: now + 300,
-      nonce: randomId()
-    },
-    settings.signingSecret
-  );
-
-  const target = new URL(redirectUri);
-  target.searchParams.set("code", code);
-  if (state) {
-    target.searchParams.set("state", state);
-  }
-
-  return new Response(null, {
-    status: 302,
-    headers: {
-      Location: target.toString(),
-      "Cache-Control": "no-store",
-      Pragma: "no-cache"
-    }
-  });
-}
-
-async function handleToken(request: Request, env: WorkerEnv, origin: string): Promise<Response> {
-  const settings = oauthSettings(env);
-  if (isOversizedByContentLength(request)) {
-    return oauthTokenError("invalid_request", "Payload too large", 413);
-  }
-
-  let form: URLSearchParams;
-
-  try {
-    form = await readLimitedUrlEncodedForm(request, MAX_REQUEST_BODY_BYTES);
-  } catch (error) {
-    if (error instanceof PayloadTooLargeError) {
-      return oauthTokenError("invalid_request", "Payload too large", 413);
-    }
-    return oauthTokenError("invalid_request", "Expected form encoded body.");
-  }
-
-  const client = oauthClientCredentials(request, form);
-  if (
-    client.id !== settings.clientId ||
-    !client.secret ||
-    !constantTimeEqual(client.secret, settings.clientSecret)
-  ) {
-    return oauthTokenError("invalid_client", "Invalid client credentials.", 401);
-  }
-
-  if (formValue(form, "grant_type") !== "authorization_code") {
-    return oauthTokenError("unsupported_grant_type", "Only authorization_code is supported.");
-  }
-
-  const code = formValue(form, "code");
-  const redirectUri = formValue(form, "redirect_uri");
-  const codeVerifier = formValue(form, "code_verifier");
-  if (!code || !redirectUri) {
-    return oauthTokenError("invalid_request", "Missing authorization code or redirect_uri.");
-  }
-
-  const payload = await verifyToken<SignedTokenPayload>(code, settings.signingSecret);
-  if (
-    !payload ||
-    payload.typ !== "authorization_code" ||
-    payload.client_id !== settings.clientId ||
-    payload.redirect_uri !== redirectUri ||
-    payload.aud !== mcpResource(origin)
-  ) {
-    return oauthTokenError("invalid_grant", "Invalid authorization code.");
-  }
-
-  if (payload.code_challenge) {
-    if (!codeVerifier) {
-      return oauthTokenError("invalid_request", "Missing code_verifier.");
-    }
-
-    const expectedChallenge = await pkceChallenge(codeVerifier);
-    if (!constantTimeEqual(payload.code_challenge, expectedChallenge)) {
-      return oauthTokenError("invalid_grant", "Invalid PKCE verifier.");
-    }
-  }
-
-  const ttl = positiveInteger(env.MCP_ACCESS_TOKEN_TTL_SECONDS, DEFAULT_ACCESS_TOKEN_TTL_SECONDS);
-  const now = epochSeconds();
-  const accessToken = await signToken(
-    {
-      typ: "access_token",
-      client_id: settings.clientId,
-      aud: mcpResource(origin),
-      scope: payload.scope ?? OAUTH_SCOPE,
-      iat: now,
-      exp: now + ttl
-    },
-    settings.signingSecret
-  );
-
-  return json(
-    {
-      access_token: accessToken,
-      token_type: "Bearer",
-      expires_in: ttl,
-      scope: payload.scope ?? OAUTH_SCOPE
-    },
-    200,
-    {
-      "cache-control": "no-store",
-      pragma: "no-cache"
-    }
-  );
-}
-
-async function authorizeMcpRequest(
-  request: Request,
-  env: WorkerEnv,
-  origin: string
-): Promise<Response | null> {
-  const authorization = request.headers.get("authorization") ?? "";
-  const match = /^Bearer\s+(.+)$/i.exec(authorization);
-  if (!match) {
-    return unauthorized(origin);
-  }
-
-  const bearerToken = match[1].trim();
-  if (!bearerToken) {
-    return unauthorized(origin);
-  }
-
-  const staticBearerToken = configuredBearerToken(env);
-  if (staticBearerToken && constantTimeEqual(bearerToken, staticBearerToken)) {
-    return null;
-  }
-
-  const settings = oauthSettings(env);
-  const payload = await verifyToken<SignedTokenPayload>(bearerToken, settings.signingSecret);
-  if (
-    !payload ||
-    payload.typ !== "access_token" ||
-    payload.client_id !== settings.clientId ||
-    payload.aud !== mcpResource(origin)
-  ) {
-    return unauthorized(origin);
-  }
-
-  return null;
-}
-
-function protectedResourceMetadata(origin: string, env: WorkerEnv): Record<string, unknown> {
-  return {
-    resource: mcpResource(origin),
-    resource_name: MCP_SERVER_TITLE,
-    logo_uri: logoUri(origin, env),
-    resource_documentation: `${origin}/`,
-    authorization_servers: [origin],
-    bearer_methods_supported: ["header"],
-    scopes_supported: [OAUTH_SCOPE]
-  };
-}
-
-function authorizationServerMetadata(origin: string, env: WorkerEnv): Record<string, unknown> {
-  return {
-    issuer: origin,
-    authorization_endpoint: `${origin}${AUTHORIZE_PATH}`,
-    token_endpoint: `${origin}${TOKEN_PATH}`,
-    service_documentation: `${origin}/`,
-    logo_uri: logoUri(origin, env),
-    response_types_supported: ["code"],
-    grant_types_supported: ["authorization_code"],
-    token_endpoint_auth_methods_supported: ["client_secret_basic", "client_secret_post"],
-    code_challenge_methods_supported: ["S256"],
-    scopes_supported: [OAUTH_SCOPE]
-  };
-}
-
-function oauthSettings(env: WorkerEnv): OAuthSettings {
-  const clientId = required(env.MCP_OAUTH_CLIENT_ID, "MCP_OAUTH_CLIENT_ID");
-  const clientSecret = required(env.MCP_OAUTH_CLIENT_SECRET, "MCP_OAUTH_CLIENT_SECRET");
-  const signingSecret = required(env.MCP_ACCESS_TOKEN_SECRET, "MCP_ACCESS_TOKEN_SECRET");
-  const redirectUrisRaw = env.MCP_OAUTH_REDIRECT_URIS?.trim();
-
-  const redirectUris: string[] = [];
-  if (redirectUrisRaw) {
-    // ⚡ Bolt: Fusing split, map, and filter into a single loop
-    // to reduce intermediate array allocations on the hot path.
-    for (const item of redirectUrisRaw.split(",")) {
-      const trimmed = item.trim();
-      if (trimmed.length > 0) {
-        redirectUris.push(trimmed);
-      }
-    }
-  }
-
-  if (clientId.length < 8) {
-    throw new Error("MCP_OAUTH_CLIENT_ID must have at least 8 characters");
-  }
-
-  if (clientSecret.length < 24) {
-    throw new Error("MCP_OAUTH_CLIENT_SECRET must have at least 24 characters");
-  }
-
-  if (signingSecret.length < 32) {
-    throw new Error("MCP_ACCESS_TOKEN_SECRET must have at least 32 characters");
-  }
-
-  return { clientId, clientSecret, signingSecret, redirectUris };
-}
-
-function configuredBearerToken(env: WorkerEnv): string | undefined {
-  const token = env.MCP_BEARER_TOKEN?.trim();
-  if (!token) {
-    return undefined;
-  }
-
-  if (token.length < 32) {
-    throw new Error("MCP_BEARER_TOKEN must have at least 32 characters");
-  }
-
-  return token;
-}
-
-function oauthClientCredentials(request: Request, form: URLSearchParams): { id?: string; secret?: string } {
-  const authorization = request.headers.get("authorization") ?? "";
-  const match = /^Basic\s+(.+)$/i.exec(authorization);
-
-  if (match) {
-    try {
-      const decoded = atob(match[1]);
-      const separator = decoded.indexOf(":");
-      if (separator !== -1) {
-        return {
-          id: safeDecode(decoded.slice(0, separator)),
-          secret: safeDecode(decoded.slice(separator + 1))
-        };
-      }
-    } catch {
-      return {};
-    }
-  }
-
-  return {
-    id: formValue(form, "client_id"),
-    secret: formValue(form, "client_secret")
-  };
-}
-
-function oauthRedirectError(
-  redirectUri: string,
-  state: string | undefined,
-  error: string,
-  description: string
-): Response {
-  if (!isHttpUrl(redirectUri)) {
-    return json({ error, error_description: description }, 400);
-  }
-
-  const target = new URL(redirectUri);
-  target.searchParams.set("error", error);
-  target.searchParams.set("error_description", description);
-  if (state) {
-    target.searchParams.set("state", state);
-  }
-
-  return new Response(null, {
-    status: 302,
-    headers: {
-      Location: target.toString(),
-      "Cache-Control": "no-store",
-      Pragma: "no-cache"
-    }
-  });
-}
-
-function oauthTokenError(error: string, description: string, status = 400): Response {
-  return json({ error, error_description: description }, status, {
-    "cache-control": "no-store",
-    pragma: "no-cache"
-  });
-}
-
-function unauthorized(origin: string): Response {
-  return json(
-    { error: "unauthorized" },
-    401,
-    {
-      "WWW-Authenticate": `Bearer resource_metadata="${origin}${PROTECTED_RESOURCE_METADATA_PATH}", scope="${OAUTH_SCOPE}"`
-    }
-  );
-}
-
-async function signToken(payload: SignedTokenPayload, secret: string): Promise<string> {
-  const encodedPayload = base64UrlEncodeBytes(
-    TEXT_ENCODER.encode(JSON.stringify(payload))
-  );
-  const signature = await hmacSign(encodedPayload, secret);
-  return `${encodedPayload}.${base64UrlEncodeBytes(signature)}`;
-}
-
-async function verifyToken<T extends SignedTokenPayload>(
-  token: string,
-  secret: string
-): Promise<T | null> {
-  const [encodedPayload, encodedSignature, extra] = token.split(".");
-  if (!encodedPayload || !encodedSignature || extra !== undefined) {
-    return null;
-  }
-
-  const valid = await hmacVerify(
-    encodedPayload,
-    base64UrlDecodeBytes(encodedSignature),
-    secret
-  );
-  if (!valid) {
-    return null;
-  }
-
-  let payload: T;
-  try {
-    payload = JSON.parse(TEXT_DECODER.decode(base64UrlDecodeBytes(encodedPayload))) as T;
-  } catch {
-    return null;
-  }
-
-  if (!Number.isFinite(payload.exp) || payload.exp < epochSeconds()) {
-    return null;
-  }
-
-  return payload;
-}
-
-async function hmacSign(data: string, secret: string): Promise<Uint8Array> {
-  const key = await hmacKey(secret, ["sign"]);
-  const signature = await crypto.subtle.sign("HMAC", key, TEXT_ENCODER.encode(data));
-  return new Uint8Array(signature);
-}
-
-async function hmacVerify(data: string, signature: Uint8Array, secret: string): Promise<boolean> {
-  const key = await hmacKey(secret, ["verify"]);
-  const signatureBuffer = new Uint8Array(signature).buffer as ArrayBuffer;
-  return crypto.subtle.verify("HMAC", key, signatureBuffer, TEXT_ENCODER.encode(data));
-}
-
-// ⚡ Bolt: Cache imported HMAC keys at the module level to avoid the overhead of
-// repeated crypto.subtle.importKey calls during hot paths (OAuth/JWT sign/verify).
-// The cache is keyed by the secret and usages. In Cloudflare Workers, module-level
-// variables persist across requests within the same isolate, providing safe caching.
-const hmacKeyCache = new Map<string, CryptoKey>();
-
-async function hmacKey(secret: string, usages: KeyUsage[]): Promise<CryptoKey> {
-  const cacheKey = `${secret}:${usages.join(",")}`;
-  let key = hmacKeyCache.get(cacheKey);
-  if (!key) {
-    key = await crypto.subtle.importKey(
-      "raw",
-      TEXT_ENCODER.encode(secret),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      usages
-    );
-    hmacKeyCache.set(cacheKey, key);
-  }
-  return key;
-}
-
-async function pkceChallenge(verifier: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", TEXT_ENCODER.encode(verifier));
-  return base64UrlEncodeBytes(new Uint8Array(digest));
-}
-
-function base64UrlEncodeBytes(bytes: Uint8Array): string {
-  // ⚡ Bolt: Use chunked String.fromCharCode.apply to avoid byte-by-byte string
-  // concatenation and reduce intermediate array allocations, improving throughput
-  // and avoiding V8 call stack limits for large byte arrays.
-  let binary = "";
-  const chunkSize = 8192;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode.apply(
-      null,
-      bytes.subarray(i, i + chunkSize) as unknown as number[]
-    );
-  }
-
-  return btoa(binary)
-    .replaceAll("+", "-")
-    .replaceAll("/", "_")
-    .replace(/=+$/, "");
-}
-
-function base64UrlDecodeBytes(value: string): Uint8Array {
-  const normalized = value.replaceAll("-", "+").replaceAll("_", "/");
-  const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
-
-  try {
-    const binary = atob(padded);
-    const bytes = new Uint8Array(binary.length);
-
-    for (let index = 0; index < binary.length; index += 1) {
-      bytes[index] = binary.charCodeAt(index);
-    }
-
-    return bytes;
-  } catch {
-    return new Uint8Array(0);
-  }
-}
-
-class PayloadTooLargeError extends Error {}
-
-function isOversizedByContentLength(request: Request): boolean {
-  const value = request.headers.get("content-length");
-  if (!value) return false;
-
-  const contentLength = Number(value);
-  return Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BODY_BYTES;
-}
-
-async function readLimitedUrlEncodedForm(request: Request, maxBytes: number): Promise<URLSearchParams> {
-  const contentType = request.headers.get("content-type") ?? "";
-  if (!contentType.toLowerCase().startsWith("application/x-www-form-urlencoded")) {
-    throw new Error("Unsupported token request content type.");
-  }
-
-  const reader = request.body?.getReader();
-  if (!reader) {
-    return new URLSearchParams();
-  }
-
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (!value) continue;
-
-    total += value.byteLength;
-    if (total > maxBytes) {
-      throw new PayloadTooLargeError("Request body exceeds maximum size.");
-    }
-    chunks.push(value);
-  }
-
-  const body = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    body.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-
-  return new URLSearchParams(TEXT_DECODER.decode(body));
-}
-
-async function readLimitedJson(request: Request, maxBytes: number): Promise<unknown> {
-  const contentType = request.headers.get("content-type") ?? "";
-  if (!contentType.toLowerCase().startsWith("application/json")) {
-    throw new Error("Unsupported JSON request content type.");
-  }
-
-  const reader = request.body?.getReader();
-  if (!reader) {
-    throw new Error("Missing JSON request body.");
-  }
-
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (!value) continue;
-
-    total += value.byteLength;
-    if (total > maxBytes) {
-      throw new PayloadTooLargeError("Request body exceeds maximum size.");
-    }
-    chunks.push(value);
-  }
-
-  const body = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    body.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-
-  return JSON.parse(TEXT_DECODER.decode(body));
-}
-
-function formValue(form: URLSearchParams, name: string): string | undefined {
-  const value = form.get(name);
-  return value ?? undefined;
-}
-
-function safeDecode(value: string): string {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
-}
-
-function mcpResource(origin: string): string {
-  return `${origin}${MCP_PATH}`;
-}
-
-function logoUri(origin: string, env: WorkerEnv): string {
-  return externalIconUri(env) ?? `${origin}${FAVICON_PNG_URL_PATH}`;
-}
-
-function constantTimeEqual(left: string, right: string): boolean {
-  if (left.length !== right.length || left.length > 2000) {
-    return false;
-  }
-
-  const leftBytes = TEXT_ENCODER.encode(left);
-  const rightBytes = TEXT_ENCODER.encode(right);
-
-  if (leftBytes.length !== rightBytes.length) {
-    return false;
-  }
-
-  let diff = 0;
-  for (let index = 0; index < leftBytes.length; index += 1) {
-    diff |= leftBytes[index] ^ rightBytes[index];
-  }
-
-  return diff === 0;
-}
-
-function externalIconUri(env: WorkerEnv): string | undefined {
-  const raw = env.MCP_ICON_URL?.trim();
-  if (!raw) {
-    return undefined;
-  }
-
-  try {
-    const url = new URL(raw);
-    return url.protocol === "https:" ? url.toString() : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function randomId(): string {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  return base64UrlEncodeBytes(bytes);
-}
-
-function isHttpUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-function required(value: string | undefined, name: string): string {
-  const trimmed = value?.trim();
-  if (!trimmed) {
-    throw new Error(`${name} is required`);
-  }
-
-  return trimmed;
-}
-
-function isJsonRpcRequest(value: unknown): value is JsonRpcRequest {
-  return !!value && typeof value === "object" && (value as JsonRpcRequest).jsonrpc === "2.0";
-}
-
-function isPublicMcpMethod(method: unknown): boolean {
-  return (
-    typeof method === "string" &&
-    (PUBLIC_MCP_METHODS.has(method) || method.startsWith("notifications/"))
-  );
-}
-
-function requiresAuthorization(payload: unknown): boolean {
-  const items = Array.isArray(payload) ? payload : [payload];
-  if (items.length === 0) {
-    return true;
-  }
-
-  return items.some((item) => {
-    if (!item || typeof item !== "object") {
-      return true;
-    }
-
-    return !isPublicMcpMethod((item as JsonRpcRequest).method);
-  });
-}
-
-function jsonRpcResult(id: string | number | null, result: unknown): JsonRpcResponse {
-  return {
-    jsonrpc: "2.0",
-    id,
-    result
-  };
-}
-
-function jsonRpcError(
-  id: string | number | null,
-  code: number,
-  message: string
-): JsonRpcResponse {
-  return {
-    jsonrpc: "2.0",
-    id,
-    error: { code, message }
-  };
-}
-
-function getLimiter(env: WorkerEnv): FixedWindowRateLimiter {
-  const windowMs = positiveInteger(env.RATE_LIMIT_WINDOW_MS, 60000);
-  const maxRequests = positiveInteger(env.RATE_LIMIT_MAX_REQUESTS, 30);
-  const key = `${windowMs}:${maxRequests}`;
-
-  if (!limiter || limiterConfigKey !== key) {
-    limiter = new FixedWindowRateLimiter(windowMs, maxRequests);
-    limiterConfigKey = key;
-  }
-
-  return limiter;
-}
-
-function positiveInteger(raw: string | undefined, fallback: number): number {
-  const value = raw?.trim();
-  if (!value) {
-    return fallback;
-  }
-
-  const number = Number(value);
-  if (!Number.isInteger(number) || number <= 0) {
-    throw new Error("Expected a positive integer");
-  }
-
-  return number;
-}
-
-function epochSeconds(): number {
-  return Math.floor(Date.now() / 1000);
-}
-
-function clientKey(request: Request): string {
-  return request.headers.get("cf-connecting-ip") ?? "unknown";
-}
-
-function json(body: unknown, status = 200, headers: HeadersInit = {}): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "content-type": "application/json",
-      "x-content-type-options": "nosniff",
-      ...headers
-    }
-  });
-}
-
-function html(body: string, status = 200): Response {
-  return new Response(body, {
-    status,
-    headers: {
-      "content-type": "text/html; charset=utf-8",
-      "cache-control": "public, max-age=300",
-      "content-security-policy": "default-src 'none'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
-      "referrer-policy": "no-referrer",
-      "x-content-type-options": "nosniff",
-      "strict-transport-security": "max-age=31536000; includeSubDomains; preload"
-    }
-  });
-}
-
-function svg(body: string, status = 200): Response {
-  return new Response(body, {
-    status,
-    headers: {
-      "content-type": "image/svg+xml; charset=utf-8",
-      "cache-control": "public, max-age=86400, immutable",
-      "x-content-type-options": "nosniff",
-      "strict-transport-security": "max-age=31536000; includeSubDomains; preload"
-    }
-  });
-}
-
-function png(body: Uint8Array, status = 200): Response {
-  const buffer = body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) as ArrayBuffer;
-
-  return new Response(buffer, {
-    status,
-    headers: {
-      "content-type": "image/png",
-      "cache-control": "public, max-age=86400, immutable",
-      "x-content-type-options": "nosniff",
-      "strict-transport-security": "max-age=31536000; includeSubDomains; preload"
-    }
-  });
-}
-
-function ico(body: Uint8Array, status = 200): Response {
-  const buffer = body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) as ArrayBuffer;
-
-  return new Response(buffer, {
-    status,
-    headers: {
-      "content-type": "image/x-icon",
-      "cache-control": "public, max-age=86400, immutable",
-      "x-content-type-options": "nosniff",
-      "strict-transport-security": "max-age=31536000; includeSubDomains; preload"
-    }
-  });
-}
-
-function landingPage(): string {
-  return [
-    "<!doctype html>",
-    '<html lang="pt-BR">',
-    "<head>",
-    '<meta charset="utf-8">',
-    '<meta name="viewport" content="width=device-width, initial-scale=1">',
-    '<meta name="robots" content="noindex, nofollow">',
-    `<title>${MCP_SERVER_TITLE}</title>`,
-    `<link rel="icon" href="${FAVICON_PNG_PATH}" type="image/png" sizes="96x96">`,
-    `<link rel="icon" href="${FAVICON_SVG_PATH}" type="image/svg+xml">`,
-    `<link rel="alternate icon" href="${FAVICON_ICO_PATH}" type="image/x-icon">`,
-    `<link rel="stylesheet" href="/landing.css">`,
-    "</head>",
-    "<body>",
-    "<main>",
-    `<img src="${FAVICON_PNG_PATH}" width="64" height="64" alt="">`,
-    `<h1>${MCP_SERVER_TITLE}</h1>`,
-    "<p>Conector privado · acesso restrito.</p>",
-    "</main>",
-    "</body>",
-    "</html>"
-  ].join("");
-}
-
-function faviconSvg(): string {
-  return [
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Balanca da justica">',
-    "<title>Balanca da justica</title>",
-    "<defs>",
-    '<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">',
-    '<stop stop-color="#0b211e"/>',
-    '<stop offset="1" stop-color="#071614"/>',
-    "</linearGradient>",
-    '<linearGradient id="gold" x1="0" y1="18" x2="0" y2="86">',
-    '<stop stop-color="#ffe8ab"/>',
-    '<stop offset="0.42" stop-color="#f2c55b"/>',
-    '<stop offset="1" stop-color="#b87f2c"/>',
-    "</linearGradient>",
-    "</defs>",
-    '<rect width="96" height="96" rx="20" fill="url(#bg)"/>',
-    '<rect x="5" y="5" width="86" height="86" rx="17" fill="none" stroke="#26463d" stroke-width="2"/>',
-    '<circle cx="48" cy="26" r="20" fill="#c99a3a" opacity="0.16"/>',
-    '<path d="M31 83h34" stroke="url(#gold)" stroke-width="7" stroke-linecap="round"/>',
-    '<path d="M39 75h18" stroke="url(#gold)" stroke-width="7" stroke-linecap="round"/>',
-    '<path d="M48 29v46" stroke="url(#gold)" stroke-width="8" stroke-linecap="round"/>',
-    '<circle cx="48" cy="23" r="7" fill="url(#gold)"/>',
-    '<circle cx="48" cy="23" r="2.4" fill="#fff1bf"/>',
-    '<path d="M18 35h60" stroke="url(#gold)" stroke-width="6" stroke-linecap="round"/>',
-    '<circle cx="48" cy="35" r="5" fill="#8e641f"/>',
-    '<circle cx="48" cy="35" r="2" fill="#fff1bf"/>',
-    '<path d="M25 38 14 59M25 38l11 21M71 38 60 59M71 38l11 21" stroke="#ffe8ab" stroke-width="2.4" stroke-linecap="round"/>',
-    '<path d="M9 59h32l-6 10H15z" fill="#b87f2c"/>',
-    '<path d="M55 59h32l-6 10H61z" fill="#b87f2c"/>',
-    '<path d="M10 59h30M56 59h30" stroke="#ffe8ab" stroke-width="3" stroke-linecap="round"/>',
-    '<path d="M13 70h24M59 70h24" stroke="url(#gold)" stroke-width="5" stroke-linecap="round"/>',
-    "</svg>"
-  ].join("");
-}
-
-function faviconIcoBytes(): Uint8Array {
-  return decodeBase64Bytes(FAVICON_ICO_BASE64);
-}
-
-function faviconPngBytes(): Uint8Array {
-  return decodeBase64Bytes(FAVICON_PNG_BASE64);
-}
+const OAUTH_AUTHORIZE_PATH = "/authorize";
+const OAUTH_AUTHORIZE_COMPAT_PATH = "/oauth/authorize";
+const LEGACY_CHATGPT_CLIENT_ID = "jurisprudenciaia-mcp-client";
+const MAX_BODY_BYTES = 1_048_576;
+const MAX_JSON_RPC_BATCH_SIZE = 20;
+const SECURITY_HEADERS = {
+  "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "X-XSS-Protection": "1; mode=block"
+} as const;
+const LANDING_CSS = ":root{color-scheme:dark}html,body{height:100%}body{margin:0;display:flex;align-items:center;justify-content:center;padding:2rem;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:radial-gradient(120% 120% at 50% 0%,#0b211e 0%,#071614 60%,#040d0c 100%);color:#e9e2cf}main{text-align:center}img{width:64px;height:64px}h1{margin:.9rem 0 .35rem;font-size:1.3rem;letter-spacing:.2px}p{margin:0;color:#8aa79c;font-size:.9rem}";
+const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Balança da justiça"><title>Balança da justiça</title><rect width="96" height="96" rx="20" fill="#0a1224"/><rect x="5" y="5" width="86" height="86" rx="17" fill="none" stroke="#34415f" stroke-width="2"/><path d="M48 22v55M18 36h60M27 38 14 62M27 38l13 24M69 38 56 62M69 38l13 24M10 62h34l-7 11H17zM52 62h34l-7 11H59zM35 82h26" fill="none" stroke="#c8a862" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+const mcpApiHandler = {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    return handleMcp(request, env);
+  }
+} satisfies ExportedHandler<Env>;
+
+const FAVICON_PNG_BASE64 = "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";
+const FAVICON_ICO_BASE64 = "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";
 
 function decodeBase64Bytes(value: string): Uint8Array {
-  const binary = atob(value);
-  const bytes = new Uint8Array(binary.length);
+  return new Uint8Array(Buffer.from(value, "base64"));
+}
 
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
+const applicationWorker = {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url);
+    if (url.pathname === "/healthz" && request.method === "GET") {
+      return json({ ok: true, service: "jurisprudenciaia-mcp" });
+    }
+    if (url.pathname === "/landing.css" && request.method === "GET") {
+      return new Response(LANDING_CSS, { headers: {
+        "Content-Type": "text/css; charset=utf-8",
+        "Cache-Control": "public, max-age=86400",
+        ...SECURITY_HEADERS
+      }});
+    }
+        if (url.pathname === "/favicon.png" && request.method === "GET") {
+      return new Response(decodeBase64Bytes(FAVICON_PNG_BASE64).buffer as ArrayBuffer, { headers: {
+        "Content-Type": "image/png",
+        "Cache-Control": "public, max-age=86400, immutable",
+        ...SECURITY_HEADERS
+      }});
+    }
+    if (url.pathname === "/favicon.ico" && request.method === "GET") {
+      return new Response(decodeBase64Bytes(FAVICON_ICO_BASE64).buffer as ArrayBuffer, { headers: {
+        "Content-Type": "image/x-icon",
+        "Cache-Control": "public, max-age=86400, immutable",
+        ...SECURITY_HEADERS
+      }});
+    }
+    if (url.pathname === "/favicon.svg" && request.method === "GET") {
+      return new Response(FAVICON_SVG, { headers: {
+        "Content-Type": "image/svg+xml; charset=utf-8",
+        "Cache-Control": "public, max-age=86400, immutable",
+        ...SECURITY_HEADERS
+      }});
+    }
+    if (url.pathname === "/" && request.method === "GET") {
+      return landingPage();
+    }
+    return json({ error: "not_found" }, 404);
+  }
+} satisfies ExportedHandler<Env>;
+
+const googleAuthHandler = {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    try {
+      return await handleGoogleAuth(request, env, () => applicationWorker.fetch(request, env));
+    } catch (error) {
+      console.error(JSON.stringify({ operation: "oauth_google", code: safeErrorCode(error) }));
+      return json({ ok: false, erro: "autorização inválida" }, 400);
+    }
+  }
+} satisfies ExportedHandler<Env>;
+
+const SUPPORTED_SCOPES = ["jurisprudence:read", "jurisprudenciaia:search"] as const;
+
+const oauthProviders = new Map<string, OAuthProvider<Env>>();
+
+function publicOrigin(request: Request, env: Env): string {
+  const configured = env.MCP_PUBLIC_ORIGIN?.trim();
+  if (configured) {
+    try {
+      return new URL(configured).origin;
+    } catch {
+      // Falls back to the request origin when MCP_PUBLIC_ORIGIN is malformed.
+    }
+  }
+  return new URL(request.url).origin;
+}
+
+function getOAuthProvider(origin: string): OAuthProvider<Env> {
+  const cached = oauthProviders.get(origin);
+  if (cached) return cached;
+
+  const provider = new OAuthProvider<Env>({
+    apiRoute: MCP_PATH,
+    apiHandler: mcpApiHandler,
+    defaultHandler: googleAuthHandler,
+    authorizeEndpoint: OAUTH_AUTHORIZE_PATH,
+    tokenEndpoint: "/oauth/token",
+    clientRegistrationEndpoint: "/oauth/register",
+    clientRegistrationCallback: validateMcpClientRegistration,
+    clientRegistrationTTL: 30 * 24 * 60 * 60,
+    accessTokenTTL: 60 * 60,
+    refreshTokenTTL: 30 * 24 * 60 * 60,
+    scopesSupported: [...SUPPORTED_SCOPES],
+    allowPlainPKCE: false,
+    allowImplicitFlow: false,
+    allowTokenExchangeGrant: false,
+    resourceMetadata: {
+      resource: new URL(MCP_PATH, origin).href,
+      authorization_servers: [origin],
+      scopes_supported: [...SUPPORTED_SCOPES],
+      bearer_methods_supported: ["header"],
+    }
+  });
+
+  oauthProviders.set(origin, provider);
+  return provider;
+}
+
+let globalRateLimiter: FixedWindowRateLimiter | undefined;
+
+function getRateLimiter(env: Env): FixedWindowRateLimiter {
+  if (!globalRateLimiter) {
+    const windowMs = positiveInteger(env.RATE_LIMIT_WINDOW_MS, 60000);
+    const maxReqs = positiveInteger(env.RATE_LIMIT_MAX_REQUESTS, 30);
+    globalRateLimiter = new FixedWindowRateLimiter(windowMs, maxReqs);
+  }
+  return globalRateLimiter;
+}
+
+export default {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const url = new URL(request.url);
+
+    if (url.pathname === OAUTH_AUTHORIZE_PATH || url.pathname === OAUTH_AUTHORIZE_COMPAT_PATH || url.pathname === "/oauth/token") {
+      const limiter = getRateLimiter(env);
+      const ip = request.headers.get("cf-connecting-ip") || "unknown";
+      const decision = limiter.allow(ip);
+      if (!decision.allowed) {
+        return json({ error: "rate_limited" }, 429, { "Retry-After": Math.ceil(decision.retryAfterMs / 1000).toString() });
+      }
+    }
+
+    const acceptsHtml = (request.headers.get("accept") ?? "").split(",")
+      .some((value) => value.trim().split(";", 1)[0]?.toLowerCase() === "text/html");
+    if (request.method === "GET" && url.pathname === MCP_PATH && acceptsHtml) {
+      return json({ error: "not_found" }, 404);
+    }
+    const oauthRequest = url.pathname === OAUTH_AUTHORIZE_COMPAT_PATH
+      ? withPathname(request, OAUTH_AUTHORIZE_PATH)
+      : request;
+    await ensureLegacyChatGptClient(oauthRequest, env);
+    const mcpRequest = oauthRequest.method === "POST" && new URL(oauthRequest.url).pathname === "/"
+      ? withPathname(request, MCP_PATH)
+      : oauthRequest;
+    if (new URL(mcpRequest.url).pathname === MCP_PATH && await staticBearerAuthenticated(mcpRequest, env)) {
+      return handleMcp(mcpRequest, env);
+    }
+    return getOAuthProvider(publicOrigin(request, env)).fetch(mcpRequest, env, ctx);
+  }
+} satisfies ExportedHandler<Env>;
+
+export async function ensureLegacyChatGptClient(request: Request, env: Pick<Env, "OAUTH_KV">): Promise<void> {
+  const url = new URL(request.url);
+  if (request.method !== "GET" || url.pathname !== OAUTH_AUTHORIZE_PATH ||
+      url.searchParams.get("client_id") !== LEGACY_CHATGPT_CLIENT_ID ||
+      classifyOAuthRedirectUri(url.searchParams.get("redirect_uri") ?? "") !== "hosted") return;
+
+  const redirectUri = url.searchParams.get("redirect_uri")!;
+  if (!isChatGptRedirectUri(redirectUri)) return;
+
+  const key = `client:${LEGACY_CHATGPT_CLIENT_ID}`;
+  if (await env.OAUTH_KV.get(key)) return;
+  await env.OAUTH_KV.put(key, JSON.stringify({
+    clientId: LEGACY_CHATGPT_CLIENT_ID,
+    redirectUris: [redirectUri],
+    clientName: "ChatGPT",
+    grantTypes: ["authorization_code", "refresh_token"],
+    responseTypes: ["code"],
+    tokenEndpointAuthMethod: "none",
+    registrationDate: Math.floor(Date.now() / 1000)
+  }));
+}
+
+function isChatGptRedirectUri(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname === "chatgpt.com" &&
+      !url.username && !url.password && !url.search && !url.hash &&
+      /^\/connector\/oauth\/[A-Za-z0-9_-]{8,128}$/.test(url.pathname);
+  } catch {
+    return false;
+  }
+}
+
+export async function handleWorkerRequest(request: Request, env: Env, runner?: JurisprudenciaIaRunner): Promise<Response> {
+  return handleMcp(request, env, runner);
+}
+
+async function handleMcp(request: Request, env: Env, customRunner?: JurisprudenciaIaRunner): Promise<Response> {
+  if (request.method !== "POST") return json({ error: "method_not_allowed" }, 405, { Allow: "POST" });
+  if (!validOrigin(request, env)) return json({ error: "invalid_origin" }, 403);
+  if (!(await withinBodyLimit(request))) return json({ error: "payload_too_large" }, 413);
+  if (await exceedsJsonRpcBatchLimit(request)) {
+    return json({
+      jsonrpc: "2.0",
+      error: { code: -32600, message: `Batch size exceeds maximum of ${MAX_JSON_RPC_BATCH_SIZE}` },
+      id: null
+    }, 400);
   }
 
-  return bytes;
+  const server = createJurisprudenciaIaMcpServer(customRunner ?? new HttpApiJurisprudenciaIaRunner({ sourceUrl: env.JURISPRUDENCIAIA_URL?.trim() || "https://www.jurisprudenciaia.com.br/", requestTimeoutMs: positiveInteger(env.REQUEST_TIMEOUT_MS, 120000) }));
+  const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
+  try {
+    await server.connect(transport);
+    return await transport.handleRequest(request);
+  } catch (error) {
+    console.error(JSON.stringify({ operation: "mcp_request", code: safeErrorCode(error) }));
+    return json({ jsonrpc: "2.0", error: { code: -32603, message: "Internal error" }, id: null }, 500);
+  } finally {
+    await server.close().catch(() => undefined);
+  }
+}
+
+async function staticBearerAuthenticated(request: Request, env: Env): Promise<boolean> {
+  const match = /^Bearer\s+(.+)$/i.exec(request.headers.get("authorization") ?? "");
+  const candidate = match?.[1]?.trim() ?? "";
+  if (!candidate) return false;
+  if (env.MCP_BEARER_TOKEN_SHA256) return constantTimeEqual(await sha256(candidate), env.MCP_BEARER_TOKEN_SHA256.toLowerCase());
+  if (env.MCP_BEARER_TOKEN) return constantTimeEqual(candidate, env.MCP_BEARER_TOKEN);
+  return false;
+}
+
+function validOrigin(request: Request, env: Env): boolean {
+  const origin = request.headers.get("origin");
+  if (!origin) return true;
+  try {
+    const normalized = new URL(origin).origin;
+    const allowed = (env.MCP_ALLOWED_ORIGINS ?? "").split(",").map((item) => item.trim()).filter(Boolean);
+    return normalized === new URL(request.url).origin || allowed.includes(normalized);
+  } catch { return false; }
+}
+
+async function withinBodyLimit(request: Request): Promise<boolean> {
+  const declared = Number(request.headers.get("content-length") ?? 0);
+  if (!Number.isFinite(declared) || declared > MAX_BODY_BYTES) return false;
+  const reader = request.clone().body?.getReader();
+  if (!reader) return true;
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) return true;
+    total += value.byteLength;
+    if (total > MAX_BODY_BYTES) { await reader.cancel(); return false; }
+  }
+}
+
+async function exceedsJsonRpcBatchLimit(request: Request): Promise<boolean> {
+  try {
+    const payload = await request.clone().json();
+    return Array.isArray(payload) && payload.length > MAX_JSON_RPC_BATCH_SIZE;
+  } catch {
+    return false;
+  }
+}
+
+function withPathname(request: Request, pathname: string): Request {
+  const url = new URL(request.url);
+  url.pathname = pathname;
+  return new Request(url, request);
+}
+
+async function constantTimeEqual(left: string, right: string): Promise<boolean> {
+  if (left.length !== right.length) return false;
+  const encoder = new TextEncoder();
+  const [leftHash, rightHash] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(left)),
+    crypto.subtle.digest("SHA-256", encoder.encode(right))
+  ]);
+  const runtimeSubtle = crypto.subtle as SubtleCrypto & { timingSafeEqual?: (left: ArrayBuffer, right: ArrayBuffer) => boolean };
+  return typeof runtimeSubtle.timingSafeEqual === "function"
+    ? runtimeSubtle.timingSafeEqual(leftHash, rightHash)
+    : nodeTimingSafeEqual(Buffer.from(leftHash), Buffer.from(rightHash));
+}
+
+async function sha256(value: string): Promise<string> {
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
+  return Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function positiveInteger(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function safeErrorCode(error: unknown): string {
+  if (!(error instanceof Error)) return "unknown";
+  return /^oauth_[a-z0-9_:.-]{1,96}$/.test(error.message) ? error.message : error.name;
+}
+function json(value: unknown, status = 200, headers?: Record<string, string>): Response {
+  return Response.json(value, { status, headers: { "Cache-Control": "no-store", "Pragma": "no-cache", ...SECURITY_HEADERS, ...headers } });
+}
+
+function landingPage(): Response {
+  const body = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0a1224"><title>JurisprudênciaIA MCP</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/landing.css"></head><body><main><img src="/favicon.svg" width="64" height="64" alt=""><h1>JurisprudênciaIA MCP</h1><p>Conector MCP auto-hospedado · acesso restrito.</p></main></body></html>`;
+  return new Response(body, { headers: {
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": "public, max-age=300",
+    "Content-Security-Policy": "default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    "Referrer-Policy": "no-referrer",
+    ...SECURITY_HEADERS
+  }});
 }

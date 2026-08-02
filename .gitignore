@@ -12,3 +12,8 @@ dist/
 coverage/
 node_modules
 dist
+
+.dev.vars
+worker-configuration.d.ts
+.playwright-cli/
+.wrangler/
