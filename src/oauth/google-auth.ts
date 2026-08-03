@@ -30,29 +30,76 @@ export type GoogleOAuthEnv = {
 };
 
 const CONSENT_STYLES = `
-:root{color-scheme:dark;--navy-deep:#0a1224;--navy-dark:#0e1a33;--gold-metallic:#c8a862;--gold-soft:#d9c08a;--cream:#f4f1e9;--body-blue:#b7c0d8;--steel-blue:#8e9aba;--hairline:rgba(244,241,233,.16);--frame:clamp(14px,2.1vw,40px)}
-*{box-sizing:border-box}html{min-height:100%;background:var(--navy-deep)}body{min-height:100vh;margin:0;color:var(--cream);background:var(--navy-deep);font-family:"Libre Caslon Text",Georgia,serif;-webkit-font-smoothing:antialiased}body::before{content:"";position:fixed;inset:var(--frame);z-index:4;border:1px solid var(--hairline);pointer-events:none}
-.shell{position:relative;min-height:100vh;overflow:hidden;padding:clamp(34px,4.8vw,78px) clamp(34px,7.2vw,132px);display:grid;grid-template-rows:auto 1fr auto}.shell::after{content:"AMF";position:absolute;right:-.04em;bottom:-.24em;color:rgba(244,241,233,.035);font:400 clamp(180px,33vw,620px)/.8 "Libre Caslon Text",Georgia,serif;letter-spacing:-.08em;pointer-events:none}
-.masthead,.footer{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:24px;font-family:"IBM Plex Mono","Courier New",monospace;text-transform:uppercase;letter-spacing:.2em}.masthead{padding-bottom:18px;border-bottom:1px solid var(--hairline);font-size:11px}.brand{display:flex;align-items:center;gap:15px;font-weight:600;letter-spacing:.42em}.diamond{width:7px;height:7px;background:var(--gold-metallic);transform:rotate(45deg)}.context{color:var(--steel-blue);letter-spacing:.16em}
-.content{position:relative;z-index:2;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(380px,.78fr);align-items:center;gap:clamp(50px,8vw,150px);padding:clamp(52px,8vh,112px) 0}.hero{max-width:760px;animation:reveal 620ms cubic-bezier(.2,.7,.2,1) both}.eyebrow,.request-label,.permission-code,.trust-label{color:var(--gold-metallic);font-family:"IBM Plex Mono","Courier New",monospace;font-size:11px;font-weight:500;letter-spacing:.24em;text-transform:uppercase}.section-number{margin:0 0 24px;color:var(--gold-metallic);font-size:clamp(58px,7.5vw,112px);line-height:.82}h1{max-width:720px;margin:0;font-size:clamp(48px,6.1vw,92px);font-weight:400;line-height:.94;letter-spacing:-.035em}.hero-copy{max-width:610px;margin:32px 0 0;color:var(--body-blue);font-size:clamp(18px,1.45vw,24px);line-height:1.55}.hero-copy em{color:var(--gold-soft)}
-.consent{animation:reveal 620ms 110ms cubic-bezier(.2,.7,.2,1) both;border-top:1px solid var(--gold-metallic);border-bottom:1px solid var(--hairline);background:var(--navy-dark)}.request-head{padding:26px 30px 24px;border-bottom:1px solid var(--hairline)}.request-label{display:flex;justify-content:space-between;gap:18px}.request-label span:last-child{color:var(--steel-blue)}.client-name{margin:18px 0 0;overflow-wrap:anywhere;font-size:clamp(28px,3vw,43px);font-weight:400;line-height:1.08}.permissions{margin:0;padding:0 30px;list-style:none}.permission{display:grid;grid-template-columns:30px 1fr;gap:17px;padding:22px 0;border-bottom:1px solid var(--hairline)}.permission:last-child{border-bottom:0}.permission-mark{width:22px;height:22px;margin-top:2px;border:1px solid var(--gold-metallic);display:grid;place-items:center;color:var(--gold-metallic);font:500 12px/1 "IBM Plex Mono",monospace}.permission-title{display:block;margin:5px 0 6px;color:var(--cream);font-size:19px;font-weight:400}.permission-copy{margin:0;color:var(--steel-blue);font-size:15px;line-height:1.45}
-.action{padding:26px 30px 30px;border-top:1px solid var(--hairline)}.trust{display:grid;grid-template-columns:7px 1fr;gap:14px;margin-bottom:22px;color:var(--body-blue);font-size:14px;line-height:1.45}.trust .diamond{margin-top:6px}button{width:100%;min-height:58px;border:1px solid var(--gold-metallic);border-radius:0;padding:15px 20px;color:var(--navy-deep);background:var(--gold-metallic);cursor:pointer;font-family:"IBM Plex Mono","Courier New",monospace;font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;transition:background-color 160ms ease,color 160ms ease,border-color 160ms ease}button:hover{border-color:var(--cream);background:var(--cream)}button:focus-visible{outline:2px solid var(--cream);outline-offset:5px}.arrow{display:inline-block;margin-left:14px;font-size:16px;transition:transform 160ms ease}button:hover .arrow{transform:translateX(4px)}.footer{padding-top:18px;border-top:1px solid var(--hairline);color:var(--steel-blue);font-size:9px}.footer strong{color:var(--cream);font-weight:500}
-@keyframes reveal{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}@media(max-width:900px){.shell{padding:32px 34px}.content{grid-template-columns:1fr;gap:48px;padding:62px 0}.hero{max-width:660px}.consent{max-width:640px}.context{display:none}}@media(max-width:520px){:root{--frame:10px}.shell{padding:27px 24px}.masthead{font-size:9px}.brand{gap:10px}.content{padding:48px 0}.section-number{margin-bottom:18px}h1{font-size:clamp(42px,13vw,58px)}.hero-copy{margin-top:24px}.request-head,.action{padding-left:22px;padding-right:22px}.permissions{padding:0 22px}.footer{align-items:flex-start;flex-direction:column;line-height:1.5}}@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+:root{
+  color-scheme:dark;
+  --ink:#0b1014;
+  --panel:#10171c;
+  --panel-2:#131d23;
+  --line:rgba(226,232,240,.12);
+  --copper:#d98a4a;
+  --copper-soft:#e6b183;
+  --cream:#f0eee7;
+  --muted:#a8b4bd;
+  --steel:#8d9aa3;
+}
+*{box-sizing:border-box}
+html{min-height:100%;background:var(--ink)}
+body{min-height:100vh;margin:0;color:var(--cream);background:radial-gradient(120% 120% at 14% 10%, #142029 0%, #0b1014 52%, #07090c 100%);font-family:Georgia,"Times New Roman",serif;-webkit-font-smoothing:antialiased}
+.frame{position:relative;min-height:100vh;padding:clamp(22px,4.4vw,72px) clamp(22px,5.6vw,120px)}
+.frame::before{content:"";position:fixed;inset:clamp(12px,1.8vw,28px);border:1px solid rgba(217,138,74,.32);pointer-events:none}
+.masthead,.foot{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:20px;font-family:ui-monospace,"Cascadia Code","Courier New",monospace;text-transform:uppercase;letter-spacing:.22em}
+.masthead{padding-bottom:16px;border-bottom:1px solid var(--line);font-size:11px;color:var(--steel)}
+.brand{display:flex;align-items:center;gap:12px;color:var(--cream);letter-spacing:.34em;font-weight:500}
+.brand .dot{width:9px;height:9px;border:1px solid var(--copper);transform:rotate(45deg)}
+.context{color:var(--steel)}
+.content{position:relative;z-index:2;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(360px,.82fr);gap:clamp(48px,7.2vw,140px);align-items:center;padding:clamp(44px,7vh,104px) 0}
+.hero{max-width:760px;animation:rise 580ms cubic-bezier(.2,.7,.2,1) both}
+.eyebrow,.label,.code{color:var(--copper);font-family:ui-monospace,"Cascadia Code","Courier New",monospace;font-size:11px;font-weight:500;letter-spacing:.24em;text-transform:uppercase}
+.kicker{margin:20px 0 14px;color:var(--steel);font:500 12px/1.6 ui-monospace,"Cascadia Code","Courier New",monospace}
+h1{max-width:680px;margin:0;font-size:clamp(46px,5.8vw,86px);line-height:.95;font-weight:400;letter-spacing:-.03em}
+.lead{max-width:600px;margin:26px 0 0;color:var(--muted);font-size:clamp(17px,1.35vw,21px);line-height:1.62}
+.lead em{color:var(--copper-soft);font-style:normal}
+.hero-list{display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:18px}
+.hero-list span{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:12.5px}
+.hero-list span::before{content:"";width:6px;height:6px;border:1px solid var(--copper);transform:rotate(45deg);display:inline-block}
+.consent{animation:rise 620ms 90ms cubic-bezier(.2,.7,.2,1) both;border:1px solid var(--line);background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0)) ,var(--panel);box-shadow:0 24px 60px rgba(0,0,0,.4)}
+.request-head{padding:24px 28px 22px;border-bottom:1px solid var(--line);background:var(--panel-2)}
+.label{display:flex;justify-content:space-between;gap:16px}
+.label span:last-child{color:var(--steel)}
+.client-name{margin:14px 0 0;overflow-wrap:anywhere;font-size:clamp(26px,2.6vw,38px);font-weight:400;line-height:1.08}
+.permissions{margin:0;padding:0 28px;list-style:none}
+.permission{display:grid;grid-template-columns:26px 1fr;gap:16px;padding:18px 0;border-bottom:1px solid var(--line)}
+.permission:last-child{border-bottom:0}
+.mark{width:20px;height:20px;margin-top:1px;border:1px solid var(--copper);display:grid;place-items:center;color:var(--copper);font:600 11px/1 ui-monospace,"Cascadia Code",monospace}
+.title{display:block;margin:4px 0 6px;color:var(--cream);font-size:17.5px;font-weight:500}
+.copy{margin:0;color:var(--muted);font-size:14.5px;line-height:1.5}
+.action{padding:24px 28px 28px;border-top:1px solid var(--line)}
+.trust{display:grid;grid-template-columns:9px 1fr;gap:14px;margin-bottom:20px;color:var(--muted);font-size:13.5px;line-height:1.5}
+.trust .bar{width:9px;height:100%;background:linear-gradient(180deg, var(--copper), rgba(217,138,74,.18))}
+button{width:100%;min-height:56px;border:1px solid var(--copper);padding:14px 20px;color:var(--ink);background:var(--copper);cursor:pointer;font:600 12px/1 ui-monospace,"Cascadia Code","Courier New",monospace;letter-spacing:.18em;text-transform:uppercase;transition:background-color .16s ease,border-color .16s ease,color .16s ease}
+button:hover{border-color:var(--cream);background:var(--cream);color:var(--ink)}
+button:focus-visible{outline:2px solid var(--cream);outline-offset:4px}
+.foot{padding-top:16px;border-top:1px solid var(--line);color:var(--steel);font-size:10px}
+.foot strong{color:var(--cream);font-weight:500}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@media(max-width:900px){.frame{padding:24px 26px}.content{grid-template-columns:1fr;gap:44px;padding:56px 0}.consent{max-width:640px}.context{display:none}}
+@media(max-width:520px){.frame{padding:22px 20px}.content{padding:44px 0}h1{font-size:clamp(40px,12vw,54px)}.lead{margin-top:20px}.request-head,.action{padding-left:20px;padding-right:20px}.permissions{padding:0 20px}.foot{flex-direction:column;align-items:flex-start;line-height:1.5}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 `;
 
 export function consentPage(clientName: string, token: string, nonce: string, localClient = false): string {
   const clientContext = localClient
-    ? "O retorno desta autorização será entregue a um aplicativo local neste computador. Confirme que você iniciou esta conexão."
-    : "Sua senha Google nunca é compartilhada com a AMF.";
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0a1224"><title>Autorizar acesso · JurisprudênciaIA MCP</title><style nonce="${nonce}">${CONSENT_STYLES}</style></head><body>
-<main class="shell" aria-labelledby="page-title"><header class="masthead"><div class="brand"><span>A M F</span><span class="diamond" aria-hidden="true"></span><span>JURIS</span></div><div class="context">Inteligência Jurídica Aplicada · OAuth 2.1</div></header>
-<div class="content"><section class="hero" aria-describedby="hero-copy"><p class="eyebrow">Autorização segura</p><p class="section-number" aria-hidden="true">01</p><h1 id="page-title">Fontes oficiais.<br>Controle preciso.</h1><p class="hero-copy" id="hero-copy">Conecte sua identidade Google ao ambiente privado do <em>JurisprudênciaIA MCP</em>. Este conector complementa JurisprudênciaIA, IAJus, JusRatio e Perplexity com pesquisa e confirmação em fontes oficiais.</p></section>
-<section class="consent" aria-label="Detalhes da solicitação de acesso"><div class="request-head"><div class="request-label"><span>Solicitação de acesso</span><span>Ref. 01/03</span></div><h2 class="client-name">${escapeHtml(clientName)}</h2></div><ul class="permissions" aria-label="Permissões solicitadas">
-<li class="permission"><span class="permission-mark" aria-hidden="true">01</span><div><span class="permission-code">Pesquisa</span><strong class="permission-title">Fontes oficiais em tempo real</strong><p class="permission-copy">Pesquisar STJ, TCU, DataJud e LexML, com cache temporário e procedência explícita.</p></div></li>
-<li class="permission"><span class="permission-mark" aria-hidden="true">02</span><div><span class="permission-code">Confirmação</span><strong class="permission-title">Documentos oficiais</strong><p class="permission-copy">Conferir referência, relator e trecho literal antes de liberar um precedente.</p></div></li>
-<li class="permission"><span class="permission-mark" aria-hidden="true">03</span><div><span class="permission-code">Identidade</span><strong class="permission-title">Conta Google verificada</strong><p class="permission-copy">Confirmar que sua conta pertence à lista privada de usuários autorizados.</p></div></li></ul>
-<form class="action" method="post" action="/authorize"><input type="hidden" name="transaction" value="${escapeHtml(token)}"><div class="trust"><span class="diamond" aria-hidden="true"></span><span><span class="trust-label">${localClient ? "Aplicativo local" : "Ambiente privado"}</span><br>${clientContext}</span></div><button type="submit">Continuar com Google <span class="arrow" aria-hidden="true">→</span></button></form></section></div>
-<footer class="footer"><span><strong>AMF</strong> · Inteligência Jurídica Aplicada</span><span>Conexão protegida · Acesso revogável</span></footer></main></body></html>`;
+    ? "Esta autorização volta para um aplicativo local neste computador. Confirme que você iniciou a conexão agora."
+    : "Credenciais Google nunca são compartilhadas com este servidor.";
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1014"><title>Autorizar acesso · JurisprudênciaIA MCP</title><style nonce="${nonce}">${CONSENT_STYLES}</style></head><body>
+<main class="frame" aria-labelledby="page-title"><header class="masthead"><div class="brand"><span class="dot" aria-hidden="true"></span><span>JurisprudênciaIA</span></div><div class="context">OAuth 2.1</div></header>
+<div class="content"><section class="hero" aria-describedby="hero-copy"><p class="eyebrow">Autorização de acesso</p><p class="kicker">Servidor MCP privado · somente contas autorizadas</p><h1 id="page-title">Pesquisa jurídica com controle.</h1><p class="lead" id="hero-copy">Conecte sua conta Google para liberar as ferramentas jurídicas desta instância. A autorização é de uso único e pode ser revogada a qualquer momento.</p><div class="hero-list"><span>Sem Client ID ou Secret no cliente</span><span>Identidade verificada por allowlist</span><span>Auditoria por request ID</span></div></section>
+<section class="consent" aria-label="Detalhes da solicitação de acesso"><div class="request-head"><div class="label"><span>Solicitação de acesso</span><span>Ref. 01/03</span></div><h2 class="client-name">${escapeHtml(clientName)}</h2></div><ul class="permissions" aria-label="Permissões solicitadas">
+<li class="permission"><span class="mark" aria-hidden="true">01</span><div><span class="code">Pesquisa</span><strong class="title">Consulta às fontes integradas</strong><p class="copy">Pesquisar jurisprudência e legislação pelos provedores configurados, com procedência explícita por request ID.</p></div></li>
+<li class="permission"><span class="mark" aria-hidden="true">02</span><div><span class="code">Ferramentas</span><strong class="title">Uso limitado ao conector</strong><p class="copy">Executar apenas as ferramentas publicadas pelo servidor MCP; nenhuma escrita em sistemas externos.</p></div></li>
+<li class="permission"><span class="mark" aria-hidden="true">03</span><div><span class="code">Identidade</span><strong class="title">Conta Google verificada</strong><p class="copy">Confirmar que seu e-mail está na allowlist de quem pode usar esta instância.</p></div></li></ul>
+<form class="action" method="post" action="/authorize"><input type="hidden" name="transaction" value="${escapeHtml(token)}"><div class="trust"><span class="bar" aria-hidden="true"></span><span><span class="code">${localClient ? "Retorno local" : "Contexto"}</span><br>${clientContext}</span></div><button type="submit">Continuar com Google&nbsp;<span aria-hidden="true">→</span></button></form></section></div>
+<footer class="foot"><span><strong>JurisprudênciaIA</strong> · servidor MCP auto-hospedado</span><span>Conexão protegida · acesso revogável</span></footer></main></body></html>`;
 }
 
 export async function handleGoogleAuth(request: Request, env: GoogleOAuthEnv, fallback: () => Promise<Response>, googleFetch: FetchLike = fetch): Promise<Response> {
