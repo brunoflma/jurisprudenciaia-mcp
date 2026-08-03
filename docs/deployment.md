@@ -1,232 +1,119 @@
-# Configuracao e publicacao
+# Operação e publicação do Worker
 
-Este projeto e um conector MCP auto-hospedado para Claude.ai, ChatGPT ou Codex. Ele roda em Cloudflare Workers Free e consulta o JurisprudenciaIA por HTTP, sem navegador remoto, login ou senha.
+Este documento é para quem administra a implantação. A instalação inicial passo a passo está no [README](../README.md); o usuário final precisa apenas do [guia visual](deploy-guide.html), que cobre adicionar a URL no Claude e autenticar com Google.
 
-Se preferir um roteiro visual, abra `docs/deploy-guide.html` no navegador.
+Nos exemplos, substitua `mcp.seu-dominio.com` pela origem pública do seu Worker.
 
-O fluxo recomendado e:
+## Arquitetura de autenticação
 
-1. Gerar os segredos OAuth e Bearer localmente.
-2. Gravar os segredos no Cloudflare Worker, sem coloca-los no repositorio publico.
-3. Manter GitHub Actions como CI somente.
-4. Publicar por um unico controlador de deploy e manter os segredos fora do repositorio.
-5. Cadastrar a URL final no Claude.ai, ChatGPT ou Codex.
+O fluxo implementado é OAuth 2.1 com Authorization Code e PKCE S256:
 
-## 1. Gerar os segredos do MCP
+1. O Claude ou o Codex descobre os metadados OAuth do Worker.
+2. O cliente registra dinamicamente um callback permitido: HTTPS oficial no Claude ou loopback efêmero no Codex.
+3. O Worker cria uma transação de autorização vinculada ao navegador.
+4. O usuário confirma o acesso e segue para o Google.
+5. O Google retorna ao callback do Worker.
+6. O Worker verifica identidade, e-mail confirmado e allowlist.
+7. O Worker conclui a autorização e entrega o resultado ao callback do cliente MCP.
+8. O cliente troca o código por access token e usa `POST /mcp`.
 
-Voce precisa de tres valores obrigatorios para OAuth:
+O endpoint raiz também aceita `POST /` como alias protegido para compatibilidade com clientes que persistiram a URL sem `/mcp`.
 
-```text
-MCP_OAUTH_CLIENT_ID
-MCP_OAUTH_CLIENT_SECRET
-MCP_ACCESS_TOKEN_SECRET
-```
+## Recursos Cloudflare
 
-Use este Client ID:
+[`wrangler.jsonc`](../wrangler.jsonc) é a fonte declarativa da implantação e contém apenas dados públicos ou identificadores de recursos:
 
-```text
-jurisprudenciaia-mcp-client
-```
+- Worker `jurisprudenciaia-mcp`;
+- domínio customizado;
+- KV `JURIS_CACHE`;
+- KV `OAUTH_KV` para clientes, grants e tokens;
+- Durable Object `OAUTH_STATE` para transações de uso único;
+- logs e traces de produção;
+- origem pública e Google Client ID.
 
-Gere o Client Secret:
+Segredos não pertencem ao arquivo de configuração nem ao repositório.
 
-```powershell
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
+## Criar o OAuth Client no Google
 
-Gere o segredo de assinatura dos access tokens:
+No projeto Google Cloud que controla a implantação:
 
-```powershell
-node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
-```
+1. Configure a tela de consentimento OAuth com as informações institucionais.
+2. Crie um cliente do tipo **Aplicativo da Web**.
+3. Use um nome operacional que identifique o Worker, sem dados pessoais.
+4. Cadastre exatamente este URI de redirecionamento:
 
-Guarde assim:
+   ```text
+   https://mcp.seu-dominio.com/oauth/google/callback
+   ```
 
-```text
-MCP_OAUTH_CLIENT_ID=jurisprudenciaia-mcp-client
-MCP_OAUTH_CLIENT_SECRET=<resultado do primeiro comando>
-MCP_ACCESS_TOKEN_SECRET=<resultado do segundo comando>
-```
+5. Copie o Client ID para `MCP_GOOGLE_CLIENT_ID` em `wrangler.jsonc`.
+6. Grave o Client Secret somente no Worker como `MCP_GOOGLE_CLIENT_SECRET`.
 
-Este guia usa `jurisprudenciaia-mcp-client` como Client ID padrao. Use exatamente esse mesmo valor no GitHub, no Worker, no Claude.ai e no ChatGPT.
+Não coloque o Client Secret em README, issue, commit, print, log, GitHub Actions ou mensagem de suporte.
 
-Se for usar o Codex por `HTTP com streaming`, gere também um Bearer token estático:
-
-```shell
-node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
-```
-
-Guarde como:
-
-```text
-MCP_BEARER_TOKEN=<resultado do terceiro comando>
-```
-
-Importante:
-
-- `MCP_OAUTH_CLIENT_SECRET` será usado no Cloudflare Worker e no Claude.ai.
-- `MCP_ACCESS_TOKEN_SECRET` será usado somente no Cloudflare Worker.
-- `MCP_BEARER_TOKEN` será usado no Cloudflare Worker e no ambiente local do Codex, tanto no Windows quanto no macOS.
-- Nenhum desses valores deve entrar no código ou em arquivos do repositório.
-
-## 2. Criar o Cloudflare API Token
-
-Voce esta na tela correta: `Manage account > Account API tokens > Create a token`.
-
-Na tela do Cloudflare:
-
-1. Em `Token name`, use:
-
-```text
-jurisprudenciaia-mcp
-```
-
-2. Em `Permission policies`, abra o menu `Custom`.
-3. Selecione o modelo pronto `Edit Cloudflare Workers`.
-4. Em `Account Resources`, escolha:
-
-```text
-Include > <sua-conta-cloudflare>
-```
-
-Use o nome exato da conta Cloudflare onde o Worker sera publicado.
-
-5. Se aparecer `Zone Resources`, deixe restrito ao menor escopo que a tela permitir. Para uso com `workers.dev`, sem dominio proprio, nao e necessario dar permissao de DNS.
-6. Clique em `Continue to summary`.
-7. Revise se o token esta limitado a Workers.
-8. Clique em `Create Token`.
-9. Copie o token gerado imediatamente.
-
-Esse valor sera usado pela sessao local do Wrangler ou pelo controlador de deploy configurado:
-
-```text
-CLOUDFLARE_API_TOKEN
-```
-
-O Cloudflare mostra esse token uma unica vez. Se voce perder, crie outro.
-
-## 3. Encontrar o Cloudflare Account ID
-
-No Cloudflare Dashboard:
-
-1. Abra a conta Cloudflare onde o Worker sera publicado.
-2. Entre em `Compute > Workers & Pages`.
-3. Procure `Account ID` na visao geral ou na lateral direita da pagina.
-4. Copie o valor.
-
-Esse valor sera usado pela sessao local do Wrangler ou pelo controlador de deploy configurado:
-
-```text
-CLOUDFLARE_ACCOUNT_ID
-```
-
-## 4. Configurar os secrets do Worker
-
-Configure estes nomes no Cloudflare Worker:
-
-```text
-MCP_OAUTH_CLIENT_ID
-MCP_OAUTH_CLIENT_SECRET
-MCP_ACCESS_TOKEN_SECRET
-MCP_OAUTH_REDIRECT_URIS
-```
-
-Valores esperados:
-
-```text
-MCP_OAUTH_CLIENT_ID=jurisprudenciaia-mcp-client
-MCP_OAUTH_CLIENT_SECRET=<Client Secret gerado no passo 1>
-MCP_ACCESS_TOKEN_SECRET=<segredo de assinatura gerado no passo 1>
-MCP_OAUTH_REDIRECT_URIS=<URLs de redirecionamento permitidas separadas por virgula>
-```
-
-Obrigatoriamente para o funcionamento do fluxo OAuth, voce deve criar o secret `MCP_OAUTH_REDIRECT_URIS` separando as URLs exatas por virgula.
-
-O ChatGPT recusara a conexao se esse valor nao for exatamente igual ao secret `MCP_OAUTH_CLIENT_ID` do Worker. Se mudar o Client ID no Cloudflare, mude tambem o secret do Worker antes do proximo deploy.
-
-Opcionalmente, crie tambem o secret `MCP_BEARER_TOKEN` se voce for usar Codex por `HTTP com streaming`.
-
-Para configurar manualmente via Wrangler:
+## Configurar os segredos do Worker
 
 ```powershell
-npx wrangler login
-npx wrangler secret put MCP_OAUTH_CLIENT_ID
-npx wrangler secret put MCP_OAUTH_CLIENT_SECRET
-npx wrangler secret put MCP_ACCESS_TOKEN_SECRET
-npx wrangler secret put MCP_OAUTH_REDIRECT_URIS
-npx wrangler secret put MCP_BEARER_TOKEN # opcional para Codex
+npx wrangler secret put MCP_GOOGLE_CLIENT_SECRET
+npx wrangler secret put MCP_ALLOWED_EMAILS
 ```
 
-## 5. Publicar o Worker
+`MCP_ALLOWED_EMAILS` recebe e-mails completos separados por vírgula. Trate essa lista como dado pessoal e não a versione.
 
-No ambiente de producao deste projeto, Cloudflare Workers e o unico runtime de producao. O controlador de deploy deve ser unico por vez.
-
-O deploy deve ser controlado por um único mecanismo configurado no ambiente responsável pela publicação. Não armazene tokens, secrets ou identificadores de infraestrutura neste repositório.
-
-Configuracao esperada:
+Exemplo de formato, somente para ilustrar:
 
 ```text
-Build command: npm run verify
-Deploy command: npx wrangler deploy
+usuario.autorizado@example.com,segunda.conta@example.com
 ```
 
-GitHub Actions roda CI e `npx wrangler deploy --dry-run`; ele nao publica producao e nao sincroniza Worker secrets.
+O Bearer estático é opcional e reservado a smoke tests ou manutenção:
 
-Render, Jules, Codex e Cloudflare nao devem observar o mesmo PR como automacoes independentes. A politica operacional esta em `docs/operations/integration-ownership.md`.
-
-### Opcional para Codex: configurar Bearer no Worker
-
-Se voce for usar o Codex por `HTTP com streaming`, configure `MCP_BEARER_TOKEN` diretamente como secret do Worker:
-
-```shell
-npx wrangler login
+```powershell
 npx wrangler secret put MCP_BEARER_TOKEN
 ```
 
-Quando o Wrangler pedir o valor, cole o `MCP_BEARER_TOKEN` gerado no passo 1. O mesmo valor deve existir no ambiente local do Codex no Windows ou no macOS.
+O hash correspondente pode ser usado em `MCP_BEARER_TOKEN_SHA256`, mas o token original nunca deve ser versionado.
 
-## 6. Descobrir a URL final do Worker
+## Variáveis públicas
 
-Depois do deploy, a URL deve ficar parecida com:
+| Nome | Função |
+| --- | --- |
+| `MCP_PUBLIC_ORIGIN` | Origem canônica HTTPS do servidor OAuth |
+| `MCP_GOOGLE_CALLBACK_ORIGIN` | Origem usada para construir o callback Google |
+| `MCP_GOOGLE_CLIENT_ID` | Identificador público do OAuth Client Google |
+| `JURISPRUDENCIAIA_URL` | Serviço de pesquisa consultado pelo runner |
+| `REQUEST_TIMEOUT_MS` | Limite de tempo da consulta |
+| `RATE_LIMIT_WINDOW_MS` | Janela do rate limit |
+| `RATE_LIMIT_MAX_REQUESTS` | Requisições permitidas por janela |
 
-```text
-https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev
+`MCP_ALLOWED_ORIGINS` e `MCP_ICON_URL` são opcionais. Não use uma origem curinga.
+
+## Build e publicação
+
+O build gera os tipos Cloudflare antes do TypeScript, por isso funciona também em checkout limpo:
+
+```powershell
+npm install
+npm run verify
+npm run deploy:worker
 ```
 
-O endpoint MCP que vai para o Claude.ai, ChatGPT ou Codex e:
+Se preferir publicar por build automático conectado ao repositório, use:
 
 ```text
-https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
+Build command: npm run build
+Deploy command: npx wrangler deploy
+Production branch: main
 ```
 
-Nao coloque token na URL.
+Mantenha um único controlador de deploy: se o build automático publica, a integração contínua deve apenas validar, sem publicar uma segunda versão em paralelo.
 
-### Opcional recomendado: dominio customizado para icone no Claude.ai
+## Verificação
 
-A URL `workers.dev` funciona para o MCP. Porem o Claude.ai pode carregar o icone pelo Google Favicon (`t1.gstatic.com/faviconV2`) usando apenas `http://<seu-subdominio>.workers.dev`, sem o nome do Worker. Como esse endereco nao e o mesmo host de `jurisprudenciaia-mcp.<seu-subdominio>.workers.dev`, o icone pode continuar ausente na lista de conectores mesmo quando `/favicon.png`, `/favicon.svg` e `/favicon.ico` respondem corretamente.
-
-Para exibicao confiavel do icone, configure uma rota ou dominio customizado no Cloudflare Workers, por exemplo:
+Saúde:
 
 ```text
-https://mcp.<seu-dominio>/mcp
-```
-
-Depois use esse endpoint no Claude.ai.
-
-Cloudflare Pages ou GitHub Pages podem hospedar um PNG estatico do icone. Para isso, defina a variavel publica `MCP_ICON_URL` com uma URL HTTPS absoluta:
-
-```text
-MCP_ICON_URL=https://<host-estatico>/jurisprudenciaia-mcp.png
-```
-
-Essa opcao altera `logo_uri` e o icone principal anunciado no `initialize` do MCP. Configure esse valor como variavel de ambiente do Worker ou como Cloudflare Secret. Ela nao garante a exibicao na lista do Claude quando o cliente decide consultar `t1.gstatic.com` pelo dominio base `workers.dev`; nesse caso, o dominio customizado continua sendo a alternativa mais previsivel.
-
-## 7. Testar o Worker
-
-Abra no navegador:
-
-```text
-https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/healthz
+GET https://mcp.seu-dominio.com/healthz
 ```
 
 Resposta esperada:
@@ -235,181 +122,63 @@ Resposta esperada:
 {"ok":true,"service":"jurisprudenciaia-mcp"}
 ```
 
-Se essa resposta aparecer, o Worker esta online.
-
-## 8. Configurar no Claude.ai
-
-No Claude.ai:
-
-1. Abra `Settings`.
-2. Entre em `Connectors`.
-3. Clique para adicionar um conector personalizado.
-4. Em URL, informe:
+Metadados protegidos:
 
 ```text
-https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
+GET /.well-known/oauth-protected-resource
+GET /.well-known/oauth-authorization-server
 ```
 
-5. Abra `Advanced settings`.
-6. Informe:
-
-```text
-OAuth Client ID: <mesmo valor de MCP_OAUTH_CLIENT_ID>
-OAuth Client Secret: <mesmo valor de MCP_OAUTH_CLIENT_SECRET>
-```
-
-7. Salve/conecte o conector.
-
-O Claude deve executar o fluxo OAuth, receber um Bearer token e listar estas ferramentas:
-
-- `consultar_jurisprudenciaia`
-- `pesquisar_jurisprudencia`
-- `buscar_precedentes`
-- `analisar_tese_juridica`
-- `comparar_teses_juridicas`
-- `buscar_por_cnj`
-- `pesquisar_legislacao`
-- `buscar_informativos`
-- `analisar_jurimetria`
-- `linha_do_tempo_precedentes`
-- `buscar_citacoes_dispositivo`
-- `historico_alteracoes_norma`
-- `listar_overruling_tema`
-- `buscar_precedentes_qualificados`
-
-## 9. Configurar no Codex
-
-O Codex pode usar o Worker por `HTTP com streaming` ou rodar o servidor local por `STDIO`.
-
-Para `HTTP com streaming`, use:
-
-```text
-Nome: jurisprudenciaia-mcp
-URL: https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
-Variável de ambiente de token do portador: MCP_BEARER_TOKEN
-```
-
-O valor local de `MCP_BEARER_TOKEN` precisa ser exatamente o mesmo secret configurado no Worker. Não coloque esse token em URL, README, issue, print público ou `config.toml`.
-
-No Windows:
+Diagnóstico automatizado da descoberta e do fluxo Claude:
 
 ```powershell
-[Environment]::SetEnvironmentVariable("MCP_BEARER_TOKEN", "<mesmo valor do Worker>", "User")
+npm run check:claude-oauth -- https://mcp.seu-dominio.com/mcp
 ```
 
-No macOS, para Codex Desktop aberto pelo Dock, Finder ou Spotlight:
+O diagnóstico deve confirmar descoberta, registro dinâmico, PKCE S256 e redirecionamento para autorização. O Codex deve ser validado com `codex mcp login jurisprudenciaia`. Nenhum diagnóstico deve imprimir Client Secret, token ou identidade.
 
-```zsh
-launchctl setenv MCP_BEARER_TOKEN "<mesmo valor do Worker>"
-```
+## Conectar um usuário no Claude
 
-No macOS, para Codex usado pelo Terminal:
-
-```zsh
-echo 'export MCP_BEARER_TOKEN="<mesmo valor do Worker>"' >> ~/.zshrc
-source ~/.zshrc
-```
-
-Depois de criar ou alterar a variável, feche e abra o Codex.
-
-Use o guia especifico:
+O administrador entrega somente a URL pública do MCP:
 
 ```text
-docs/codex.md
+https://mcp.seu-dominio.com/mcp
 ```
 
-## 10. Configurar no ChatGPT
+Client ID e Client Secret avançados ficam vazios. O usuário clica em **Continuar com Google** e seleciona uma conta que já esteja em `MCP_ALLOWED_EMAILS`.
 
-No ChatGPT:
+Não envie a allowlist ao usuário e não peça print da tela real de seleção de contas.
 
-1. Habilite o modo desenvolvedor em `Configuracoes > Aplicativos`.
-2. Crie um app novo.
-3. Em `Conexao`, escolha `URL do servidor` e informe:
+## Conectar um usuário no Codex
 
-```text
-https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
-```
-
-4. Em `Autenticacao`, escolha `OAuth`.
-5. Em configuracoes avancadas, escolha `Cliente OAuth definido pelo usuario`.
-6. Informe:
-
-```text
-Client ID: jurisprudenciaia-mcp-client
-Client Secret: <mesmo valor de MCP_OAUTH_CLIENT_SECRET>
-Token endpoint auth method: client_secret_post
-```
-
-O aviso sobre DCR ou CIMD indica apenas que o Worker nao oferece registro dinamico de cliente. Use o cliente OAuth definido pelo usuario.
-
-Se o ChatGPT abrir campos avancados, confira:
-
-```text
-URL de autorizacao: https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/oauth/authorize
-Token URL: https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/oauth/token
-URL de registro: deixe em branco
-Endereco base do servidor de autorizacao: https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev
-Recurso: https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
-Escopo, se solicitado: jurisprudenciaia:search
-```
-
-Antes de tentar novamente no ChatGPT, voce pode testar o mesmo fluxo OAuth:
+Cadastre a mesma URL como servidor Streamable HTTP e use **Autenticar** ou:
 
 ```powershell
-$env:MCP_OAUTH_CLIENT_ID = Read-Host "Cole o OAuth Client ID do Worker"
-$env:MCP_OAUTH_CLIENT_SECRET = Read-Host "Cole o OAuth Client Secret do Worker"
-npm run check:chatgpt-oauth -- https://jurisprudenciaia-mcp.<seu-subdominio>.workers.dev/mcp
+codex mcp login jurisprudenciaia
 ```
 
-Se o Claude, ChatGPT ou Codex continuar mostrando apenas uma ferramenta depois de um deploy novo, desconecte e conecte o MCP novamente para forcar a atualizacao do schema.
+O Worker aceita somente callbacks loopback estritos do Codex e clientes públicos com Authorization Code. O Google continua usando exclusivamente o callback HTTPS do Worker; não cadastre portas locais no OAuth Client do Google.
 
-## 11. Teste no cliente escolhido
+## Revogação
 
-Depois de conectar no Claude.ai, ChatGPT ou Codex, envie uma mensagem como:
+Para remover uma pessoa, retire seu e-mail de `MCP_ALLOWED_EMAILS` e revogue as autorizações/tokens persistidos conforme o procedimento operacional da conta Cloudflare.
 
-```text
-Use consultar_jurisprudenciaia para pesquisar responsabilidade civil por negativacao indevida dano moral.
-```
+Para suspeita de vazamento:
 
-O resultado esperado deve comecar com:
+1. Gire `MCP_GOOGLE_CLIENT_SECRET` no Google e no Worker.
+2. Gire `MCP_BEARER_TOKEN`, se configurado.
+3. Revogue clientes, grants ou tokens OAuth afetados no armazenamento do Worker.
+4. Inspecione logs somente por códigos e request IDs, sem divulgar dados pessoais.
 
-```md
-# Resultado JurisprudenciaIA
+## Política de capturas
 
-## Resposta do JurisprudenciaIA
+As imagens em `docs/assets/oauth-guide/` são mockups reproduzíveis. Elas podem mostrar a URL pública e nomes genéricos, mas não contêm:
 
-## Tese principal identificada
+- conta ou e-mail real;
+- avatar ou nome do usuário;
+- Google Client ID ou Client Secret;
+- IDs de conta/projeto Cloudflare;
+- tokens, códigos OAuth ou cookies;
+- referência de erro ou atendimento.
 
-## Precedentes citados
-```
-
-## Seguranca
-
-- A URL do MCP nao contem segredo.
-- O Worker exige `Authorization: Bearer <access-token>` para `POST /mcp`.
-- O access token e emitido pelo fluxo OAuth Authorization Code com PKCE.
-- O access token OAuth e emitido pelo fluxo Authorization Code com PKCE quando o cliente envia PKCE; clientes confidenciais com `client_secret_post` tambem sao aceitos.
-- Claude.ai e ChatGPT recebem apenas `MCP_OAUTH_CLIENT_ID` e `MCP_OAUTH_CLIENT_SECRET`.
-- O Codex recebe somente o nome da variável local `MCP_BEARER_TOKEN`; o valor real deve ficar no ambiente local do Windows/macOS e no Worker.
-- `MCP_ACCESS_TOKEN_SECRET` fica somente no Worker.
-- Para revogar OAuth, troque `MCP_OAUTH_CLIENT_SECRET` e `MCP_ACCESS_TOKEN_SECRET` no Worker e publique uma nova versao. Para revogar Codex Bearer, troque `MCP_BEARER_TOKEN`.
-- O repositorio nao deve conter chaves Cloudflare, GitHub, Browserless ou tokens reais.
-- GitHub Pages nao serve para este caso porque e hospedagem estatica.
-- GitHub Actions tambem nao e um servidor HTTPS sempre disponivel.
-- Cloudflare Workers Free funciona aqui porque o conector atual nao precisa executar navegador.
-
-## Publicacao manual
-
-Use este caminho enquanto Wrangler for o controlador operacional escolhido:
-
-```powershell
-npm install
-npm run verify
-npx wrangler login
-npx wrangler secret put MCP_OAUTH_CLIENT_ID
-npx wrangler secret put MCP_OAUTH_CLIENT_SECRET
-npx wrangler secret put MCP_ACCESS_TOKEN_SECRET
-npx wrangler secret put MCP_OAUTH_REDIRECT_URIS
-npx wrangler secret put MCP_BEARER_TOKEN # opcional para Codex
-npm run deploy:worker
-```
+Ao atualizar o guia, regenere os mockups. Não substitua essas imagens por screenshots da sessão real.

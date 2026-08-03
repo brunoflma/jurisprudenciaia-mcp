@@ -1,1034 +1,291 @@
 import { describe, expect, it } from "vitest";
-import { OperationalError } from "../src/errors.js";
+import worker, { ensureLegacyChatGptClient, validateMcpClientRegistration, handleWorkerRequest } from "../src/worker.js";
+import type { Env } from "../src/types.js";
 import type { JurisprudenciaIaRunner } from "../src/jurisprudenciaia/types.js";
-import { handleWorkerRequest } from "../src/worker.js";
 
 const env = {
-  MCP_OAUTH_CLIENT_ID: "claude-test-client",
-  MCP_OAUTH_CLIENT_SECRET: "client-secret-12345678901234567890",
-  MCP_ACCESS_TOKEN_SECRET: "access-token-secret-12345678901234567890",
-  MCP_OAUTH_REDIRECT_URIS: "https://claude.test/oauth/callback, https://chatgpt.com/connector/oauth/test-callback",
-  MCP_BEARER_TOKEN: "codex-static-bearer-token-12345678901234567890",
-  RATE_LIMIT_MAX_REQUESTS: "100"
-};
-
-const redirectUri = "https://claude.test/oauth/callback";
-const chatGptRedirectUri = "https://chatgpt.com/connector/oauth/test-callback";
-const invalidStaticBearerToken = "wrong-codex-static-bearer-token-12345678901234567890";
-
-async function mcpRequest(body: unknown) {
-  return new Request("https://worker.test/mcp", {
-    method: "POST",
-    headers: {
-      "authorization": `Bearer ${await accessToken()}`,
-      "content-type": "application/json"
-    },
-    body: JSON.stringify(body)
-  });
-}
-
-function post(pathname: string, body: unknown, headers: HeadersInit = {}) {
-  return new Request(`https://worker.test${pathname}`, {
-    method: "POST",
-    headers: { "content-type": "application/json", ...headers },
-    body: JSON.stringify(body)
-  });
-}
-
-async function json(response: Response) {
-  return (await response.json()) as Record<string, unknown>;
-}
-
-describe("Cloudflare Worker MCP endpoint", () => {
-  it("serves a health check without requiring MCP transport", async () => {
-    const response = await handleWorkerRequest(
-      new Request("https://worker.test/healthz"),
-      {}
-    );
-
-    expect(response.status).toBe(200);
-    const healthBody = await json(response);
-    expect(healthBody).toMatchObject({ ok: true, service: "jurisprudenciaia-mcp" });
-    expect(healthBody.runtime).toBeUndefined();
-  });
-
-  it("serves a minimal private landing page without leaking internals", async () => {
-    const response = await handleWorkerRequest(
-      new Request("https://worker.test/"),
-      {}
-    );
-
-    expect(response.status).toBe(200);
-    expect(response.headers.get("content-type")).toContain("text/html");
-    const body = await response.text();
-    expect(body).toContain("<title>JurisprudenciaIA MCP</title>");
-    expect(body).toContain("Conector privado · acesso restrito.");
-    expect(body).toContain('name="robots" content="noindex, nofollow"');
-    expect(body).toContain('href="/favicon.png"');
-    // não vaza o motor interno nem o endpoint MCP
-    expect(body).not.toContain("/mcp");
-    expect(body).not.toContain("auto-hospedado");
-  });
-
-  it("serves an SVG favicon", async () => {
-    const response = await handleWorkerRequest(
-      new Request("https://worker.test/favicon.svg"),
-      {}
-    );
-
-    expect(response.status).toBe(200);
-    expect(response.headers.get("content-type")).toContain("image/svg+xml");
-    const body = await response.text();
-    expect(body).toContain("<svg");
-    expect(body).toContain("Balanca da justica");
-  });
-
-  it("serves a PNG favicon for connector clients that prefer raster icons", async () => {
-    const response = await handleWorkerRequest(
-      new Request("https://worker.test/favicon.png"),
-      {}
-    );
-
-    expect(response.status).toBe(200);
-    expect(response.headers.get("content-type")).toContain("image/png");
-    expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(0);
-  });
-
-  it("serves a classic ICO favicon without redirect", async () => {
-    const response = await handleWorkerRequest(
-      new Request("https://worker.test/favicon.ico"),
-      {}
-    );
-
-    expect(response.status).toBe(200);
-    expect(response.headers.get("content-type")).toContain("image/x-icon");
-    expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(0);
-  });
-
-  it("serves OAuth metadata for Claude custom connectors", async () => {
-    const resourceResponse = await handleWorkerRequest(
-      new Request("https://worker.test/.well-known/oauth-protected-resource"),
-      {}
-    );
-    const serverResponse = await handleWorkerRequest(
-      new Request("https://worker.test/.well-known/oauth-authorization-server"),
-      {}
-    );
-    const serverAtResourceResponse = await handleWorkerRequest(
-      new Request("https://worker.test/.well-known/oauth-authorization-server/mcp"),
-      {}
-    );
-
-    expect(resourceResponse.status).toBe(200);
-    expect(await json(resourceResponse)).toMatchObject({
-      resource: "https://worker.test/mcp",
-      resource_name: "JurisprudenciaIA MCP",
-      logo_uri: "https://worker.test/favicon.png?v=61982638",
-      resource_documentation: "https://worker.test/",
-      authorization_servers: ["https://worker.test"]
-    });
-
-    expect(serverResponse.status).toBe(200);
-    expect(await json(serverResponse)).toMatchObject({
-      issuer: "https://worker.test",
-      authorization_endpoint: "https://worker.test/oauth/authorize",
-      token_endpoint: "https://worker.test/oauth/token",
-      service_documentation: "https://worker.test/",
-      logo_uri: "https://worker.test/favicon.png?v=61982638"
-    });
-    expect(serverAtResourceResponse.status).toBe(200);
-  });
-
-  it("allows an HTTPS external icon URL in OAuth metadata", async () => {
-    const resourceResponse = await handleWorkerRequest(
-      new Request("https://worker.test/.well-known/oauth-protected-resource"),
-      { MCP_ICON_URL: "https://assets.example.test/jurisprudenciaia-mcp.png" }
-    );
-    const serverResponse = await handleWorkerRequest(
-      new Request("https://worker.test/.well-known/oauth-authorization-server"),
-      { MCP_ICON_URL: "http://assets.example.test/insecure.png" }
-    );
-
-    expect(await json(resourceResponse)).toMatchObject({
-      logo_uri: "https://assets.example.test/jurisprudenciaia-mcp.png"
-    });
-    expect(await json(serverResponse)).toMatchObject({
-      logo_uri: "https://worker.test/favicon.png?v=61982638"
-    });
-  });
-
-  it("rejects token requests with missing client secret", async () => {
-    const response = await handleWorkerRequest(
-      new Request("https://worker.test/oauth/token", {
-        method: "POST",
-        headers: {
-          "content-type": "application/x-www-form-urlencoded"
-        },
-        body: new URLSearchParams({
-          grant_type: "authorization_code",
-          code: "dummy",
-          redirect_uri: redirectUri,
-          client_id: env.MCP_OAUTH_CLIENT_ID
-        })
-      }),
-      env
-    );
-
-    expect(response.status).toBe(401);
-    const body = await json(response);
-    expect(body.error).toBe("invalid_client");
-  });
-
-  it("rejects token requests with incorrect client secret", async () => {
-    const response = await handleWorkerRequest(
-      new Request("https://worker.test/oauth/token", {
-        method: "POST",
-        headers: {
-          "content-type": "application/x-www-form-urlencoded"
-        },
-        body: new URLSearchParams({
-          grant_type: "authorization_code",
-          code: "dummy",
-          redirect_uri: redirectUri,
-          client_id: env.MCP_OAUTH_CLIENT_ID,
-          client_secret: "wrong-secret-that-does-not-match"
-        })
-      }),
-      env
-    );
-
-    expect(response.status).toBe(401);
-    const body = await json(response);
-    expect(body.error).toBe("invalid_client");
-  });
-
-  it("rejects oversized token requests based on the actual body size", async () => {
-    const response = await handleWorkerRequest(
-      new Request("https://worker.test/oauth/token", {
-        method: "POST",
-        headers: {
-          "content-length": "1",
-          "content-type": "application/x-www-form-urlencoded"
-        },
-        body: new URLSearchParams({
-          grant_type: "authorization_code",
-          code: "x".repeat(4 * 1024 * 1024),
-          redirect_uri: redirectUri,
-          client_id: env.MCP_OAUTH_CLIENT_ID,
-          client_secret: env.MCP_OAUTH_CLIENT_SECRET
-        })
-      }),
-      env
-    );
-
-    expect(response.status).toBe(413);
-    const body = await json(response);
-    expect(body.error).toBe("invalid_request");
-    expect(body.error_description).toBe("Payload too large");
-  });
-
-  it("rejects oversized token requests without a Content-Length header", async () => {
-    const request = new Request("https://worker.test/oauth/token", {
-      method: "POST",
-      headers: {
-        "content-type": "application/x-www-form-urlencoded"
-      },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        code: "x".repeat(4 * 1024 * 1024),
-        redirect_uri: redirectUri,
-        client_id: env.MCP_OAUTH_CLIENT_ID,
-        client_secret: env.MCP_OAUTH_CLIENT_SECRET
-      })
-    });
-    request.headers.delete("content-length");
-
-    const response = await handleWorkerRequest(request, env);
-
-    expect(response.status).toBe(413);
-    const body = await json(response);
-    expect(body.error).toBe("invalid_request");
-    expect(body.error_description).toBe("Payload too large");
-  });
-
-  it("rejects oversized token requests with an invalid Content-Length header", async () => {
-    const response = await handleWorkerRequest(
-      new Request("https://worker.test/oauth/token", {
-        method: "POST",
-        headers: {
-          "content-length": "not-a-number",
-          "content-type": "application/x-www-form-urlencoded"
-        },
-        body: new URLSearchParams({
-          grant_type: "authorization_code",
-          code: "x".repeat(4 * 1024 * 1024),
-          redirect_uri: redirectUri,
-          client_id: env.MCP_OAUTH_CLIENT_ID,
-          client_secret: env.MCP_OAUTH_CLIENT_SECRET
-        })
-      }),
-      env
-    );
-
-    expect(response.status).toBe(413);
-    const body = await json(response);
-    expect(body.error).toBe("invalid_request");
-    expect(body.error_description).toBe("Payload too large");
-  });
-
-  it("prevents rate limit bypass via spoofed x-forwarded-for", async () => {
-    const limitedEnv = {
-      ...env,
-      RATE_LIMIT_MAX_REQUESTS: "1",
-      RATE_LIMIT_WINDOW_MS: "60000"
-    };
-    const authorizeUrl = new URL("https://worker.test/oauth/authorize");
-    authorizeUrl.searchParams.set("response_type", "code");
-    authorizeUrl.searchParams.set("client_id", "unknown-client");
-    authorizeUrl.searchParams.set("redirect_uri", redirectUri);
-
-    const first = await handleWorkerRequest(
-      new Request(authorizeUrl, {
-        headers: { "x-forwarded-for": "10.0.0.1" }
-      }),
-      limitedEnv
-    );
-    const second = await handleWorkerRequest(
-      new Request(authorizeUrl, {
-        headers: { "x-forwarded-for": "10.0.0.2" }
-      }),
-      limitedEnv
-    );
-
-    expect(first.status).toBe(400); // Invalid client, but not rate limited
-    expect(second.status).toBe(429); // Rate limited, despite different x-forwarded-for
-  });
-
-  it("rate limits OAuth authorize attempts before validating client input", async () => {
-    const limitedEnv = {
-      ...env,
-      RATE_LIMIT_MAX_REQUESTS: "1",
-      RATE_LIMIT_WINDOW_MS: "60000"
-    };
-    const authorizeUrl = new URL("https://worker.test/oauth/authorize");
-
-    authorizeUrl.searchParams.set("response_type", "code");
-    authorizeUrl.searchParams.set("client_id", "unknown-client");
-    authorizeUrl.searchParams.set("redirect_uri", redirectUri);
-
-    const first = await handleWorkerRequest(
-      new Request(authorizeUrl, {
-        headers: { "cf-connecting-ip": "203.0.113.10" }
-      }),
-      limitedEnv
-    );
-    const second = await handleWorkerRequest(
-      new Request(authorizeUrl, {
-        headers: { "cf-connecting-ip": "203.0.113.10" }
-      }),
-      limitedEnv
-    );
-
-    expect(first.status).toBe(400);
-    expect(second.status).toBe(429);
-    expect(second.headers.get("retry-after")).toBe("60");
-    expect(await json(second)).toEqual({ error: "rate_limited" });
-  });
-
-  it("rate limits OAuth token attempts before validating credentials", async () => {
-    const limitedEnv = {
-      ...env,
-      RATE_LIMIT_MAX_REQUESTS: "1",
-      RATE_LIMIT_WINDOW_MS: "60000"
-    };
-    const tokenRequest = () =>
-      new Request("https://worker.test/oauth/token", {
-        method: "POST",
-        headers: {
-          "cf-connecting-ip": "203.0.113.11",
-          "content-type": "application/x-www-form-urlencoded"
-        },
-        body: new URLSearchParams({
-          grant_type: "authorization_code",
-          code: "dummy",
-          redirect_uri: redirectUri,
-          client_id: env.MCP_OAUTH_CLIENT_ID
-        })
-      });
-
-    const first = await handleWorkerRequest(tokenRequest(), limitedEnv);
-    const second = await handleWorkerRequest(tokenRequest(), limitedEnv);
-
-    expect(first.status).toBe(401);
-    expect(second.status).toBe(429);
-    expect(second.headers.get("retry-after")).toBe("60");
-    expect(await json(second)).toEqual({ error: "rate_limited" });
-  });
-
-  it("rejects MCP requests without a bearer token", async () => {
-    const response = await handleWorkerRequest(
-      post("/mcp", {
-        jsonrpc: "2.0",
-        id: 1,
-        method: "tools/list"
-      }),
-      env,
-      runner("# Resultado JurisprudenciaIA\n\nTexto.")
-    );
-
-    expect(response.status).toBe(401);
-    expect(response.headers.get("www-authenticate")).toContain(
-      'resource_metadata="https://worker.test/.well-known/oauth-protected-resource"'
-    );
-    expect(response.headers.get("www-authenticate")).toContain('scope="jurisprudenciaia:search"');
-  });
-
-  it("answers initialize without a bearer token so clients can read serverInfo icons", async () => {
-    const response = await handleWorkerRequest(
-      post("/mcp", {
-        jsonrpc: "2.0",
-        id: 1,
-        method: "initialize",
-        params: {
-          protocolVersion: "2025-11-25",
-          capabilities: {},
-          clientInfo: { name: "discovery-client", version: "0.1.0" }
-        }
-      }),
-      env,
-      runner("# Resultado JurisprudenciaIA\n\nTexto.")
-    );
-
-    expect(response.status).toBe(200);
-    const body = await json(response);
-    expect(body).toMatchObject({
-      result: {
-        serverInfo: {
-          title: "JurisprudenciaIA MCP",
-          icons: expect.arrayContaining([
-            expect.objectContaining({ src: expect.stringContaining("favicon.png") })
-          ])
-        }
-      }
-    });
-  });
-
-  it("answers ping without a bearer token", async () => {
-    const response = await handleWorkerRequest(
-      post("/mcp", { jsonrpc: "2.0", id: 9, method: "ping" }),
-      env,
-      runner("# Resultado JurisprudenciaIA\n\nTexto.")
-    );
-
-    expect(response.status).toBe(200);
-  });
-
-  it("still rejects unauthenticated tools/call after opening initialize", async () => {
-    const response = await handleWorkerRequest(
-      post("/mcp", {
-        jsonrpc: "2.0",
-        id: 2,
-        method: "tools/call",
-        params: {
-          name: "consultar_jurisprudenciaia",
-          arguments: { query: "dano moral" }
-        }
-      }),
-      env,
-      runner("# Resultado JurisprudenciaIA\n\nTexto.")
-    );
-
-    expect(response.status).toBe(401);
-    expect(response.headers.get("www-authenticate")).toContain("resource_metadata=");
-  });
-
-  it("requires a token when a batch mixes initialize with tools/list", async () => {
-    const response = await handleWorkerRequest(
-      post("/mcp", [
-        { jsonrpc: "2.0", id: 1, method: "initialize", params: {} },
-        { jsonrpc: "2.0", id: 2, method: "tools/list" }
-      ]),
-      env,
-      runner("# Resultado JurisprudenciaIA\n\nTexto.")
-    );
-
-    expect(response.status).toBe(401);
-  });
-
-  it("accepts a static bearer token for Codex HTTP MCP", async () => {
-    const response = await handleWorkerRequest(
-      new Request("https://worker.test/mcp", {
-        method: "POST",
-        headers: {
-          "authorization": `Bearer ${env.MCP_BEARER_TOKEN}`,
-          "content-type": "application/json"
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "tools/list"
-        })
-      }),
-      env,
-      runner("# Resultado JurisprudenciaIA\n\nTexto.")
-    );
-
-    expect(response.status).toBe(200);
-    expect(await json(response)).toMatchObject({
-      result: {
-        tools: expect.arrayContaining([
-          expect.objectContaining({
-            name: "consultar_jurisprudenciaia",
-            outputSchema: {
-              type: "object",
-              properties: {
-                markdown: { type: "string" }
-              },
-              required: ["markdown"],
-              additionalProperties: false
-            },
-            annotations: {
-              readOnlyHint: true,
-              destructiveHint: false,
-              idempotentHint: true,
-              openWorldHint: true
-            }
-          })
-        ])
-      }
-    });
-  });
-
-  it("rejects an invalid static bearer token", async () => {
-    const response = await handleWorkerRequest(
-      new Request("https://worker.test/mcp", {
-        method: "POST",
-        headers: {
-          "authorization": `Bearer ${invalidStaticBearerToken}`,
-          "content-type": "application/json"
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "tools/list"
-        })
-      }),
-      env,
-      runner("# Resultado JurisprudenciaIA\n\nTexto.")
-    );
-
-    expect(response.status).toBe(401);
-  });
-
-  it("supports confidential OAuth clients without PKCE for ChatGPT custom apps", async () => {
-    const token = await accessTokenWithoutPkce(chatGptRedirectUri);
-    const response = await handleWorkerRequest(
-      new Request("https://worker.test/mcp", {
-        method: "POST",
-        headers: {
-          "authorization": `Bearer ${token}`,
-          "content-type": "application/json"
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "tools/list"
-        })
-      }),
-      env,
-      runner("# Resultado JurisprudenciaIA\n\nTexto.")
-    );
-
-    expect(response.status).toBe(200);
-  });
-
-  it("handles MCP initialize", async () => {
-    const response = await handleWorkerRequest(
-      await mcpRequest({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "initialize",
-        params: {
-          protocolVersion: "2025-11-25",
-          capabilities: {},
-          clientInfo: { name: "test-client", version: "0.1.0" }
-        }
-      }),
-      env,
-      runner("# Resultado JurisprudenciaIA\n\nTexto.")
-    );
-
-    expect(response.status).toBe(200);
-    expect(await json(response)).toMatchObject({
-      jsonrpc: "2.0",
-      id: 1,
-      result: {
-        protocolVersion: "2025-11-25",
-        capabilities: {
-          tools: {}
-        },
-        instructions: expect.stringContaining("inteiro teor"),
-        serverInfo: {
-          name: "jurisprudenciaia-mcp",
-          title: "JurisprudenciaIA MCP",
-          version: "0.1.0",
-          description: expect.stringContaining("Conector MCP"),
-          icons: [
-            {
-              src: "https://worker.test/favicon.png?v=61982638",
-              mimeType: "image/png",
-              sizes: ["256x256"]
-            },
-            {
-              src: "https://worker.test/favicon.ico?v=61982638",
-              mimeType: "image/x-icon",
-              sizes: ["16x16"]
-            }
-          ],
-          websiteUrl: "https://worker.test/"
-        },
-        _meta: {
-          "jurisprudenciaia-mcp/logo_uri": "https://worker.test/favicon.png?v=61982638",
-          "jurisprudenciaia-mcp/icon_uri": "https://worker.test/favicon.png?v=61982638",
-          "jurisprudenciaia-mcp/favicon_uri": "https://worker.test/favicon.ico?v=61982638"
-        }
-      }
-    });
-  });
-
-  it("lists the JurisprudenciaIA tool", async () => {
-    const response = await handleWorkerRequest(
-      await mcpRequest({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "tools/list"
-      }),
-      env,
-      runner("# Resultado JurisprudenciaIA\n\nTexto.")
-    );
-
-    expect(response.status).toBe(200);
-    const body = await json(response);
-
-    expect(body).toMatchObject({
-      jsonrpc: "2.0",
-      id: 1,
-      result: {
-        tools: expect.any(Array)
-      }
-    });
-    expect(
-      (body.result as { tools: Array<{ name: string }> }).tools.map((tool) => tool.name)
-    ).toEqual([
-      "consultar_jurisprudenciaia",
-      "pesquisar_jurisprudencia",
-      "buscar_precedentes",
-      "analisar_tese_juridica",
-      "comparar_teses_juridicas",
-      "buscar_por_cnj",
-      "pesquisar_legislacao",
-      "buscar_informativos",
-      "analisar_jurimetria",
-      "linha_do_tempo_precedentes",
-      "buscar_citacoes_dispositivo",
-      "historico_alteracoes_norma",
-      "listar_overruling_tema",
-      "buscar_precedentes_qualificados"
-    ]);
-  });
-
-  it("calls the tool and returns generated Markdown", async () => {
-    const response = await handleWorkerRequest(
-      await mcpRequest({
-        jsonrpc: "2.0",
-        id: "call-1",
-        method: "tools/call",
-        params: {
-          name: "consultar_jurisprudenciaia",
-          arguments: {
-            query: "responsabilidade civil por dano moral"
-          }
-        }
-      }),
-      env,
-      runner("# Resultado JurisprudenciaIA\n\nTexto consolidado.")
-    );
-
-    expect(response.status).toBe(200);
-    expect(await json(response)).toMatchObject({
-      jsonrpc: "2.0",
-      id: "call-1",
-      result: {
-        structuredContent: {
-          markdown: "# Resultado JurisprudenciaIA\n\nTexto consolidado."
-        },
-        content: [
-          {
-            type: "text",
-            text: "# Resultado JurisprudenciaIA\n\nTexto consolidado."
-          }
-        ]
-      }
-    });
-  });
-
-  it("calls specialist tools through the Cloudflare Worker JSON-RPC handler", async () => {
-    let receivedInput: unknown;
-
-    const response = await handleWorkerRequest(
-      await mcpRequest({
-        jsonrpc: "2.0",
-        id: "call-1",
-        method: "tools/call",
-        params: {
-          name: "analisar_tese_juridica",
-          arguments: {
-            tese: "autofianca e juridicamente impossivel em contrato de locacao",
-            contexto: "fiador de si mesmo",
-            max_wait_seconds: 60
-          }
-        }
-      }),
-      env,
-      {
-        async search(input) {
-          receivedInput = input;
-          return { markdown: "# Resultado JurisprudenciaIA\n\nTexto consolidado." };
-        }
-      }
-    );
-
-    expect(response.status).toBe(200);
-    expect(await json(response)).toMatchObject({
-      result: {
-        content: [
-          {
-            type: "text",
-            text: "# Resultado JurisprudenciaIA\n\nTexto consolidado."
-          }
-        ]
-      }
-    });
-    expect(receivedInput).toEqual({
-      query: [
-        "Analise a tese juridica a seguir com base na jurisprudencia: autofianca e juridicamente impossivel em contrato de locacao.",
-        "Contexto do caso: fiador de si mesmo.",
-        "Separe precedentes favoraveis, contrarios, distincoes possiveis e ressalvas relevantes.",
-        "Estruture a resposta com tese principal, precedentes citados por referencia, tribunal, tipo/numero, data de julgamento, ementa, inteiro teor ou transcricao integral disponibilizada pela fonte, link quando disponivel e pontos de cautela. Nao substitua o inteiro teor por resumo, recorte ou excerto; quando a fonte nao disponibilizar inteiro teor, informe isso explicitamente."
-      ].join(" "),
-      maxWaitSeconds: 60,
-      includeDebug: false
-    });
-  });
-
-  it("returns tool errors as MCP content instead of leaking internals", async () => {
-    const response = await handleWorkerRequest(
-      await mcpRequest({
-        jsonrpc: "2.0",
-        id: "call-1",
-        method: "tools/call",
-        params: {
-          name: "consultar_jurisprudenciaia",
-          arguments: {
-            query: "responsabilidade civil por dano moral"
-          }
-        }
-      }),
-      env,
-      {
-        async search() {
-          throw new OperationalError("rate_limited", "Muitas requisicoes");
-        }
-      }
-    );
-
-    expect(response.status).toBe(200);
-    expect(await json(response)).toMatchObject({
-      result: {
-        isError: true,
-        content: [
-          {
-            type: "text",
-            text: "Falha ao consultar JurisprudenciaIA (rate_limited): Muitas requisicoes"
-          }
-        ]
-      }
-    });
-  });
-
-  it("rejects JSON-RPC batches that exceed the maximum size to prevent DoS", async () => {
-    const batch = Array.from({ length: 11 }).map((_, i) => ({
-      jsonrpc: "2.0",
-      id: i,
-      method: "ping"
-    }));
-
-    const response = await handleWorkerRequest(
-      post("/mcp", batch),
-      env
-    );
-
-    expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({
-      jsonrpc: "2.0",
-      id: null,
-      error: { code: -32600, message: "Batch size exceeds limit" }
-    });
-  });
-
-  it("rejects oversized MCP requests to prevent DoS", async () => {
-    const request = post("/mcp", { jsonrpc: "2.0", id: 1, method: "ping" });
-    request.headers.set("content-length", "4194305"); // 4MB + 1 byte
-
-    const response = await handleWorkerRequest(request, env);
-
-    expect(response.status).toBe(413);
-    expect(await response.json()).toEqual({
-      jsonrpc: "2.0",
-      id: null,
-      error: { code: -32700, message: "Payload too large" }
-    });
-  });
-
-  it("rejects oversized MCP requests when Content-Length is missing", async () => {
-    const body = JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "ping",
-      params: { padding: "x".repeat(4 * 1024 * 1024) }
-    });
-    const request = new Request("https://worker.test/mcp", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body
-    });
-
-    const response = await handleWorkerRequest(request, env);
-
-    expect(response.status).toBe(413);
-    expect(await response.json()).toEqual({
-      jsonrpc: "2.0",
-      id: null,
-      error: { code: -32700, message: "Payload too large" }
-    });
-  });
-
-  it("rejects oversized MCP requests when Content-Length is understated", async () => {
-    const body = JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "ping",
-      params: { padding: "x".repeat(4 * 1024 * 1024) }
-    });
-    const request = new Request("https://worker.test/mcp", {
-      method: "POST",
-      headers: { "content-type": "application/json", "content-length": "1" },
-      body
-    });
-
-    const response = await handleWorkerRequest(request, env);
-
-    expect(response.status).toBe(413);
-    expect(await response.json()).toEqual({
-      jsonrpc: "2.0",
-      id: null,
-      error: { code: -32700, message: "Payload too large" }
-    });
-  });
-
-  it("rejects unknown paths", async () => {
-    const response = await handleWorkerRequest(
-      post("/unknown", {
-        jsonrpc: "2.0",
-        id: 1,
-        method: "tools/list"
-      }),
-      env,
-      runner("# Resultado JurisprudenciaIA\n\nTexto.")
-    );
-
-    expect(response.status).toBe(404);
-  });
-
-  it("blocks OAuth authorize with unregistered redirect URI", async () => {
-    const authorizeUrl = new URL("https://worker.test/oauth/authorize");
-
-    authorizeUrl.searchParams.set("response_type", "code");
-    authorizeUrl.searchParams.set("client_id", env.MCP_OAUTH_CLIENT_ID);
-    authorizeUrl.searchParams.set("redirect_uri", "https://unregistered.test/callback");
-
-    const response = await handleWorkerRequest(new Request(authorizeUrl), env);
-    expect(response.status).toBe(400);
-    expect(response.headers.has("location")).toBe(false);
-
-    const body = await json(response);
-    expect(body.error).toBe("invalid_request");
-  });
-
-  it("blocks OAuth authorize when allowlist is missing", async () => {
-    const authorizeUrl = new URL("https://worker.test/oauth/authorize");
-
-    authorizeUrl.searchParams.set("response_type", "code");
-    authorizeUrl.searchParams.set("client_id", env.MCP_OAUTH_CLIENT_ID);
-    authorizeUrl.searchParams.set("redirect_uri", redirectUri);
-
-    const envWithoutAllowlist = { ...env, MCP_OAUTH_REDIRECT_URIS: undefined };
-    const response = await handleWorkerRequest(new Request(authorizeUrl), envWithoutAllowlist);
-
-    expect(response.status).toBe(400);
-    expect(response.headers.has("location")).toBe(false);
-
-    const body = await json(response);
-    expect(body.error).toBe("invalid_request");
-  });
-
-  it("blocks OAuth authorize with unknown client", async () => {
-    const authorizeUrl = new URL("https://worker.test/oauth/authorize");
-
-    authorizeUrl.searchParams.set("response_type", "code");
-    authorizeUrl.searchParams.set("client_id", "unknown-client");
-    authorizeUrl.searchParams.set("redirect_uri", redirectUri);
-
-    const response = await handleWorkerRequest(new Request(authorizeUrl), env);
-    expect(response.status).toBe(400);
-    expect(response.headers.has("location")).toBe(false);
-
-    const body = await json(response);
-    expect(body.error).toBe("invalid_client");
-  });
-
-  it("handles malformed base64url safely without crashing", async () => {
-    const request = post("/mcp", { jsonrpc: "2.0", id: 1, method: "tools/list" });
-    request.headers.set("authorization", "Bearer valid.invalid!token.signature");
-
-    const response = await handleWorkerRequest(request, env, runner(""));
-
-    expect(response.status).toBe(401);
-  });
-});
-
-async function accessToken(): Promise<string> {
-  const verifier = "test-code-verifier-12345678901234567890";
-  const state = "test-state";
-  const authorizeUrl = new URL("https://worker.test/oauth/authorize");
-
-  authorizeUrl.searchParams.set("response_type", "code");
-  authorizeUrl.searchParams.set("client_id", env.MCP_OAUTH_CLIENT_ID);
-  authorizeUrl.searchParams.set("redirect_uri", redirectUri);
-  authorizeUrl.searchParams.set("state", state);
-  authorizeUrl.searchParams.set("resource", "https://worker.test/mcp");
-  authorizeUrl.searchParams.set("code_challenge", await pkceChallenge(verifier));
-  authorizeUrl.searchParams.set("code_challenge_method", "S256");
-
-  const authorizeResponse = await handleWorkerRequest(new Request(authorizeUrl), env);
-  expect(authorizeResponse.status).toBe(302);
-
-  const location = authorizeResponse.headers.get("location");
-  expect(location).toBeTruthy();
-
-  const callbackUrl = new URL(location ?? redirectUri);
-  expect(callbackUrl.searchParams.get("state")).toBe(state);
-
-  const code = callbackUrl.searchParams.get("code");
-  expect(code).toBeTruthy();
-
-  const tokenResponse = await handleWorkerRequest(
-    new Request("https://worker.test/oauth/token", {
-      method: "POST",
-      headers: {
-        "authorization": `Basic ${btoa(
-          `${env.MCP_OAUTH_CLIENT_ID}:${env.MCP_OAUTH_CLIENT_SECRET}`
-        )}`,
-        "content-type": "application/x-www-form-urlencoded"
-      },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        code: code ?? "",
-        redirect_uri: redirectUri,
-        code_verifier: verifier
-      })
-    }),
-    env
-  );
-
-  expect(tokenResponse.status).toBe(200);
-
-  const tokenBody = await json(tokenResponse);
-  expect(tokenBody.token_type).toBe("Bearer");
-  expect(typeof tokenBody.access_token).toBe("string");
-
-  return tokenBody.access_token as string;
-}
-
-async function accessTokenWithoutPkce(callbackUrl: string): Promise<string> {
-  const state = "chatgpt-test-state";
-  const authorizeUrl = new URL("https://worker.test/oauth/authorize");
-
-  authorizeUrl.searchParams.set("response_type", "code");
-  authorizeUrl.searchParams.set("client_id", env.MCP_OAUTH_CLIENT_ID);
-  authorizeUrl.searchParams.set("redirect_uri", callbackUrl);
-  authorizeUrl.searchParams.set("state", state);
-  authorizeUrl.searchParams.set("resource", "https://worker.test/mcp");
-
-  const authorizeResponse = await handleWorkerRequest(new Request(authorizeUrl), env);
-  expect(authorizeResponse.status).toBe(302);
-
-  const location = authorizeResponse.headers.get("location");
-  expect(location).toBeTruthy();
-
-  const redirectedUrl = new URL(location ?? callbackUrl);
-  expect(redirectedUrl.searchParams.get("state")).toBe(state);
-
-  const code = redirectedUrl.searchParams.get("code");
-  expect(code).toBeTruthy();
-
-  const tokenResponse = await handleWorkerRequest(
-    new Request("https://worker.test/oauth/token", {
-      method: "POST",
-      headers: {
-        "content-type": "application/x-www-form-urlencoded"
-      },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        code: code ?? "",
-        redirect_uri: callbackUrl,
-        client_id: env.MCP_OAUTH_CLIENT_ID,
-        client_secret: env.MCP_OAUTH_CLIENT_SECRET
-      })
-    }),
-    env
-  );
-
-  expect(tokenResponse.status).toBe(200);
-
-  const tokenBody = await json(tokenResponse);
-  expect(tokenBody.token_type).toBe("Bearer");
-  expect(typeof tokenBody.access_token).toBe("string");
-
-  return tokenBody.access_token as string;
-}
-
-async function pkceChallenge(verifier: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
-  return base64UrlEncode(new Uint8Array(digest));
-}
-
-function base64UrlEncode(bytes: Uint8Array): string {
-  let binary = "";
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
-  }
-
-  return btoa(binary)
-    .replaceAll("+", "-")
-    .replaceAll("/", "_")
-    .replace(/=+$/, "");
-}
-
-function runner(markdown: string): JurisprudenciaIaRunner {
+  MCP_BEARER_TOKEN_SHA256: "4c5dc9b7708905f77f5e5d16316b5dfb425e68cb326dcd55a860e90a7707031e",
+  JURISPRUDENCIAIA_URL: "https://www.jurisprudenciaia.com.br/"
+} as unknown as Env;
+
+const ctx = {
+  waitUntil: () => {},
+  passThroughOnException: () => {}
+} as unknown as ExecutionContext;
+
+function fakeRunner(markdown: string): JurisprudenciaIaRunner {
   return {
     async search() {
       return { markdown };
     }
   };
 }
+
+describe("Cloudflare Worker", () => {
+  it("bootstraps the fixed legacy ChatGPT client only for an official callback", async () => {
+    const stored = new Map<string, string>();
+    const kv = {
+      get: async (key: string) => stored.get(key) ?? null,
+      put: async (key: string, value: string) => { stored.set(key, value); }
+    } as unknown as KVNamespace;
+    const request = new Request("https://mcp.test/authorize?client_id=jurisprudenciaia-mcp-client&redirect_uri=https%3A%2F%2Fchatgpt.com%2Fconnector%2Foauth%2FAxMS-ux405ET");
+
+    await ensureLegacyChatGptClient(request, { OAUTH_KV: kv });
+
+    expect(JSON.parse(stored.get("client:jurisprudenciaia-mcp-client")!)).toMatchObject({
+      clientId: "jurisprudenciaia-mcp-client",
+      redirectUris: ["https://chatgpt.com/connector/oauth/AxMS-ux405ET"],
+      tokenEndpointAuthMethod: "none"
+    });
+  });
+
+  it("publishes health and OAuth metadata", async () => {
+    const health = await worker.fetch(new Request("https://mcp.test/healthz"), env, ctx);
+    expect(health.status).toBe(200);
+    expect(await health.json()).toEqual({ ok: true, service: "jurisprudenciaia-mcp" });
+    expect(health.headers.get("strict-transport-security")).toBe("max-age=31536000; includeSubDomains; preload");
+
+    const metadata = await worker.fetch(new Request("https://mcp.test/.well-known/oauth-protected-resource"), env, ctx);
+    expect(await metadata.json()).toMatchObject({
+      resource: "https://mcp.test/mcp",
+      scopes_supported: ["jurisprudence:read", "jurisprudenciaia:search"]
+    });
+  });
+
+  it("advertises the configured public origin in OAuth metadata", async () => {
+    const configuredEnv = { ...env, MCP_PUBLIC_ORIGIN: "https://mcp.example.com" } as unknown as Env;
+
+    const metadata = await worker.fetch(
+      new Request("https://mcp.test/.well-known/oauth-protected-resource"),
+      configuredEnv,
+      ctx
+    );
+
+    expect(await metadata.json()).toMatchObject({
+      resource: "https://mcp.example.com/mcp",
+      authorization_servers: ["https://mcp.example.com"]
+    });
+  });
+
+  it("serves a minimal landing page and hides MCP details from browsers", async () => {
+    const landing = await worker.fetch(new Request("https://mcp.test/", { headers: { accept: "text/html" } }), env, ctx);
+    expect(landing.status).toBe(200);
+    const html = await landing.text();
+    expect(html).toContain("Conector MCP auto-hospedado · acesso restrito.");
+    expect(html).toContain("JurisprudênciaIA MCP");
+    expect(html).toContain('rel="stylesheet" href="/landing.css"');
+    expect(html).not.toContain("<style>");
+    expect(landing.headers.get("content-security-policy")).toContain("style-src 'self'");
+
+    const stylesheet = await worker.fetch(new Request("https://mcp.test/landing.css"), env, ctx);
+    expect(stylesheet.status).toBe(200);
+    expect(stylesheet.headers.get("content-type")).toContain("text/css");
+
+    const mcp = await worker.fetch(new Request("https://mcp.test/mcp", { headers: { accept: "text/html" } }), env, ctx);
+    expect(mcp.status).toBe(404);
+    expect(await mcp.json()).toEqual({ error: "not_found" });
+  });
+
+  it("serves SVG, PNG, and ICO favicons", async () => {
+    const svg = await worker.fetch(new Request("https://mcp.test/favicon.svg"), env, ctx);
+    expect(svg.status).toBe(200);
+    expect(svg.headers.get("content-type")).toContain("image/svg+xml");
+
+    const png = await worker.fetch(new Request("https://mcp.test/favicon.png"), env, ctx);
+    expect(png.status).toBe(200);
+    expect(png.headers.get("content-type")).toContain("image/png");
+
+    const ico = await worker.fetch(new Request("https://mcp.test/favicon.ico"), env, ctx);
+    expect(ico.status).toBe(200);
+    expect(ico.headers.get("content-type")).toContain("image/x-icon");
+  });
+
+  it("rejects unauthenticated MCP requests", async () => {
+    const response = await worker.fetch(new Request("https://mcp.test/mcp", { method: "POST", body: "{}" }), env, ctx);
+    expect(response.status).toBe(401);
+
+    const rootAlias = await worker.fetch(new Request("https://mcp.test/", { method: "POST", body: "{}" }), env, ctx);
+    expect(rootAlias.status).toBe(401);
+    expect(rootAlias.headers.get("www-authenticate")).toContain("resource_metadata");
+  });
+
+  it("does not accept a bearer that differs from the configured hash", async () => {
+    const response = await worker.fetch(new Request("https://mcp.test/mcp", {
+      method: "POST", headers: { authorization: "Bearer wrong-token" }, body: "{}"
+    }), env, ctx);
+    expect(response.status).toBe(401);
+  });
+
+  it("serves MCP tools with valid bearer token via handleWorkerRequest", async () => {
+    const response = await handleWorkerRequest(new Request("https://mcp.test/mcp", {
+      method: "POST",
+      headers: {
+        authorization: "Bearer test-token",
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream"
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} })
+    }), env, fakeRunner("markdown result"));
+
+    expect(response.status).toBe(200);
+    const payload = await response.json() as { result: { tools: Array<{ name: string }> } };
+    expect(payload.result.tools.length).toBeGreaterThan(0);
+    expect(payload.result.tools.map(t => t.name)).toContain("consultar_jurisprudenciaia");
+  });
+
+  it("rejects oversized JSON-RPC batches before creating the MCP transport", async () => {
+    const batch = Array.from({ length: 21 }, (_, index) => ({
+      jsonrpc: "2.0",
+      id: index + 1,
+      method: "ping"
+    }));
+    const response = await handleWorkerRequest(new Request("https://mcp.test/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(batch)
+    }), env, fakeRunner("unused"));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: { code: -32600, message: "Batch size exceeds maximum of 20" },
+      id: null
+    });
+  });
+
+  it("serves the MCP transport from the root compatibility alias", async () => {
+    const response = await worker.fetch(new Request("https://mcp.test/", {
+      method: "POST",
+      headers: {
+        authorization: "Bearer test-token",
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream"
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} })
+    }), env, ctx);
+
+    expect(response.status).toBe(200);
+    const payload = await response.json() as { result: { tools: Array<{ name: string }> } };
+    expect(payload.result.tools.map(t => t.name)).toContain("consultar_jurisprudenciaia");
+  });
+
+  it("allows hosted Claude dynamic registrations without relying on a mutable client name", () => {
+    expect(validateMcpClientRegistration({
+      clientMetadata: { client_name: "Claude Custom Connector", redirect_uris: ["https://claude.ai/api/mcp/auth_callback"] },
+      request: new Request("https://mcp.test/oauth/register")
+    })).toBeUndefined();
+    expect(validateMcpClientRegistration({
+      clientMetadata: { client_name: "Claude", redirect_uris: ["https://claude.com/api/mcp/auth_callback"] },
+      request: new Request("https://mcp.test/oauth/register")
+    })).toBeUndefined();
+    expect(validateMcpClientRegistration({
+      clientMetadata: { client_name: "Claude", redirect_uris: ["https://claude.ai.evil.test/api/mcp/auth_callback"] },
+      request: new Request("https://mcp.test/oauth/register")
+    })).toMatchObject({ code: "invalid_client_metadata" });
+    expect(validateMcpClientRegistration({
+      clientMetadata: {
+        client_name: "Claude",
+        redirect_uris: ["https://claude.ai/api/mcp/auth_callback"],
+        token_endpoint_auth_method: "client_secret_basic"
+      },
+      request: new Request("https://mcp.test/oauth/register")
+    })).toBeUndefined();
+    expect(validateMcpClientRegistration({
+      clientMetadata: { client_name: "Claude Web", redirect_uris: ["https://claude.ai/api/mcp/auth_callback"] },
+      request: new Request("https://mcp.test/oauth/register")
+    })).toBeUndefined();
+    expect(validateMcpClientRegistration({
+      clientMetadata: {
+        client_name: "ChatGPT",
+        redirect_uris: ["https://chatgpt.com/connector/oauth/AxMS-ux405ET"],
+        token_endpoint_auth_method: "none",
+        grant_types: ["authorization_code"],
+        response_types: ["code"]
+      },
+      request: new Request("https://mcp.test/oauth/register")
+    })).toBeUndefined();
+  });
+
+  it("allows Codex public clients on randomized IPv4 loopback callbacks", () => {
+    expect(validateMcpClientRegistration({
+      clientMetadata: {
+        client_name: "Codex",
+        redirect_uris: ["http://127.0.0.1:48703/callback/gSuWNlcOrmWI"],
+        grant_types: ["authorization_code", "refresh_token"],
+        token_endpoint_auth_method: "none",
+        response_types: ["code"],
+        scope: "jurisprudence:read"
+      },
+      request: new Request("https://mcp.test/oauth/register")
+    })).toBeUndefined();
+  });
+
+  it("allows Codex public clients on IPv6 loopback callbacks", () => {
+    expect(validateMcpClientRegistration({
+      clientMetadata: {
+        client_name: "Codex",
+        redirect_uris: ["http://[::1]:48703/callback/gSuWNlcOrmWI"],
+        grant_types: ["authorization_code", "refresh_token"],
+        token_endpoint_auth_method: "none",
+        response_types: ["code"]
+      },
+      request: new Request("https://mcp.test/oauth/register")
+    })).toBeUndefined();
+  });
+
+  it.each([
+    "http://localhost:48703/callback/gSuWNlcOrmWI",
+    "http://localhost.evil.test:48703/callback/gSuWNlcOrmWI",
+    "http://127.0.0.2:48703/callback/gSuWNlcOrmWI",
+    "http://192.168.1.10:48703/callback/gSuWNlcOrmWI",
+    "https://127.0.0.1:48703/callback/gSuWNlcOrmWI",
+    "http://user@127.0.0.1:48703/callback/gSuWNlcOrmWI",
+    "http://127.0.0.1:48703/callback/gSuWNlcOrmWI?next=evil",
+    "http://127.0.0.1:48703/callback/gSuWNlcOrmWI#fragment",
+    "http://127.0.0.1/callback/gSuWNlcOrmWI",
+    "http://127.0.0.1:0/callback/gSuWNlcOrmWI",
+    "http://127.0.0.1:48703/other/gSuWNlcOrmWI",
+    "http://127.0.0.1:48703/callback/../../evil"
+  ])("rejects unsafe Codex callback %s", (redirectUri) => {
+    expect(validateMcpClientRegistration({
+      clientMetadata: {
+        client_name: "Codex",
+        redirect_uris: [redirectUri],
+        grant_types: ["authorization_code", "refresh_token"],
+        token_endpoint_auth_method: "none",
+        response_types: ["code"]
+      },
+      request: new Request("https://mcp.test/oauth/register")
+    })).toMatchObject({ code: "invalid_client_metadata" });
+  });
+
+  it("rejects confidential or misidentified clients using a Codex loopback callback", () => {
+    for (const clientMetadata of [
+      {
+        client_name: "Other Client",
+        redirect_uris: ["http://127.0.0.1:48703/callback/gSuWNlcOrmWI"],
+        grant_types: ["authorization_code", "refresh_token"],
+        token_endpoint_auth_method: "none",
+        response_types: ["code"]
+      },
+      {
+        client_name: "Codex",
+        redirect_uris: ["http://127.0.0.1:48703/callback/gSuWNlcOrmWI"],
+        grant_types: ["authorization_code", "refresh_token"],
+        token_endpoint_auth_method: "client_secret_basic",
+        response_types: ["code"]
+      },
+      {
+        client_name: "Codex",
+        redirect_uris: ["http://127.0.0.1:48703/callback/gSuWNlcOrmWI"],
+        grant_types: ["implicit"],
+        token_endpoint_auth_method: "none",
+        response_types: ["token"]
+      }
+    ]) {
+      expect(validateMcpClientRegistration({
+        clientMetadata,
+        request: new Request("https://mcp.test/oauth/register")
+      })).toMatchObject({ code: "invalid_client_metadata" });
+    }
+  });
+});

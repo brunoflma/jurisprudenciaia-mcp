@@ -1,149 +1,90 @@
-# Usar no Codex
+# Conectar no Codex com OAuth
 
-O caminho recomendado no Codex é `HTTP com streaming` usando o Worker publicado. Use `STDIO` apenas para desenvolvimento local.
+O Codex usa o mesmo OAuth 2.1 com Google do Claude. O usuário não precisa receber Bearer token, Client ID nem Client Secret.
 
-O Codex não usa o OAuth do Claude.ai/ChatGPT nessa tela. Ele lê uma variável local chamada `MCP_BEARER_TOKEN` e envia `Authorization: Bearer <token>` para o Worker.
+## Adicionar o servidor
 
-Essa variável funciona no Windows e no macOS. O importante é que o Codex consiga enxergá-la antes de abrir a conexão MCP.
+Na interface do Codex:
 
-## HTTP com streaming
+1. Abra **Configurações > Plug-ins > MCPs**.
+2. Clique em **Adicionar servidor**.
+3. Escolha **Streamable HTTP**.
+4. Use o nome `jurisprudenciaia`.
+5. Informe:
 
-### 1. Configure o token no Worker
+   ```text
+   https://mcp.seu-dominio.com/mcp
+   ```
 
-No projeto publicado, grave o token como Cloudflare Worker Secret:
+6. Salve e mantenha o servidor habilitado.
+7. Clique em **Autenticar**.
+8. Na página privada, clique em **Continuar com Google** e escolha uma conta autorizada.
 
-```powershell
-npx wrangler secret put MCP_BEARER_TOKEN
-```
+O Codex abre um callback temporário em `127.0.0.1`. Isso é esperado: o Google retorna ao Worker, e o Worker devolve a autorização ao listener local do Codex. Não adicione esse callback efêmero no Google Cloud.
 
-Cole um token longo e aleatório quando o Wrangler pedir o valor. Não há workflow público para sincronizar secrets; mantenha esse valor somente no Cloudflare Worker e no ambiente local do Codex.
+## CLI
 
-Não use `MCP_ACCESS_TOKEN_SECRET` aqui. Esse secret é interno do OAuth do Worker e não deve ser colado em clientes.
-
-### 2. Configure o mesmo token no computador
-
-Use o mesmo valor salvo no Worker.
-
-#### Windows
-
-Defina como variável de usuário do Windows:
+Se o servidor já está configurado:
 
 ```powershell
-[Environment]::SetEnvironmentVariable("MCP_BEARER_TOKEN", "<mesmo valor do Worker>", "User")
+codex mcp login jurisprudenciaia
 ```
 
-Feche e abra o Codex depois disso. Uma variável definida apenas com `$env:MCP_BEARER_TOKEN=...` vale só para aquele PowerShell e normalmente não chega ao Codex Desktop já aberto.
+Para conferir a configuração:
 
-#### macOS
-
-Se você usa o Codex Desktop aberto pelo Dock, Finder ou Spotlight, grave a variável no ambiente do usuário do macOS:
-
-```zsh
-launchctl setenv MCP_BEARER_TOKEN "<mesmo valor do Worker>"
+```powershell
+codex mcp get jurisprudenciaia
 ```
 
-Feche e abra o Codex depois disso. Se reiniciar o Mac e a variável sumir, rode o comando novamente antes de abrir o Codex.
+O login deve abrir o navegador e terminar com uma confirmação de autenticação. Depois disso, reinicie o Codex ou abra uma conversa nova para carregar as ferramentas.
 
-Se você usa Codex pelo Terminal, ou quer deixar o valor disponível nos próximos terminais, adicione ao `~/.zshrc`:
+## config.toml
 
-```zsh
-echo 'export MCP_BEARER_TOKEN="<mesmo valor do Worker>"' >> ~/.zshrc
-source ~/.zshrc
-```
-
-### 3. Preencha a tela do Codex
-
-Na tela `Conectar a um MCP personalizado` ou `Atualizar MCP`:
-
-```text
-Nome: jurisprudenciaia-mcp
-Tipo: HTTP com streaming
-URL: https://<seu-worker>.workers.dev/mcp
-Variável de ambiente de token do portador: MCP_BEARER_TOKEN
-```
-
-Se você configurou domínio customizado:
-
-```text
-URL: https://mcp.<seu-dominio>/mcp
-```
-
-Você também pode configurar diretamente em `~/.codex/config.toml`:
+Configuração equivalente, sem token:
 
 ```toml
-[mcp_servers.jurisprudenciaia-mcp]
-url = "https://<seu-worker>.workers.dev/mcp"
-bearer_token_env_var = "MCP_BEARER_TOKEN"
+[mcp_servers.jurisprudenciaia]
+url = "https://mcp.seu-dominio.com/mcp"
+auth = "oauth"
 enabled = true
 tool_timeout_sec = 120
 default_tools_approval_mode = "prompt"
 ```
 
-Não coloque o token na URL nem em `http_headers` fixos no arquivo de configuração.
+Não configure `bearer_token_env_var` para o fluxo normal OAuth.
 
-### 4. Teste fora da interface
+## Segurança do callback local
 
-Para testar o mesmo fluxo HTTP/Bearer que o Codex usa:
-
-Windows:
-
-```powershell
-$env:MCP_BEARER_TOKEN = [Environment]::GetEnvironmentVariable("MCP_BEARER_TOKEN", "User")
-npm run check:codex-http -- https://<seu-worker>.workers.dev/mcp
-```
-
-macOS:
-
-```zsh
-export MCP_BEARER_TOKEN="$(launchctl getenv MCP_BEARER_TOKEN)"
-npm run check:codex-http -- https://<seu-worker>.workers.dev/mcp
-```
-
-Se você configurou o token apenas no `~/.zshrc`, abra um novo Terminal ou rode `source ~/.zshrc` antes do teste.
-
-Para validar em produção uma chamada real de cada ferramenta, use `npm run check:codex-http:all -- <URL_MCP>`. O comando padrão chama apenas `consultar_jurisprudenciaia` para ser mais rápido.
-
-O teste deve listar estas ferramentas e fazer uma chamada real:
+O Worker aceita somente o formato emitido pelo Codex:
 
 ```text
-consultar_jurisprudenciaia
-pesquisar_jurisprudencia
-buscar_precedentes
-analisar_tese_juridica
-comparar_teses_juridicas
-buscar_por_cnj
-pesquisar_legislacao
-buscar_informativos
-analisar_jurimetria
-linha_do_tempo_precedentes
-buscar_citacoes_dispositivo
-historico_alteracoes_norma
-listar_overruling_tema
-buscar_precedentes_qualificados
+http://127.0.0.1:<porta>/callback/<id-aleatorio>
 ```
 
-Se o teste mostrar `MCP_BEARER_TOKEN não está definido`, o Codex também não conseguirá autenticar. Se mostrar `HTTP 401` ou `HTTP 403`, o token local e o secret do Worker não são o mesmo valor. Se a conexão funcionar mas a chamada der timeout, aumente o tempo de espera da chamada ou confira a disponibilidade da API do JurisprudênciaIA.
+Também há suporte ao loopback IPv6 `[::1]`. São rejeitados `localhost`, hosts externos, HTTPS no loopback, porta ausente, credenciais na URL, query, fragmento e paths diferentes.
 
-Depois de criar ou alterar um MCP, abra uma conversa nova no Codex. A lista de ferramentas pode ser carregada no início da sessão.
+O cliente Codex deve usar:
 
-## STDIO local
+- `token_endpoint_auth_method=none`;
+- Authorization Code;
+- PKCE S256;
+- resposta `code`;
+- escopo anunciado pelo servidor.
 
-Para desenvolvimento local, o servidor MCP também pode rodar via STDIO:
+## Diagnóstico administrativo
 
-```toml
-[mcp_servers.jurisprudenciaia-mcp-local]
-command = "node"
-args = ["dist/mcp-server.js"]
-enabled = true
-tool_timeout_sec = 120
-default_tools_approval_mode = "prompt"
-```
-
-Antes de usar STDIO, rode:
+O Bearer estático continua disponível apenas para smoke tests sem navegador:
 
 ```powershell
-npm install
-npm run build
+npm run check:codex-http -- https://mcp.seu-dominio.com/mcp
 ```
 
-O modo STDIO não usa o Worker publicado nem `MCP_BEARER_TOKEN`.
+Não entregue esse token a usuários e não o coloque em URL, `config.toml`, screenshot ou commit.
+
+## Remover a autorização
+
+```powershell
+codex mcp logout jurisprudenciaia
+```
+
+Depois do logout, use **Autenticar** ou `codex mcp login jurisprudenciaia` para iniciar um novo fluxo Google.

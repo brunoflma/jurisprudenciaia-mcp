@@ -1,0 +1,59 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "jurisprudenciaia-mcp",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-07-25",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
+  "keep_vars": true,
+  "workers_dev": true,
+  "preview_urls": false,
+  "kv_namespaces": [
+    {
+      "binding": "JURIS_CACHE",
+      "id": "replace-with-your-juris-cache-kv-id"
+    },
+    {
+      "binding": "OAUTH_KV",
+      "id": "replace-with-your-oauth-kv-id"
+    }
+  ],
+  "vars": {
+    "JURISPRUDENCIAIA_URL": "https://www.jurisprudenciaia.com.br/",
+    "REQUEST_TIMEOUT_MS": "120000",
+    "RATE_LIMIT_WINDOW_MS": "60000",
+    "RATE_LIMIT_MAX_REQUESTS": "30",
+    "MCP_PUBLIC_ORIGIN": "https://mcp.example.com",
+    "MCP_GOOGLE_CALLBACK_ORIGIN": "https://mcp.example.com",
+    "MCP_GOOGLE_CLIENT_ID": "replace-with-your-google-client-id.apps.googleusercontent.com"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "OAUTH_STATE",
+        "class_name": "OAuthStateStore"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1-oauth-state-store",
+      "new_sqlite_classes": [
+        "OAuthStateStore"
+      ]
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.1
+    }
+  }
+}

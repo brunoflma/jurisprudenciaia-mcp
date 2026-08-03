@@ -105,6 +105,22 @@ describe("parseJurisprudenciaIaStream", () => {
     expect(parsed.answer).toContain("Reformule a consulta");
   });
 
+  it("handles valid strings, empty strings, and non-strings in clarification options", () => {
+    const parsed = parseJurisprudenciaIaStream([
+      'data: {"type":"tool-input-start","toolCallId":"call-1","toolName":"perguntar_ao_usuario"}',
+      "",
+      'data: {"type":"tool-input-delta","toolCallId":"call-1","inputTextDelta":"{\\"pergunta\\":\\"Teste?\\",\\"opcoes\\":[\\"Valido\\",\\"  \\",123,null,\\"Outro\\"]}"}',
+      ""
+    ].join("\n"));
+
+    expect(parsed.requiresClarification).toBe(true);
+    expect(parsed.answer).toContain("Teste?");
+    expect(parsed.answer).toContain("- Valido");
+    expect(parsed.answer).toContain("- Outro");
+    expect(parsed.answer).not.toContain("- 123");
+    expect(parsed.answer).not.toContain("null");
+  });
+
   it("overwrites duplicate references, keeping the latest update", () => {
     const parsed = parseJurisprudenciaIaStream(
       'data: {"type":"data-registry-update","data":{"ref":"J1","tribunal":"stj","titulo":"Old Title"}}\n\n' +
