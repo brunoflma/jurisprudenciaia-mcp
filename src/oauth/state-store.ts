@@ -44,7 +44,7 @@ export class OAuthStateStore {
     }
 
     if (request.method === "POST" && new URL(request.url).pathname === "/consume") {
-      const binding = request.headers.get("x-amf-oauth-binding") ?? "";
+      const binding = request.headers.get("x-mcp-oauth-binding") ?? "";
       return this.storage.transaction(async (transaction) => {
         const record = await transaction.get<StoredTransaction>("transaction");
         if (!record || record.expiresAt <= Date.now()) {

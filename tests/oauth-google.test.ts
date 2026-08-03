@@ -19,7 +19,7 @@ class FakeOAuthState {
       }
       const value = this.values.get(key);
       if (!value) return Response.json({ ok: false }, { status: 404 });
-      if (request.headers.get("x-jurisia-oauth-binding") !== value.binding && request.headers.get("x-amf-oauth-binding") !== value.binding) return Response.json({ ok: false }, { status: 403 });
+      if (request.headers.get("x-mcp-oauth-binding") !== value.binding) return Response.json({ ok: false }, { status: 403 });
       this.values.delete(key);
       return Response.json({ payload: value.payload });
     }} as DurableObjectStub;
@@ -37,22 +37,25 @@ const authRequest: AuthRequest = {
 };
 
 function cookie(response: Response, type: "CONSENT" | "GOOGLE"): string {
-  return new RegExp(`__Host-AMF_JURIS_${type}=[^;,]*`).exec(response.headers.get("set-cookie") ?? "")?.[0] ?? "";
+  return new RegExp(`__Host-MCP_${type}=[^;,]*`).exec(response.headers.get("set-cookie") ?? "")?.[0] ?? "";
 }
 
 describe("Google OAuth for Claude", () => {
   it("uses the visual layout and escapes the client name", () => {
     const html = consentPage("Claude <script>", "transaction", "nonce");
     expect(html).toContain("JurisprudênciaIA MCP");
-    expect(html).toContain("Fontes oficiais");
+    expect(html).toContain("OAuth 2.1");
     expect(html).toContain("Claude &lt;script&gt;");
     expect(html).not.toContain("Claude <script>");
+    expect(html).not.toContain("AMF");
+    expect(html).not.toContain("Inteligência Jurídica");
   });
 
   it("warns when authorization returns to a local application", () => {
     const html = consentPage("MCP CLI Client", "transaction", "nonce", true);
-    expect(html).toContain("Aplicativo local");
-    expect(html).toContain("Confirme que você iniciou esta conexão.");
+    expect(html).toContain("Retorno local");
+    expect(html).toContain("aplicativo local neste computador");
+    expect(html).not.toContain("A M F");
   });
 
   it("authenticates Google, enforces the allowlist and completes Claude authorization", async () => {

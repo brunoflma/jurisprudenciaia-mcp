@@ -12,7 +12,7 @@ function safePrefix(type: string): string {
 }
 
 function cookieName(type: string): string {
-  return `__Host-AMF_JURIS_${safePrefix(type).toUpperCase().replaceAll("-", "_")}`;
+  return `__Host-MCP_${safePrefix(type).toUpperCase().replaceAll("-", "_")}`;
 }
 
 function readCookie(request: Request, name: string): string {
@@ -73,7 +73,7 @@ export async function consumeOAuthTransaction(namespace: OAuthStateNamespace, ty
   const stub = namespace.get(namespace.idFromName(key));
   const response = await stub.fetch(new Request("https://oauth-state.internal/consume", {
     method: "POST",
-    headers: { "x-amf-oauth-binding": received }
+    headers: { "x-mcp-oauth-binding": received }
   }));
   if (response.status === 403) throw new Error("oauth_state_not_bound");
   if (!response.ok) throw new Error("oauth_state_invalid");

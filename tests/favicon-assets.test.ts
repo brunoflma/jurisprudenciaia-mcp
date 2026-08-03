@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const expectedPngSha256 = "61982638715e551ba5f8022150c184147dbd3dfa38e2cd06ce9b0d40a9990a11";
+const expectedPngSha256 = "a3f921de19472e255d6eded49ea930c48aab03d9bae354404dabdf96051a8df6";
 
 describe("Worker favicon static assets", () => {
   it("configures Cloudflare Worker for JurisprudenciaIA MCP", () => {
