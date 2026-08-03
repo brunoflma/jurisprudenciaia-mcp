@@ -14,8 +14,6 @@ type SecretEnv = {
   MCP_PUBLIC_ORIGIN?: string;
   MCP_GOOGLE_CALLBACK_ORIGIN?: string;
   MCP_ALLOWED_EMAILS?: string;
-  MCP_BEARER_TOKEN?: string;
-  MCP_BEARER_TOKEN_SHA256?: string;
   MCP_ALLOWED_ORIGINS?: string;
   JURISPRUDENCIAIA_URL?: string;
   REQUEST_TIMEOUT_MS?: string;

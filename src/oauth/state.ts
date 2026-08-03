@@ -23,12 +23,24 @@ function readCookie(request: Request, name: string): string {
   return "";
 }
 
+const HEX_TABLE = new Array(256);
+for (let i = 0; i < 256; i++) {
+  HEX_TABLE[i] = (i < 16 ? "0" : "") + i.toString(16);
+}
+
+// ⚡ Bolt: Use a precomputed lookup table instead of Array.from and .toString(16)
+// to avoid excessive string allocations and improve hex encoding performance.
 async function sha256(value: string): Promise<string> {
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
-  return Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  let hex = "";
+  for (let i = 0; i < digest.length; i++) {
+    hex += HEX_TABLE[digest[i]];
+  }
+  return hex;
 }
 
 async function equalConstantTime(left: string, right: string): Promise<boolean> {
+  if (left.length !== right.length) return false;
   const [aa, bb] = await Promise.all([sha256(left), sha256(right)]);
   let difference = 0;
   for (let index = 0; index < aa.length; index += 1) difference |= aa.charCodeAt(index) ^ bb.charCodeAt(index);

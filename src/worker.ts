@@ -1,6 +1,5 @@
 import OAuthProvider from "@cloudflare/workers-oauth-provider";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { timingSafeEqual as nodeTimingSafeEqual } from "node:crypto";
 import { createJurisprudenciaIaMcpServer } from "./mcp/create-server.js";
 import { HttpApiJurisprudenciaIaRunner } from "./jurisprudenciaia/http-api-runner.js";
 import type { JurisprudenciaIaRunner } from "./jurisprudenciaia/types.js";
@@ -179,9 +178,6 @@ export default {
     const mcpRequest = oauthRequest.method === "POST" && new URL(oauthRequest.url).pathname === "/"
       ? withPathname(request, MCP_PATH)
       : oauthRequest;
-    if (new URL(mcpRequest.url).pathname === MCP_PATH && await staticBearerAuthenticated(mcpRequest, env)) {
-      return handleMcp(mcpRequest, env);
-    }
     return getOAuthProvider(publicOrigin(request, env)).fetch(mcpRequest, env, ctx);
   }
 } satisfies ExportedHandler<Env>;
@@ -248,15 +244,6 @@ async function handleMcp(request: Request, env: Env, customRunner?: Jurisprudenc
   }
 }
 
-async function staticBearerAuthenticated(request: Request, env: Env): Promise<boolean> {
-  const match = /^Bearer\s+(.+)$/i.exec(request.headers.get("authorization") ?? "");
-  const candidate = match?.[1]?.trim() ?? "";
-  if (!candidate) return false;
-  if (env.MCP_BEARER_TOKEN_SHA256) return constantTimeEqual(await sha256(candidate), env.MCP_BEARER_TOKEN_SHA256.toLowerCase());
-  if (env.MCP_BEARER_TOKEN) return constantTimeEqual(candidate, env.MCP_BEARER_TOKEN);
-  return false;
-}
-
 function validOrigin(request: Request, env: Env): boolean {
   const origin = request.headers.get("origin");
   if (!origin) return true;
@@ -294,24 +281,6 @@ function withPathname(request: Request, pathname: string): Request {
   const url = new URL(request.url);
   url.pathname = pathname;
   return new Request(url, request);
-}
-
-async function constantTimeEqual(left: string, right: string): Promise<boolean> {
-  if (left.length !== right.length) return false;
-  const encoder = new TextEncoder();
-  const [leftHash, rightHash] = await Promise.all([
-    crypto.subtle.digest("SHA-256", encoder.encode(left)),
-    crypto.subtle.digest("SHA-256", encoder.encode(right))
-  ]);
-  const runtimeSubtle = crypto.subtle as SubtleCrypto & { timingSafeEqual?: (left: ArrayBuffer, right: ArrayBuffer) => boolean };
-  return typeof runtimeSubtle.timingSafeEqual === "function"
-    ? runtimeSubtle.timingSafeEqual(leftHash, rightHash)
-    : nodeTimingSafeEqual(Buffer.from(leftHash), Buffer.from(rightHash));
-}
-
-async function sha256(value: string): Promise<string> {
-  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)));
-  return Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function positiveInteger(value: string | undefined, fallback: number): number {

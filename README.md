@@ -217,7 +217,6 @@ Segredos, gravados apenas com `wrangler secret put`:
 | --- | --- |
 | `MCP_GOOGLE_CLIENT_SECRET` | Client Secret do OAuth Client Google |
 | `MCP_ALLOWED_EMAILS` | Allowlist de e-mails autorizados |
-| `MCP_BEARER_TOKEN` | Opcional, apenas para smoke tests administrativos |
 
 `MCP_ALLOWED_ORIGINS` e `MCP_ICON_URL` são opcionais. Não use origem curinga. O arquivo [`.env.example`](.env.example) cobre a execução local com `.dev.vars`.
 
@@ -230,7 +229,7 @@ npm run check:claude-oauth -- https://mcp.seu-dominio.com/mcp
 
 O diagnóstico confirma descoberta de metadados, registro dinâmico, PKCE S256 e redirecionamento para autorização. Para o Codex, valide com `codex mcp login jurisprudenciaia`.
 
-O comando `npm run check:codex-http` exige o Bearer administrativo e existe apenas para smoke tests sem navegador. Usuários normais devem usar OAuth.
+Não existe Bearer estático nem token administrativo: o endpoint MCP aceita somente access token OAuth emitido pelo próprio Worker. Para exercitar o callback loopback usado pelo Codex, rode `npm run check:loopback-oauth -- https://mcp.seu-dominio.com/mcp`.
 
 ## Manutenção e revogação
 
@@ -239,9 +238,8 @@ Para remover uma pessoa, retire o e-mail de `MCP_ALLOWED_EMAILS` e revogue os to
 Em caso de suspeita de vazamento:
 
 1. Gire `MCP_GOOGLE_CLIENT_SECRET` no Google e no Worker.
-2. Gire `MCP_BEARER_TOKEN`, se configurado.
-3. Revogue clientes, grants ou tokens OAuth afetados no armazenamento do Worker.
-4. Inspecione logs somente por códigos e request IDs.
+2. Revogue clientes, grants ou tokens OAuth afetados no armazenamento do Worker.
+3. Inspecione logs somente por códigos e request IDs.
 
 O guia completo de operação está em [`docs/deployment.md`](docs/deployment.md).
 
@@ -251,7 +249,7 @@ O guia completo de operação está em [`docs/deployment.md`](docs/deployment.md
 - O Client Secret do Google existe somente no Google Cloud e nos segredos do Worker.
 - A allowlist é validada no servidor depois que o Google confirma o e-mail.
 - Estados OAuth são vinculados ao navegador, de uso único e armazenados em Durable Object.
-- O endpoint MCP exige access token OAuth ou Bearer administrativo válido.
+- O endpoint MCP aceita somente access token OAuth emitido pelo próprio Worker.
 - Logs não devem conter tokens, códigos OAuth, e-mail completo, consultas jurídicas ou conteúdo de processos.
 - Prints de documentação devem usar dados fictícios; nunca capture o seletor real de contas Google.
 

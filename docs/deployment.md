@@ -66,13 +66,7 @@ Exemplo de formato, somente para ilustrar:
 usuario.autorizado@example.com,segunda.conta@example.com
 ```
 
-O Bearer estático é opcional e reservado a smoke tests ou manutenção:
-
-```powershell
-npx wrangler secret put MCP_BEARER_TOKEN
-```
-
-O hash correspondente pode ser usado em `MCP_BEARER_TOKEN_SHA256`, mas o token original nunca deve ser versionado.
+Esses são os únicos segredos do Worker. Não existe Bearer estático nem token administrativo: todo acesso ao endpoint MCP passa pelo OAuth 2.1 com Google.
 
 ## Variáveis públicas
 
@@ -166,9 +160,8 @@ Para remover uma pessoa, retire seu e-mail de `MCP_ALLOWED_EMAILS` e revogue as 
 Para suspeita de vazamento:
 
 1. Gire `MCP_GOOGLE_CLIENT_SECRET` no Google e no Worker.
-2. Gire `MCP_BEARER_TOKEN`, se configurado.
-3. Revogue clientes, grants ou tokens OAuth afetados no armazenamento do Worker.
-4. Inspecione logs somente por códigos e request IDs, sem divulgar dados pessoais.
+2. Revogue clientes, grants ou tokens OAuth afetados no armazenamento do Worker.
+3. Inspecione logs somente por códigos e request IDs, sem divulgar dados pessoais.
 
 ## Política de capturas
 

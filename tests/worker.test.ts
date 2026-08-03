@@ -4,7 +4,6 @@ import type { Env } from "../src/types.js";
 import type { JurisprudenciaIaRunner } from "../src/jurisprudenciaia/types.js";
 
 const env = {
-  MCP_BEARER_TOKEN_SHA256: "4c5dc9b7708905f77f5e5d16316b5dfb425e68cb326dcd55a860e90a7707031e",
   JURISPRUDENCIAIA_URL: "https://www.jurisprudenciaia.com.br/"
 } as unknown as Env;
 
@@ -109,18 +108,19 @@ describe("Cloudflare Worker", () => {
     expect(rootAlias.headers.get("www-authenticate")).toContain("resource_metadata");
   });
 
-  it("does not accept a bearer that differs from the configured hash", async () => {
-    const response = await worker.fetch(new Request("https://mcp.test/mcp", {
-      method: "POST", headers: { authorization: "Bearer wrong-token" }, body: "{}"
-    }), env, ctx);
-    expect(response.status).toBe(401);
+  it("rejects any static bearer token, including a previously configured one", async () => {
+    for (const token of ["wrong-token", "test-token"]) {
+      const response = await worker.fetch(new Request("https://mcp.test/mcp", {
+        method: "POST", headers: { authorization: `Bearer ${token}` }, body: "{}"
+      }), env, ctx);
+      expect(response.status).toBe(401);
+    }
   });
 
-  it("serves MCP tools with valid bearer token via handleWorkerRequest", async () => {
+  it("serves MCP tools through handleWorkerRequest once OAuth authorized the request", async () => {
     const response = await handleWorkerRequest(new Request("https://mcp.test/mcp", {
       method: "POST",
       headers: {
-        authorization: "Bearer test-token",
         "content-type": "application/json",
         accept: "application/json, text/event-stream"
       },
@@ -152,7 +152,7 @@ describe("Cloudflare Worker", () => {
     });
   });
 
-  it("serves the MCP transport from the root compatibility alias", async () => {
+  it("routes the root compatibility alias through OAuth instead of a static token", async () => {
     const response = await worker.fetch(new Request("https://mcp.test/", {
       method: "POST",
       headers: {
@@ -163,9 +163,8 @@ describe("Cloudflare Worker", () => {
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} })
     }), env, ctx);
 
-    expect(response.status).toBe(200);
-    const payload = await response.json() as { result: { tools: Array<{ name: string }> } };
-    expect(payload.result.tools.map(t => t.name)).toContain("consultar_jurisprudenciaia");
+    expect(response.status).toBe(401);
+    expect(response.headers.get("www-authenticate")).toContain("resource_metadata");
   });
 
   it("allows hosted Claude dynamic registrations without relying on a mutable client name", () => {

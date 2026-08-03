@@ -6,14 +6,10 @@
   "type": "module",
   "scripts": {
     "dev:server": "tsx watch src/server.ts",
-    "dev:stdio": "tsx src/stdio.ts",
     "dev:worker": "wrangler dev",
     "build": "npm run cf-types && tsc -p tsconfig.json",
     "deploy:worker": "wrangler deploy",
     "start:server": "node dist/src/server.js",
-    "start:stdio": "node dist/src/stdio.js",
-    "check:codex-http": "node scripts/check-codex-http.mjs",
-    "check:codex-http:all": "node scripts/check-codex-http.mjs --all-tools",
     "check:chatgpt-oauth": "node scripts/check-chatgpt-oauth.mjs",
     "check:claude-oauth": "node scripts/check-claude-oauth.mjs",
     "check:loopback-oauth": "node scripts/check-loopback-oauth.mjs",
@@ -42,10 +38,7 @@
   },
   "overrides": {
     "@hono/node-server": "2.0.11",
-    "body-parser": "2.3.0",
     "esbuild": "0.28.1",
-    "fast-uri": "3.1.4",
-    "hono": "4.12.32",
     "ip-address": "10.3.1"
   },
   "engines": {

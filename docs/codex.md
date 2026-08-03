@@ -71,15 +71,15 @@ O cliente Codex deve usar:
 - resposta `code`;
 - escopo anunciado pelo servidor.
 
-## Diagnóstico administrativo
+## Diagnóstico
 
-O Bearer estático continua disponível apenas para smoke tests sem navegador:
+O conector não aceita Bearer estático. Para validar a implantação, exercite o próprio fluxo OAuth:
 
 ```powershell
-npm run check:codex-http -- https://mcp.seu-dominio.com/mcp
+npm run check:loopback-oauth -- https://mcp.seu-dominio.com/mcp
 ```
 
-Não entregue esse token a usuários e não o coloque em URL, `config.toml`, screenshot ou commit.
+O comando percorre descoberta de metadados, registro dinâmico, PKCE S256 e o callback loopback usado pelo Codex.
 
 ## Remover a autorização
 

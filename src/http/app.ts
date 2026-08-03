@@ -40,6 +40,15 @@ export function createApp(options: CreateAppOptions): Express {
   if (runner) {
     app.post(options.connectorPath, async (req, res) => {
       const key = req.ip || "unknown";
+      if (Array.isArray(req.body) && req.body.length > 20) {
+        res.status(400).json({
+          jsonrpc: "2.0",
+          error: { code: -32600, message: "Batch size exceeds maximum of 20" },
+          id: null
+        });
+        return;
+      }
+
       const decision = limiter.allow(key);
 
       if (!decision.allowed) {
