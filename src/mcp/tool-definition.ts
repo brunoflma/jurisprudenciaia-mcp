@@ -897,9 +897,15 @@ function normalizeOptionalText(value: string | undefined): string | undefined {
 }
 
 function normalizeTribunais(value: string[] | undefined): string[] {
-  const tribunais = (value ?? [])
-    .map((item) => item.trim().replace(/\s+/g, " ").toUpperCase())
-    .filter(Boolean);
+  // ⚡ Bolt: Fused map and filter into a single loop to reduce intermediate
+  // array allocations and avoid unnecessary garbage collection overhead.
+  const tribunais: string[] = [];
+  for (const item of value ?? []) {
+    const normalized = item.trim().replace(/\s+/g, " ").toUpperCase();
+    if (normalized) {
+      tribunais.push(normalized);
+    }
+  }
 
   if (tribunais.join(", ").length > MAX_TEXT_LENGTH) {
     throw new Error(`Os tribunais excedem o limite maximo de ${MAX_TEXT_LENGTH} caracteres`);
