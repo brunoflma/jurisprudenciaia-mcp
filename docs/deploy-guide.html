@@ -4,172 +4,412 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
-  <title>Conectar o JurisprudênciaIA no Claude</title>
+  <title>Instalar o JurisprudênciaIA MCP do zero</title>
   <style>
     :root {
       color-scheme: dark;
-      --page: #101211;
-      --surface: #191b19;
-      --surface-raised: #222521;
-      --line: #353a34;
-      --ink: #f2f0e8;
-      --muted: #b8b9ae;
-      --gold: #d6ad62;
-      --green: #7fc79a;
+      --page: #0c0f11;
+      --surface: #13171a;
+      --surface-2: #181d21;
+      --line: #262d33;
+      --line-strong: #38414a;
+      --ink: #f0ede5;
+      --muted: #a8b0b6;
+      --accent: #d09a4e;
+      --accent-soft: #e0ba83;
+      --ok: #7fc79a;
       --blue: #9eb9e2;
-      --code: #0b0d0c;
+      --code: #0a0d0f;
     }
 
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; scroll-padding-top: 5.5rem; }
     body {
       margin: 0;
-      background: var(--page);
+      background: radial-gradient(130% 130% at 12% 0%, #131a20 0%, #0c0f11 52%, #070a0c 100%);
       color: var(--ink);
-      font-family: Aptos, "Segoe UI", sans-serif;
-      line-height: 1.6;
+      font-family: Georgia, "Times New Roman", serif;
+      line-height: 1.62;
     }
     a { color: var(--blue); text-underline-offset: .18em; }
-    a:focus-visible, button:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
-    .wrap { width: min(1080px, calc(100vw - 2rem)); margin: 0 auto; }
+    a:focus-visible, button:focus-visible { outline: 2px solid var(--ok); outline-offset: 3px; }
+    code { border: 1px solid var(--line); border-radius: 4px; background: var(--code); padding: .08rem .28rem; color: var(--ink); overflow-wrap: anywhere; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .92em; }
+    .wrap { width: min(1100px, calc(100vw - 2rem)); margin: 0 auto; }
     .skip-link { position: fixed; left: 1rem; top: -5rem; z-index: 20; padding: .7rem 1rem; background: var(--ink); color: var(--page); }
     .skip-link:focus { top: 1rem; }
-    header { border-bottom: 1px solid var(--line); padding: 3rem 0 2.4rem; }
-    .eyebrow { margin: 0 0 .7rem; color: var(--gold); font-size: .8rem; font-weight: 800; text-transform: uppercase; }
-    h1, h2, h3 { margin: 0; line-height: 1.15; letter-spacing: 0; }
-    h1 { max-width: 760px; font-family: Georgia, "Times New Roman", serif; font-size: clamp(2.4rem, 7vw, 4.8rem); font-weight: 500; }
-    h2 { font-size: 1.65rem; }
-    h3 { font-size: 1.05rem; }
+
+    .masthead { border-bottom: 1px solid var(--line); padding: 3.2rem 0 2.6rem; }
+    .eyebrow { margin: 0 0 .7rem; color: var(--accent); font: 800 .8rem/1.4 ui-monospace, "Cascadia Code", Consolas, monospace; text-transform: uppercase; letter-spacing: .18em; }
+    h1, h2, h3, h4 { margin: 0; line-height: 1.14; letter-spacing: 0; }
+    h1 { max-width: 820px; font-size: clamp(2.3rem, 6.8vw, 4.4rem); font-weight: 500; }
+    h2 { font-size: 1.7rem; }
+    h3 { font-size: 1.06rem; }
+    h4 { font-size: .95rem; margin-top: 1.6rem; }
     p { margin: 0; }
-    .lead { max-width: 740px; margin-top: 1rem; color: var(--muted); font-size: 1.08rem; }
-    .promise { display: flex; flex-wrap: wrap; gap: .65rem 1.2rem; margin-top: 1.5rem; color: var(--muted); }
-    .promise span::before { content: "✓"; margin-right: .45rem; color: var(--green); font-weight: 900; }
-    .progress { position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--line); background: rgba(16,18,17,.94); backdrop-filter: blur(12px); }
+    .lead { max-width: 760px; margin-top: 1.1rem; color: var(--muted); font-size: 1.08rem; }
+    .promise { display: flex; flex-wrap: wrap; gap: .65rem 1.3rem; margin-top: 1.55rem; color: var(--muted); font-size: .94rem; }
+    .promise span::before { content: "✓"; margin-right: .45rem; color: var(--ok); font-weight: 900; }
+
+    .progress { position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--line); background: rgba(12,15,17,.94); backdrop-filter: blur(12px); }
     .progress .wrap { display: flex; align-items: center; justify-content: space-between; min-height: 4rem; gap: 1rem; }
     .progress strong { font-size: .92rem; }
     .progress nav { display: flex; gap: .85rem; font-size: .86rem; }
-    main { padding: 2.3rem 0 4rem; }
-    .notice { border-left: 3px solid var(--gold); background: var(--surface); padding: 1rem 1.15rem; color: var(--muted); }
+
+    main { padding: 2.2rem 0 4rem; }
+    .notice { border-left: 3px solid var(--accent); background: var(--surface); padding: 1rem 1.2rem; color: var(--muted); }
     .notice strong { color: var(--ink); }
+
     .steps { display: grid; gap: 2rem; margin-top: 2rem; }
-    .step { display: grid; grid-template-columns: 68px minmax(0, 1fr); gap: 1rem; align-items: start; border-top: 1px solid var(--line); padding-top: 2rem; }
-    .number { display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid var(--gold); color: var(--gold); font-weight: 900; }
+    .step { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 1.1rem; align-items: start; border-top: 1px solid var(--line); padding-top: 2rem; }
+    .num { display: grid; place-items: center; width: 52px; height: 52px; border: 1px solid var(--accent); color: var(--accent); font-weight: 900; font-family: Georgia, serif; }
     .step-copy > p { margin-top: .65rem; color: var(--muted); }
-    ol { margin: 1rem 0 0; padding-left: 1.3rem; color: var(--muted); }
-    li + li { margin-top: .45rem; }
-    code { border: 1px solid var(--line); border-radius: 4px; background: var(--code); padding: .08rem .28rem; color: var(--ink); overflow-wrap: anywhere; }
-    .endpoint { margin-top: 1rem; border: 1px solid var(--line); background: var(--code); padding: .85rem 1rem; color: var(--green); overflow-wrap: anywhere; }
-    figure { margin: 1.25rem 0 0; }
-    figure img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; background: #161816; }
+    ol, ul { margin: .95rem 0 0; padding-left: 1.3rem; color: var(--muted); }
+    li + li { margin-top: .5rem; }
+    li > code { font-size: .88em; }
+
+    .cmd { margin-top: 1rem; display: flex; align-items: stretch; border: 1px solid var(--line-strong); background: var(--code); }
+    .cmd pre { flex: 1; margin: 0; padding: 1rem 1.1rem; overflow-x: auto; color: var(--ink); font: 500 .9rem/1.5 ui-monospace, "Cascadia Code", Consolas, monospace; }
+    .copy-btn { flex: none; border: 0; border-left: 1px solid var(--line); background: transparent; color: var(--accent); cursor: pointer; padding: .8rem 1.05rem; font: 700 .78rem/1 ui-monospace, "Cascadia Code", Consolas, monospace; text-transform: uppercase; letter-spacing: .12em; }
+    .copy-btn:hover { background: rgba(208,154,78,.12); color: var(--accent-soft); }
+    .copy-btn.copied { color: var(--ok); }
+
+    .endpoint { margin-top: 1rem; display: block; background: var(--code); border: 1px solid var(--line); padding: .9rem 1.05rem; color: var(--ok); overflow-wrap: anywhere; font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
+    figure { margin: 1.3rem 0 0; }
+    figure img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; background: #13171a; }
     figcaption { margin-top: .55rem; color: var(--muted); font-size: .85rem; }
-    .privacy { margin-top: 2.5rem; padding: 1.4rem; border: 1px solid var(--line); background: var(--surface); }
-    .privacy ul { columns: 2; margin-bottom: 0; color: var(--muted); }
-    .test { margin-top: 2.5rem; border-top: 1px solid var(--line); padding-top: 2rem; }
-    .prompt { margin-top: 1rem; background: var(--code); border: 1px solid var(--line); padding: 1rem; color: var(--ink); }
-    footer { border-top: 1px solid var(--line); padding: 1.5rem 0 2.5rem; color: var(--muted); font-size: .9rem; }
+
+    .side-note { margin-top: 1rem; padding: 1rem 1.1rem; border: 1px dashed var(--line); color: var(--muted); font-size: .92rem; }
+    .side-note strong { color: var(--ink); }
+    .warn { border-left: 3px solid #e09a6a; }
+
+    .privacy { margin-top: 2.6rem; padding: 1.5rem 1.5rem 1.3rem; border: 1px solid var(--line); background: var(--surface); }
+    .privacy ul { columns: 2; margin-bottom: 0; }
+    .test { margin-top: 2.6rem; padding-top: 2rem; border-top: 1px solid var(--line); }
+    .prompt { margin-top: 1rem; background: var(--code); border: 1px solid var(--line); padding: 1rem 1.1rem; color: var(--ink); font-style: italic; }
+
+    .faq { margin-top: 2.6rem; padding-top: 2rem; border-top: 1px solid var(--line); }
+    .faq details { border-top: 1px solid var(--line); padding: 1rem 0; }
+    .faq details:first-of-type { border-top: 0; }
+    .faq summary { cursor: pointer; color: var(--ink); font-size: 1rem; font-weight: 600; }
+    .faq summary:hover { color: var(--accent-soft); }
+    .faq details p { margin-top: .6rem; }
+
+    footer { border-top: 1px solid var(--line); padding: 1.6rem 0 2.6rem; color: var(--muted); font-size: .9rem; }
+
     @media (max-width: 720px) {
       .progress nav { display: none; }
       .step { grid-template-columns: 1fr; }
       .privacy ul { columns: 1; }
+      .cmd { flex-direction: column; }
+      .copy-btn { border-left: 0; border-top: 1px solid var(--line); }
     }
   </style>
 </head>
 <body>
-  <a href="#main-content" class="skip-link">Ir para o guia</a>
-  <header>
+  <a href="#main-content" class="skip-link">Ir para o conteúdo</a>
+
+  <header class="masthead">
     <div class="wrap">
-      <p class="eyebrow">JurisprudênciaIA MCP · OAuth 2.1</p>
-      <h1>Conectar agora exige apenas a URL e sua conta Google.</h1>
-      <p class="lead">Sem Client ID, sem Client Secret e sem token para copiar. O servidor faz a descoberta OAuth e o Claude abre o login seguro.</p>
+      <p class="eyebrow">JurisprudênciaIA MCP · OAuth 2.1 · Google</p>
+      <h1>Instale o servidor MCP e conecte seu primeiro cliente, do zero.</h1>
+      <p class="lead">Você não precisa de conhecimento técnico avançado. Cada etapa mostra exatamente o que digitar, o que aparecer e como confirmar que deu certo — do clone ao primeiro search no Claude ou Codex.</p>
       <div class="promise" aria-label="Resumo">
-        <span>Instalação em poucos passos</span>
-        <span>Conta controlada por allowlist</span>
-        <span>Nenhum segredo no cliente</span>
+        <span>Leva cerca de 25 minutos</span>
+        <span>Nenhum segredo exposto no código</span>
+        <span>Controle total por allowlist</span>
       </div>
     </div>
   </header>
 
   <div class="progress">
     <div class="wrap">
-      <strong>Guia do usuário</strong>
-      <nav aria-label="Etapas"><a href="#adicionar">Adicionar</a><a href="#autorizar">Autorizar</a><a href="#confirmar">Confirmar</a></nav>
+      <strong>Passo a passo completo</strong>
+      <nav aria-label="Etapas">
+        <a href="#prep">Pré-requisitos</a>
+        <a href="#cloudflare">Cloudflare</a>
+        <a href="#google">Google OAuth</a>
+        <a href="#publicar">Publicar</a>
+        <a href="#conectar">Conectar</a>
+      </nav>
     </div>
   </div>
 
   <main id="main-content" tabindex="-1">
     <div class="wrap">
-      <div class="notice"><strong>Antes de começar:</strong> peça ao administrador para autorizar sua conta Google. Ele não precisa enviar nenhum segredo; basta confirmar que seu e-mail está na lista privada.</div>
 
-      <div class="steps">
-        <section class="step" id="adicionar" aria-labelledby="step-1-title">
-          <div class="number" aria-hidden="true">01</div>
-          <div class="step-copy">
-            <h2 id="step-1-title">Adicione o conector no Claude</h2>
-            <ol>
-              <li>Abra <strong>Configurações > Conectores</strong>.</li>
-              <li>Escolha <strong>Adicionar conector personalizado</strong>.</li>
-              <li>Use o nome <code>JurisprudênciaIA</code>.</li>
-              <li>Cole somente a URL abaixo.</li>
-              <li>Deixe Client ID e Client Secret vazios, mesmo que os campos apareçam nas configurações avançadas.</li>
-            </ol>
-            <div class="endpoint">https://mcp.seu-dominio.com/mcp</div>
-            <figure>
-              <img src="assets/oauth-guide/01-adicionar-conector.png" width="1440" height="900" alt="Mockup sanitizado do formulário do Claude com nome JurisprudênciaIA, URL pública e campos avançados vazios">
-              <figcaption>Imagem demonstrativa. Nenhum dado da conta real foi capturado.</figcaption>
-            </figure>
-          </div>
-        </section>
-
-        <section class="step" id="autorizar" aria-labelledby="step-2-title">
-          <div class="number" aria-hidden="true">02</div>
-          <div class="step-copy">
-            <h2 id="step-2-title">Autorize com Google</h2>
-            <ol>
-              <li>Clique em <strong>Adicionar</strong> e depois em <strong>Vincular</strong>, se o Claude mostrar os dois passos.</li>
-              <li>Na página privada, revise as permissões e clique em <strong>Continuar com Google</strong>.</li>
-              <li>No Google, escolha a conta autorizada.</li>
-            </ol>
-            <p>A tela de seleção de contas não aparece neste guia de propósito: ela pode revelar nome, e-mail, avatar e outras contas abertas no navegador.</p>
-            <figure>
-              <img src="assets/oauth-guide/02-autorizar-google.png" width="1440" height="900" alt="Mockup sanitizado da página privada de autorização com botão Continuar com Google">
-              <figcaption>O Worker pede somente identidade Google verificada e acesso às ferramentas MCP.</figcaption>
-            </figure>
-          </div>
-        </section>
-
-        <section class="step" id="confirmar" aria-labelledby="step-3-title">
-          <div class="number" aria-hidden="true">03</div>
-          <div class="step-copy">
-            <h2 id="step-3-title">Confirme a conexão</h2>
-            <p>Ao retornar ao Claude, o conector deve aparecer como conectado. Abra uma conversa nova antes do primeiro uso para garantir que a lista atual de ferramentas foi carregada.</p>
-            <figure>
-              <img src="assets/oauth-guide/03-conexao-concluida.png" width="1440" height="900" alt="Mockup sanitizado do conector JurisprudênciaIA com status conectado">
-              <figcaption>Status esperado depois que o Google e a allowlist aprovam a identidade.</figcaption>
-            </figure>
-          </div>
-        </section>
+      <div class="notice">
+        <strong>Antes de começar:</strong> você precisa de uma conta Cloudflare (o plano gratuito funciona),
+        um projeto Google Cloud para gerar as credenciais OAuth e o Node.js 22+ instalado.
+        Reservar 25 minutos e seguir os passos na ordem.
       </div>
 
-      <section class="test" aria-labelledby="test-title">
-        <h2 id="test-title">Primeiro teste</h2>
-        <p class="lead">Em uma conversa nova, peça explicitamente uma ferramenta do conector:</p>
-        <div class="prompt">Use pesquisar_jurisprudencia para pesquisar responsabilidade civil por negativação indevida e dano moral.</div>
-      </section>
+      <div class="steps">
+
+        <section class="step" id="prep" aria-labelledby="s-1">
+          <div class="num" aria-hidden="true">01</div>
+          <div class="step-copy">
+            <h2 id="s-1">Clone o repositório e instale as dependências</h2>
+            <ol>
+              <li>Abra o PowerShell ou o Prompt de Comando da sua máquina, na pasta onde quer manter o código.</li>
+              <li>Rode o comando abaixo:</li>
+            </ol>
+            <div class="cmd">
+              <pre id="c-1">git clone https://github.com/brunoflma/jurisprudenciaia-mcp.git
+cd jurisprudenciaia-mcp-private
+npm install</pre>
+              <button class="copy-btn" data-target="c-1">Copiar</button>
+            </div>
+            <div class="side-note"><strong>O que aparece:</strong> o <code>npm install</code> termina com <em>added X packages</em>. Demora de 30 a 90 segundos.</div>
+          </div>
+        </section>
+
+        <section class="step" id="cloudflare" aria-labelledby="s-2">
+          <div class="num" aria-hidden="true">02</div>
+          <div class="step-copy">
+            <h2 id="s-2">Crie conta no Cloudflare e conecte o Wrangler</h2>
+            <ol>
+              <li>Se ainda não tem, crie uma conta em <a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noreferrer">dash.cloudflare.com</a>. O plano Free é suficiente.</li>
+              <li>Volte ao terminal na pasta do projeto e autentique o Wrangler:</li>
+            </ol>
+            <div class="cmd">
+              <pre id="c-2">npx wrangler login</pre>
+              <button class="copy-btn" data-target="c-2">Copiar</button>
+            </div>
+            <ol start="3">
+              <li>Confirme que entrou com a conta certa:</li>
+            </ol>
+            <div class="cmd">
+              <pre id="c-3">npx wrangler whoami</pre>
+              <button class="copy-btn" data-target="c-3">Copiar</button>
+            </div>
+            <div class="side-note"><strong>O que aparece:</strong> <code>wrangler whoami</code> mostra seu e-mail e a Account ID. Guarde esses dados.</div>
+          </div>
+        </section>
+
+        <section class="step" aria-labelledby="s-3">
+          <div class="num" aria-hidden="true">03</div>
+          <div class="step-copy">
+            <h2 id="s-3">Crie os dois namespaces KV (um para cache, um para sessões)</h2>
+            <p>O servidor precisa de dois storages no Cloudflare. Cada comando abaixo devolve um ID que você vai guardar:</p>
+            <div class="cmd">
+              <pre id="c-4">npx wrangler kv namespace create JURIS_CACHE
+npx wrangler kv namespace create OAUTH_KV</pre>
+              <button class="copy-btn" data-target="c-4">Copiar</button>
+            </div>
+            <div class="side-note"><strong>Guarde:</strong> o output traz algo como <code>{ "id": "abc123..." }</code> para cada namespace. Anote os dois IDs — serão usados no próximo passo.</div>
+          </div>
+        </section>
+
+        <section class="step" aria-labelledby="s-4">
+          <div class="num" aria-hidden="true">04</div>
+          <div class="step-copy">
+            <h2 id="s-4">Edite o <code>wrangler.jsonc</code> com seus dados</h2>
+            <p>Abra o arquivo <code>wrangler.jsonc</code> na raiz do projeto (Notepad, VSCode, bloco de notas — qualquer um) e substitua:</p>
+            <ol>
+              <li><code>"id": "replace-with-your-juris-cache-kv-id"</code> → ID gerado pelo Passo 03 para <code>JURIS_CACHE</code></li>
+              <li><code>"id": "replace-with-your-oauth-kv-id"</code> → ID gerado pelo Passo 03 para <code>OAUTH_KV</code></li>
+              <li>Se já souber a URL pública final, também ajuste <code>MCP_PUBLIC_ORIGIN</code> e <code>MCP_GOOGLE_CALLBACK_ORIGIN</code> (se não souber ainda, o Passo 06 mostra como descobrir)</li>
+            </ol>
+            <div class="cmd">
+              <pre id="c-5"># O wrangler.jsonc já vem com a estrutura pronta.
+# Só substitua os placeholders entre aspas pelos IDs do Passo 03.</pre>
+              <button class="copy-btn" data-target="c-5">Ver exemplo</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="step" id="google" aria-labelledby="s-5">
+          <div class="num" aria-hidden="true">05</div>
+          <div class="step-copy">
+            <h2 id="s-5">Crie o projeto no Google Cloud e gere as credenciais OAuth</h2>
+            <ol>
+              <li>Crie um projeto novo em <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noreferrer">Google Cloud Console</a> (nome sugestivo, ex.: <em>JurisprudênciaIA MCP</em>).</li>
+              <li>Em <strong>APIs e Serviços → Tela de consentimento OAuth</strong>, escolha <strong>Externo</strong> e preencha só o necessário (nome do app e um e-mail de contato).</li>
+              <li>Em <strong>Credenciais → Criar credenciais → ID do cliente OAuth</strong>, selecione <strong>Aplicativo da Web</strong>.</li>
+              <li>Nome sugestivo: <code>jurisprudenciaia-mcp-oauth</code>.</li>
+              <li>Em <strong>URIs de redirecionamento autorizados</strong>, cole (ajuste para o seu domínio):</li>
+            </ol>
+            <div class="cmd">
+              <pre id="c-6">https://mcp.seu-dominio.com/oauth/google/callback</pre>
+              <button class="copy-btn" data-target="c-6">Copiar URL</button>
+            </div>
+            <div class="side-note warn"><strong>Importante:</strong> use <code>https://</code>, domínio real (sem IP, sem localhost). Confirme a barra final em <code>/oauth/google/callback</code> — sem <code>/</code> no final.</div>
+            <ol start="6">
+              <li>Salve o <strong>ID do Cliente</strong> (vale <em>público</em>) e o <strong>Segredo do Cliente</strong> (privado, só vai no próximo passo).</li>
+            </ol>
+          </div>
+        </section>
+
+        <section class="step" id="publicar" aria-labelledby="s-6">
+          <div class="num" aria-hidden="true">06</div>
+          <div class="step-copy">
+            <h2 id="s-6">Configure os segredos no Cloudflare e publique</h2>
+            <p>Via terminal, rode três comandos. Cada um abre um prompt pedindo o valor — cole conforme abaixo:</p>
+
+            <h4>6.1 · Segredo do Google</h4>
+            <div class="cmd">
+              <pre id="c-7">npx wrangler secret put MCP_GOOGLE_CLIENT_SECRET</pre>
+              <button class="copy-btn" data-target="c-7">Copiar</button>
+            </div>
+            <p>Cole o <strong>Segredo do Cliente</strong> do Google.</p>
+
+            <h4>6.2 · Lista de e-mails permitidos</h4>
+            <div class="cmd">
+              <pre id="c-8">npx wrangler secret put MCP_ALLOWED_EMAILS</pre>
+              <button class="copy-btn" data-target="c-8">Copiar</button>
+            </div>
+            <p>Cole uma lista separada por vírgula, ex.: <code>usu1@dominio.com,usu2@dominio.com</code>. Só essas pessoas poderão fazer login no conector.</p>
+
+            <h4>6.3 · Variable pública: origem do Worker</h4>
+            <p>Determine onde o servidor vai publicar. Pode ser um domínio próprio ou <code>*.workers.dev</code>.</p>
+            <p>Edite o <code>wrangler.jsonc</code> e coloque a mesma origem nos três campos:</p>
+            <ul>
+              <li><code>MCP_PUBLIC_ORIGIN</code></li>
+              <li><code>MCP_GOOGLE_CALLBACK_ORIGIN</code></li>
+              <li>e no próprio <code>routes</code> (se usar domínio próprio)</li>
+            </ul>
+            <div class="side-note">Exemplo com domínio próprio: <code>https://mcp.seu-dominio.com</code> (sem <code>/</code> no final). Se usar <code>*.workers.dev</code>, o Wrangler mostra o endereço real ao publicar — guarde-o e use-o no Google Cloud (Passo 05).</div>
+
+            <h4>6.4 · Publicar</h4>
+            <div class="cmd">
+              <pre id="c-9">npm run deploy:worker</pre>
+              <button class="copy-btn" data-target="c-9">Copiar</button>
+            </div>
+            <div class="side-note"><strong>O que aparece:</strong> o Wrangler termina com <em>Deployed jurisprudenciaia-mcp</em> e mostra a URL de produção.</div>
+          </div>
+        </section>
+
+        <section class="step" aria-labelledby="s-7">
+          <div class="num" aria-hidden="true">07</div>
+          <div class="step-copy">
+            <h2 id="s-7">Confirme que o servidor subiu</h2>
+            <p>Rode:</p>
+            <div class="cmd">
+              <pre id="c-10">curl https://mcp.seu-dominio.com/healthz</pre>
+              <button class="copy-btn" data-target="c-10">Copiar</button>
+            </div>
+            <div class="side-note"><strong>O que aparece:</strong> uma resposta JSON de saúde indicando que o Worker está no ar. Se aparecer 404 ou erro, revise o <code>wrangler.jsonc</code> e rode o deploy de novo.</div>
+          </div>
+        </section>
+
+        <section class="step" id="conectar" aria-labelledby="s-8">
+          <div class="num" aria-hidden="true">08</div>
+          <div class="step-copy">
+            <h2 id="s-8">Conecte no Claude (ou Codex)</h2>
+            <p>Para usuários do Claude (Desktop ou Web):</p>
+            <ol>
+              <li>Abra <strong>Configurações → Conectores</strong>.</li>
+              <li>Clique em <strong>Adicionar conector personalizado</strong>.</li>
+              <li>Informe:</li>
+            </ol>
+            <ul>
+              <li><strong>Nome</strong>: <code>jurisprudenciaia</code></li>
+              <li><strong>URL do servidor</strong>:
+                <span class="endpoint">https://mcp.seu-dominio.com/mcp</span>
+              </li>
+              <li>Deixe Client ID e Client Secret vazios (mesmo que apareçam)</li>
+            </ul>
+            <figure>
+              <img src="assets/oauth-guide/01-adicionar-conector.png" alt="Mockup do formulário do Claude com nome jurisprudenciaia e URL pública">
+              <figcaption>O formulário real do Claude segue esse padrão. Mockup com dados fictícios.</figcaption>
+            </figure>
+            <ol start="4">
+              <li>Clique em <strong>Adicionar</strong>. O Claude abre o browser para consentimento:</li>
+            </ol>
+            <figure>
+              <img src="assets/oauth-guide/02-autorizar-google.png" alt="Mockup da página de autorização OAuth neutra do conector">
+              <figcaption>A tela real usa autenticação Google. Somente o consentimento é exibido.</figcaption>
+            </figure>
+            <ol start="5">
+              <li>Clique em <strong>Continuar com Google</strong> e escolha a conta que está na allowlist.</li>
+              <li>Ao voltar ao Claude, o status fica <strong>Conectado</strong>:</li>
+            </ol>
+            <figure>
+              <img src="assets/oauth-guide/03-conexao-concluida.png" alt="Mockup do conector jurisprudenciaia com status conectado">
+              <figcaption>O conector aparece com as três ferramentas habilitadas.</figcaption>
+            </figure>
+
+            <div class="side-note">
+              <strong>Para o Codex (CLI):</strong> configure em <code>config.toml</code>:
+              <pre style="margin:.7rem 0 0;padding:.8rem;background:var(--code);border:1px solid var(--line)">[mcp_servers.jurisprudenciaia]
+url = "https://mcp.seu-dominio.com/mcp"
+auth = "oauth"
+enabled = true</pre>
+              Depois rode <code>codex mcp login jurisprudenciaia</code> no terminal.
+            </div>
+          </div>
+        </section>
+
+        <section class="step" aria-labelledby="s-9">
+          <div class="num" aria-hidden="true">09</div>
+          <div class="step-copy">
+            <h2 id="s-9">Faça o primeiro teste</h2>
+            <p>Em uma conversa nova do Claude:</p>
+            <div class="prompt">Use a ferramenta pesquisar_jurisprudencia para pesquisar "negativação indevida dano moral" no STJ.</div>
+            <p>O conector responde com precedentes e fontes. Se aparecerem dados, está pronto para produção.</p>
+          </div>
+        </section>
+
+      </div>
 
       <section class="privacy" aria-labelledby="privacy-title">
-        <h2 id="privacy-title">O que nunca deve aparecer em um print</h2>
+        <h2 id="privacy-title">O que nunca deve aparecer em capturas de tela</h2>
         <ul>
-          <li>Nome, e-mail ou avatar real</li>
-          <li>Seletor de contas Google</li>
+          <li>E-mail ou avatar de qualquer usuário real</li>
+          <li>Tela de seleção de contas do Google</li>
           <li>Client ID ou Client Secret</li>
           <li>Token, cookie ou código OAuth</li>
+          <li>URL final de produção em código público</li>
           <li>ID de conta ou projeto Cloudflare</li>
-          <li>Referência de erro ou suporte</li>
         </ul>
+        <p style="margin-top:.8rem;color:var(--muted)">Os mockups acima usam dados fictícios intencionalmente. Para o guia real, substitua pelos seus próprios dados de implantação ou mantenha os mockups como referência estrutural.</p>
       </section>
+
+      <section class="faq" aria-labelledby="faq-title">
+        <h2 id="faq-title">Problemas comuns</h2>
+
+        <details>
+          <summary>Erro no login do Google: "redirect_uri_mismatch"</summary>
+          <p>O Google está exigindo que o callback registrado no Passo 05 coincida com o <code>MCP_GOOGLE_CALLBACK_ORIGIN</code>. Os dois precisam ser exatamente <code>https://seu-dominio.com/oauth/google/callback</code>. Ajuste no Google Cloud e no <code>wrangler.jsonc</code>, rode <code>npm run deploy:worker</code> outra vez e Tente o login de novo.</p>
+        </details>
+
+        <details>
+          <summary>O e-mail está na allowlist mas o login não autoriza</summary>
+          <p>Verifique se você rodou <code>npx wrangler secret put MCP_ALLOWED_EMAILS</code> depois da última edição do <code>wrangler.jsonc</code>. Segredos só valem a partir do próximo deploy.</p>
+        </details>
+
+        <details>
+          <summary>O Claude diz "Failed to connect" depois de adicionar</summary>
+          <p>Primeiro confirme que o Worker está no ar (<code>curl https://seu-dominio.com/healthz</code>). Depois confirme que a URL que você colou no Claude termina em <code>/mcp</code> (não só o domínio). Se continuar, desconecte, recrie o conector e faça o login Google novamente.</p>
+        </details>
+
+        <details>
+          <summary>Preciso permitir mais pessoas no futuro</summary>
+          <p>Sim. Rode <code>npx wrangler secret put MCP_ALLOWED_EMAILS</code> de novo com a lista ampliada (todos os e-mails, não só os novos). Rode <code>npm run deploy:worker</code> para republicar com o novo segredo.</p>
+        </details>
+      </section>
+
     </div>
   </main>
 
-  <footer><div class="wrap">Para manutenção do servidor, consulte <a href="deployment.md">Operação e publicação privada</a>. Para conectar pelo Codex, consulte <a href="codex.md">Conectar no Codex com OAuth</a>.</div></footer>
+  <footer>
+    <div class="wrap">Para operação contínua, veja <a href="deployment.md">docs/deployment.md</a>. Para uso específico com Codex, veja <a href="codex.md">docs/codex.md</a>.</div>
+  </footer>
+
+  <script>
+    document.querySelectorAll(".copy-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const src = btn.dataset.target ? document.getElementById(btn.dataset.target) : null;
+        if (!src) return;
+        const text = src.innerText.replace(/\n{3,}/g, "\n\n").trim();
+        navigator.clipboard.writeText(text).then(() => {
+          btn.classList.add("copied");
+          const init = btn.textContent;
+          btn.textContent = "Copiado";
+          setTimeout(() => { btn.classList.remove("copied"); btn.textContent = init; }, 1600);
+        });
+      });
+    });
+  </script>
 </body>
 </html>
