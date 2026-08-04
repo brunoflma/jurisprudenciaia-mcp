@@ -10,10 +10,11 @@ Você sobe o servidor uma única vez no seu Cloudflare Worker. Depois, qualquer 
 
 Você não precisa entender de programação para usar. Existe um **guia visual passo a passo**, do zero até a conexão funcionando, com telas ilustradas:
 
-- **[Abrir o guia completo (HTML)](docs/deploy-guide.html)** — leia no navegador
-- **[Baixar o pacote do guia com as imagens (.zip)](docs/assets/oauth-guide/guia-conexao-advogado.zip)** — descompacte e abra o `deploy-guide.html`
+### [Abrir o guia completo →](https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html)
 
-No GitHub, arquivos `.html` abrem como código-fonte; por isso o **.zip** é a forma mais simples de ler o guia com as telas. Basta baixar, descompactar e dar dois cliques em `deploy-guide.html`.
+O link abre o guia **já formatado** no navegador, com as telas e o botão "copiar" nos comandos. Nada para instalar nem extrair.
+
+Prefere ler offline? [Baixe o pacote com as imagens (.zip)](docs/assets/oauth-guide/guia-conexao-advogado.zip), descompacte e dê dois cliques em `deploy-guide.html`.
 
 ---
 
