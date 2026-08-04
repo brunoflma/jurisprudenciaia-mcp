@@ -15,7 +15,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# Paleta neutra alinhada com docs/deploy-guide.html e tela OAuth (sem AMF).
+# Paleta neutra alinhada com docs/deploy-guide.html e a tela OAuth.
 INK = "#0b1014"
 INK_LINE = "#1f2a33"
 COPPER = "#d98a4a"
