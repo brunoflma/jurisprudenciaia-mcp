@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Regenera os assets de favicon do espelho publico na paleta neutra (sem AMF).
+"""Regenera os assets de favicon deste repositorio na paleta neutra.
 
 Sobrescreve somente os blocos FAVICON_* em src/worker.ts, o theme-color da
 landing e os arquivos public/favicon.{svg,png,ico}. Nao toca na tela OAuth.
