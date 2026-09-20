@@ -62,7 +62,8 @@ describe("production deployment architecture", () => {
     const readme = readFileSync("README.md", "utf8");
     const codexGuide = readFileSync("docs/codex.md", "utf8");
 
-    expect(readme).toContain("| Codex | Suportado para uso normal | OAuth 2.1, PKCE S256 e Google |");
+    expect(readme).toMatch(/^\| Codex \| [^\n]*\| OAuth 2\.1, PKCE S256 e Google \|$/m);
+    expect(readme).toContain("(docs/codex.md)");
     expect(codexGuide).toContain("codex mcp login jurisprudenciaia");
     expect(codexGuide).toContain('auth = "oauth"');
     expect(codexGuide).toContain("Não configure `bearer_token_env_var` para o fluxo normal OAuth.");

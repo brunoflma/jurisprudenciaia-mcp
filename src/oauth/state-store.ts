@@ -4,8 +4,15 @@ type StoredTransaction = {
   expiresAt: number;
 };
 
+const SECURITY_HEADERS = {
+  "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "X-XSS-Protection": "1; mode=block"
+} as const;
+
 function json(value: unknown, status = 200): Response {
-  return Response.json(value, { status, headers: { "Cache-Control": "no-store", "Pragma": "no-cache" } });
+  return Response.json(value, { status, headers: { "Cache-Control": "no-store", "Pragma": "no-cache", ...SECURITY_HEADERS } });
 }
 
 async function equalConstantTime(left: string, right: string): Promise<boolean> {

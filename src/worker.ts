@@ -8,6 +8,7 @@ import { handleGoogleAuth } from "./oauth/google-auth.js";
 import { validateMcpClientRegistration } from "./oauth/client-registration.js";
 import { OAuthStateStore } from "./oauth/state-store.js";
 import { FixedWindowRateLimiter } from "./infra/rate-limit.js";
+import { GOOGLE_CALLBACK_PATH } from "./oauth/state.js";
 
 import type { Env } from "./types.js";
 
@@ -20,6 +21,8 @@ const OAUTH_AUTHORIZE_PATH = "/authorize";
 const OAUTH_AUTHORIZE_COMPAT_PATH = "/oauth/authorize";
 const LEGACY_CHATGPT_CLIENT_ID = "jurisprudenciaia-mcp-client";
 const DISCOVERY_SCOPES = Object.freeze(["jurisprudence:read"]);
+const SUPPORTED_SCOPES = ["jurisprudence:read", "jurisprudenciaia:search"] as const;
+const oauthProviders = new Map<string, OAuthProvider<Env>>();
 const MAX_BODY_BYTES = 1_048_576;
 const MAX_JSON_RPC_BATCH_SIZE = 20;
 const SECURITY_HEADERS = {
@@ -44,6 +47,12 @@ function decodeBase64Bytes(value: string): Uint8Array {
   return new Uint8Array(Buffer.from(value, "base64"));
 }
 
+// ⚡ Bolt: Cache decoded base64 favicon buffers at the module level
+// to prevent redundant base64 string decoding and ArrayBuffer allocations
+// on every favicon request, reducing GC overhead.
+const FAVICON_PNG_BUFFER = decodeBase64Bytes(FAVICON_PNG_BASE64).buffer as ArrayBuffer;
+const FAVICON_ICO_BUFFER = decodeBase64Bytes(FAVICON_ICO_BASE64).buffer as ArrayBuffer;
+
 const applicationWorker = {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -58,14 +67,14 @@ const applicationWorker = {
       }});
     }
         if (url.pathname === "/favicon.png" && request.method === "GET") {
-      return new Response(decodeBase64Bytes(FAVICON_PNG_BASE64).buffer as ArrayBuffer, { headers: {
+      return new Response(FAVICON_PNG_BUFFER, { headers: {
         "Content-Type": "image/png",
         "Cache-Control": "public, max-age=86400, immutable",
         ...SECURITY_HEADERS
       }});
     }
     if (url.pathname === "/favicon.ico" && request.method === "GET") {
-      return new Response(decodeBase64Bytes(FAVICON_ICO_BASE64).buffer as ArrayBuffer, { headers: {
+      return new Response(FAVICON_ICO_BUFFER, { headers: {
         "Content-Type": "image/x-icon",
         "Cache-Control": "public, max-age=86400, immutable",
         ...SECURITY_HEADERS
@@ -95,10 +104,6 @@ const googleAuthHandler = {
     }
   }
 } satisfies ExportedHandler<Env>;
-
-const SUPPORTED_SCOPES = ["jurisprudence:read", "jurisprudenciaia:search"] as const;
-
-const oauthProviders = new Map<string, OAuthProvider<Env>>();
 
 function publicOrigin(request: Request, env: Env): string {
   const configured = env.MCP_PUBLIC_ORIGIN?.trim();
@@ -144,6 +149,7 @@ function getOAuthProvider(origin: string): OAuthProvider<Env> {
 }
 
 let globalRateLimiter: FixedWindowRateLimiter | undefined;
+let registrationRateLimiter: FixedWindowRateLimiter | undefined;
 
 function getRateLimiter(env: Env): FixedWindowRateLimiter {
   if (!globalRateLimiter) {
@@ -154,12 +160,27 @@ function getRateLimiter(env: Env): FixedWindowRateLimiter {
   return globalRateLimiter;
 }
 
+function getRegistrationRateLimiter(env: Env): FixedWindowRateLimiter {
+  if (!registrationRateLimiter) {
+    const windowMs = positiveInteger(env.RATE_LIMIT_WINDOW_MS, 60000);
+    // Registration endpoints allocate resources and should have stricter limits (e.g., 5 req/min)
+    registrationRateLimiter = new FixedWindowRateLimiter(windowMs, 5);
+  }
+  return registrationRateLimiter;
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
-    if (url.pathname === OAUTH_AUTHORIZE_PATH || url.pathname === OAUTH_AUTHORIZE_COMPAT_PATH || url.pathname === "/oauth/token") {
-      const limiter = getRateLimiter(env);
+    if (request.method === "POST" || request.method === "PUT") {
+      if (!(await withinBodyLimit(request))) {
+        return json({ error: "payload_too_large" }, 413);
+      }
+    }
+
+    if (url.pathname === OAUTH_AUTHORIZE_PATH || url.pathname === OAUTH_AUTHORIZE_COMPAT_PATH || url.pathname === "/oauth/token" || url.pathname === "/oauth/register" || url.pathname === GOOGLE_CALLBACK_PATH) {
+      const limiter = url.pathname === "/oauth/register" ? getRegistrationRateLimiter(env) : getRateLimiter(env);
       const ip = request.headers.get("cf-connecting-ip") || "unknown";
       const decision = limiter.allow(ip);
       if (!decision.allowed) {
@@ -167,8 +188,9 @@ export default {
       }
     }
 
-    const acceptsHtml = (request.headers.get("accept") ?? "").split(",")
-      .some((value) => value.trim().split(";", 1)[0]?.toLowerCase() === "text/html");
+    // ⚡ Bolt: Use .includes() instead of chaining .split() and .some() to prevent
+    // intermediate array allocations and reduce GC overhead on every MCP request.
+    const acceptsHtml = (request.headers.get("accept") ?? "").toLowerCase().includes("text/html");
     if (request.method === "GET" && url.pathname === MCP_PATH && acceptsHtml) {
       return json({ error: "not_found" }, 404);
     }
@@ -262,26 +284,88 @@ async function handleMcp(request: Request, env: Env, customRunner?: Jurisprudenc
     }, 400);
   }
 
+  const rpcMethod = await safeRpcMethod(request);
+  const startedAt = Date.now();
+  const requestedVersion = request.headers.get("mcp-protocol-version");
+  const protocolVersion = requestedVersion && /^\d{4}-\d{2}-\d{2}$/.test(requestedVersion)
+    ? requestedVersion : null;
   const server = createJurisprudenciaIaMcpServer(customRunner ?? new HttpApiJurisprudenciaIaRunner({ sourceUrl: env.JURISPRUDENCIAIA_URL?.trim() || "https://www.jurisprudenciaia.com.br/", requestTimeoutMs: positiveInteger(env.REQUEST_TIMEOUT_MS, 120000) }));
   const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
   try {
     await server.connect(transport);
-    return await transport.handleRequest(request);
+    const response = await transport.handleRequest(request);
+    console.log(JSON.stringify({
+      operation: "mcp_exchange",
+      method: rpcMethod,
+      status: response.status,
+      rpc_error_code: await safeRpcErrorCode(response, rpcMethod),
+      content_type: response.headers.get("content-type"),
+      protocol_version: protocolVersion,
+      duration_ms: Date.now() - startedAt
+    }));
+    return response;
   } catch (error) {
-    console.error(JSON.stringify({ operation: "mcp_request", code: safeErrorCode(error) }));
+    console.error(JSON.stringify({
+      operation: "mcp_request",
+      method: rpcMethod,
+      protocol_version: protocolVersion,
+      code: safeErrorCode(error)
+    }));
     return json({ jsonrpc: "2.0", error: { code: -32603, message: "Internal error" }, id: null }, 500);
   } finally {
     await server.close().catch(() => undefined);
   }
 }
 
+async function safeRpcErrorCode(response: Response, method: string): Promise<number | null> {
+  // Inspect only protocol discovery, never tool results, arguments or credentials.
+  if (!["initialize", "server/discover", "tools/list", "resources/list", "resources/templates/list", "prompts/list"].includes(method)
+      || !response.headers.get("content-type")?.includes("application/json")) return null;
+  try {
+    const body = await response.clone().json() as { error?: { code?: unknown } };
+    return typeof body?.error?.code === "number" ? body.error.code : null;
+  } catch {
+    return null;
+  }
+}
+
+const DIAGNOSTIC_METHODS = new Set([
+  "initialize", "server/discover", "notifications/initialized", "notifications/cancelled",
+  "tools/list", "tools/call", "resources/list", "resources/templates/list", "resources/read",
+  "prompts/list", "prompts/get", "ping",
+]);
+
+async function safeRpcMethod(request: Request): Promise<string> {
+  try {
+    const payload = await request.clone().json();
+    if (Array.isArray(payload)) return "batch";
+    if (payload && typeof payload === "object" && typeof (payload as { method?: unknown }).method === "string") {
+      const method = (payload as { method: string }).method;
+      return DIAGNOSTIC_METHODS.has(method) ? method : "unknown";
+    }
+  } catch {
+    // Invalid JSON will be reported by the MCP transport itself.
+  }
+  return "unknown";
+}
+
+// ⚡ Bolt: Cache parsed allowed origins to prevent repeated array allocations
+// (.split, .map, .filter) and reduce GC overhead on every MCP request.
+let cachedAllowedOriginsStr: string | undefined;
+let cachedAllowedOrigins: string[] = [];
+
 function validOrigin(request: Request, env: Env): boolean {
   const origin = request.headers.get("origin");
   if (!origin) return true;
   try {
     const normalized = new URL(origin).origin;
-    const allowed = (env.MCP_ALLOWED_ORIGINS ?? "").split(",").map((item) => item.trim()).filter(Boolean);
-    return normalized === new URL(request.url).origin || allowed.includes(normalized);
+    if (normalized === new URL(request.url).origin) return true;
+
+    if (cachedAllowedOriginsStr !== env.MCP_ALLOWED_ORIGINS) {
+      cachedAllowedOriginsStr = env.MCP_ALLOWED_ORIGINS;
+      cachedAllowedOrigins = (env.MCP_ALLOWED_ORIGINS ?? "").split(",").map((item) => item.trim()).filter(Boolean);
+    }
+    return cachedAllowedOrigins.includes(normalized);
   } catch { return false; }
 }
 
@@ -291,11 +375,23 @@ async function withinBodyLimit(request: Request): Promise<boolean> {
   const reader = request.clone().body?.getReader();
   if (!reader) return true;
   let total = 0;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) return true;
-    total += value.byteLength;
-    if (total > MAX_BODY_BYTES) { await reader.cancel(); return false; }
+  const cancel = () => {
+    // A cloned body is a tee: awaiting only one branch can wait indefinitely.
+    void reader.cancel().catch(() => {});
+    void request.body?.cancel().catch(() => {});
+  };
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) return true;
+      total += value.byteLength;
+      if (total > MAX_BODY_BYTES) { cancel(); return false; }
+    }
+  } catch {
+    cancel();
+    return false;
+  } finally {
+    reader.releaseLock();
   }
 }
 

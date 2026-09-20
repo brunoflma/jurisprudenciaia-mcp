@@ -26,7 +26,7 @@ O conector cuida da integração e do acesso. A base e o serviço de pesquisa s�
 1. Peça a URL do servidor à pessoa responsável pela configuração.
 2. Adicione essa URL como conector no seu cliente compatível.
 3. Entre com a conta Google que foi autorizada.
-4. Confirme que o assistente passou a exibir as ferramentas do conector.
+4. Confirme que o assistente executa uma ferramenta sem erro; a lista exibida pode estar em cache.
 
 O [guia visual](https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html) explica o caminho completo. Para ler offline, [baixe o guia com as imagens](docs/assets/oauth-guide/guia-conexao-advogado.zip), extraia o pacote e abra `deploy-guide.html`.
 
@@ -82,7 +82,7 @@ As telas abaixo são ilustrativas e usam dados fictícios.
 
 ## Documentação e colaboração
 
-[Implantação](docs/deployment.md) · [Guia visual](https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html) · [Problemas e sugestões](https://github.com/brunoflma/jurisprudenciaia-mcp/issues)
+[Implantação](docs/deployment.md) · [Guia visual](https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html) · [Compatibilidade e segurança](docs/compatibility-and-security.md) · [Problemas e sugestões](https://github.com/brunoflma/jurisprudenciaia-mcp/issues)
 
 Ao relatar um problema, informe o cliente utilizado e a etapa em que a conexão falhou. Remova tokens, segredos e dados de processos dos exemplos enviados.
 
