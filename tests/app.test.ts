@@ -157,6 +157,50 @@ describe("createApp", () => {
     expect(response.status).not.toBe(500);
   });
 
+  it("keeps the parser limit active across valid, malformed, and oversized JSON", async () => {
+    const app = createApp({
+      connectorPath,
+      rateLimitWindowMs: 60000,
+      rateLimitMaxRequests: 4,
+      runner: createStubRunner()
+    });
+
+    const valid = await request(app)
+      .post(connectorPath)
+      .set("Accept", "application/json, text/event-stream")
+      .send(createInitializeRequest(3));
+
+    expect(valid.status).toBe(200);
+
+    const malformed = await request(app)
+      .post(connectorPath)
+      .set("Content-Type", "application/json")
+      .send('{"jsonrpc":');
+
+    expect(malformed.status).toBe(400);
+
+    const oversized = JSON.stringify({ data: "x".repeat(1_048_576) });
+    const tooLarge = await request(app)
+      .post(connectorPath)
+      .set("Content-Type", "application/json")
+      .send(oversized);
+
+    expect(tooLarge.status).toBe(413);
+  });
+
+  it("cannot bypass the standalone rate limit with a forged proxy identity", async () => {
+    const app = createApp({ connectorPath, rateLimitWindowMs: 60000,
+      rateLimitMaxRequests: 1, runner: createStubRunner() });
+    const first = await request(app).post(connectorPath)
+      .set("Accept", "application/json, text/event-stream")
+      .set("CF-Connecting-IP", "192.0.2.1").send(createInitializeRequest(1));
+    const second = await request(app).post(connectorPath)
+      .set("Accept", "application/json, text/event-stream")
+      .set("CF-Connecting-IP", "192.0.2.2").send(createInitializeRequest(2));
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(429);
+  });
+
   it("rate limits requests to the connector path", async () => {
     const app = createApp({
       connectorPath,

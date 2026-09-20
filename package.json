@@ -21,10 +21,10 @@
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "0.10.3",
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/sdk": "1.30.0",
     "express": "^5.1.0",
     "helmet": "^8.3.0",
-    "zod": "^4.1.13"
+    "zod": "4.6.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.5",
@@ -33,16 +33,22 @@
     "supertest": "^7.1.4",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.15",
-    "wrangler": "4.114.0"
+    "vitest": "4.1.11",
+    "wrangler": "4.135.0"
   },
   "overrides": {
     "@hono/node-server": "2.0.11",
     "body-parser": "2.3.0",
     "esbuild": "0.28.1",
-    "fast-uri": "3.1.4",
-    "hono": "4.12.32",
-    "ip-address": "10.3.1"
+    "fast-uri": "3.1.8",
+    "hono": "4.13.7",
+    "ip-address": "10.7.1",
+    "browserslist": "4.28.7",
+    "jose": "6.2.5",
+    "proxy-addr": "2.0.8",
+    "qs": "6.16.0",
+    "zod": "4.6.0",
+    "nanoid": "3.3.19"
   },
   "engines": {
     "node": ">=22"

@@ -73,3 +73,4 @@ Documentação de referência:
 - [Guia de implantação (detalhado)](docs/deployment.md)
 - [Conectar no Codex](docs/codex.md)
 - [Conectar no Claude](docs/claude-3p.md)
+- [Compatibilidade, segurança e verificação](docs/compatibility-and-security.md)

@@ -30,7 +30,13 @@ export function createApp(options: CreateAppOptions): Express {
     options.rateLimitMaxRequests
   );
 
-  app.use(helmet());
+  app.use(helmet({
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true,
+    },
+  }));
   app.use(express.json({ limit: "1mb" }));
 
   app.get("/healthz", (_req, res) => {
@@ -39,6 +45,7 @@ export function createApp(options: CreateAppOptions): Express {
 
   if (runner) {
     app.post(options.connectorPath, async (req, res) => {
+      // Standalone Node does not trust client-supplied proxy identity headers.
       const key = req.ip || "unknown";
       if (Array.isArray(req.body) && req.body.length > 20) {
         res.status(400).json({

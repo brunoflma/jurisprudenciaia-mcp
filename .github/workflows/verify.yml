@@ -1,0 +1,51 @@
+name: Verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+      - name: Verify code and public content
+        run: npm run verify
+      - name: Audit all dependencies
+        run: npm audit --audit-level=high
+      - name: Prepare isolated runtime
+        run: docker pull node:22-bookworm-slim
+      - name: Verify parser boundary in an isolated runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          NAME="parser-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          trap 'docker rm -f "$NAME" >/dev/null 2>&1 || true' EXIT
+          timeout --kill-after=5s 45s docker run --name "$NAME" --rm \
+            --network none --read-only --ipc none --user 1000:1000 \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --cpus 1 --memory 512m --pids-limit 32 \
+            --ulimit cpu=30:30 --ulimit fsize=8388608:8388608 \
+            --tmpfs /tmp:rw,noexec,nosuid,size=67108864,uid=1000,gid=1000 \
+            --mount "type=bind,source=${GITHUB_WORKSPACE},target=/workspace,readonly" \
+            --workdir /workspace --entrypoint /usr/bin/env node:22-bookworm-slim \
+            -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp TMPDIR=/tmp \
+            NODE_ENV=test node tests/parser-limit-isolated.mjs
+      - name: Validate Worker bundle
+        run: npx wrangler deploy --dry-run

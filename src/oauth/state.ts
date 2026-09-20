@@ -15,10 +15,20 @@ function cookieName(type: string): string {
   return `__Host-MCP_${safePrefix(type).toUpperCase().replaceAll("-", "_")}`;
 }
 
+// Scan cookie pairs without allocating an array or matching inside another value.
 function readCookie(request: Request, name: string): string {
-  for (const part of (request.headers.get("cookie") ?? "").split(";")) {
-    const [key, ...rest] = part.trim().split("=");
-    if (key === name) return rest.join("=");
+  const cookieStr = request.headers.get("cookie");
+  if (!cookieStr) return "";
+  const searchStr = name + "=";
+  let start = 0;
+  while (start < cookieStr.length) {
+    const separator = cookieStr.indexOf(";", start);
+    const end = separator === -1 ? cookieStr.length : separator;
+    while (start < end && (cookieStr.charCodeAt(start) === 32 || cookieStr.charCodeAt(start) === 9)) start++;
+    if (cookieStr.startsWith(searchStr, start)) {
+      return cookieStr.substring(start + searchStr.length, end).trim();
+    }
+    start = end + 1;
   }
   return "";
 }

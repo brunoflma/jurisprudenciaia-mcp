@@ -9,6 +9,12 @@ import {
   googleAuthorizationUrl
 } from "./state.js";
 
+const SECURITY_HEADERS = {
+  "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY",
+  "x-xss-protection": "1; mode=block"
+} as const;
 const SCOPES = Object.freeze(["jurisprudence:read", "jurisprudenciaia:search"]);
 const MAX_FORM_BYTES = 8_192;
 const MAX_GOOGLE_BYTES = 32_768;
@@ -109,7 +115,7 @@ export async function handleGoogleAuth(request: Request, env: GoogleOAuthEnv, fa
   if (path === "/authorize" && request.method === "GET") return showConsent(request, env);
   if (path === "/authorize" && request.method === "POST") return startGoogle(request, env);
   if (path === GOOGLE_CALLBACK_PATH && request.method === "GET") return finishGoogle(request, env, googleFetch);
-  return new Response("Method Not Allowed", { status: 405, headers: { Allow: "GET, POST" } });
+  return new Response("Method Not Allowed", { status: 405, headers: { Allow: "GET, POST", ...SECURITY_HEADERS } });
 }
 
 async function showConsent(request: Request, env: GoogleOAuthEnv): Promise<Response> {
@@ -127,7 +133,7 @@ async function showConsent(request: Request, env: GoogleOAuthEnv): Promise<Respo
     "cache-control": "no-store",
     "pragma": "no-cache",
     "referrer-policy": "no-referrer",
-    "x-content-type-options": "nosniff"
+    ...SECURITY_HEADERS
   }});
 }
 
@@ -193,11 +199,19 @@ async function googleProfile(accessToken: string, googleFetch: FetchLike): Promi
   return { sub: record.sub, email: record.email, name: typeof record.name === "string" ? record.name : record.email };
 }
 
+// ⚡ Bolt: Cache parsed allowed emails to prevent repeated array allocations
+// (.split, .map, .filter) and reduce GC overhead on OAuth callbacks.
+let cachedAllowedEmailsStr: string | undefined;
+let cachedAllowedEmails: string[] = [];
+
 function allowedIdentity(profile: { email: string; name: string }, env: GoogleOAuthEnv): { email: string; name: string } {
-  const allowed = (env.MCP_ALLOWED_EMAILS ?? "").split(",").map((item) => item.trim().toLowerCase()).filter(Boolean);
-  if (allowed.length === 0) throw new Error("oauth_allowlist_missing");
+  if (cachedAllowedEmailsStr !== env.MCP_ALLOWED_EMAILS) {
+    cachedAllowedEmailsStr = env.MCP_ALLOWED_EMAILS;
+    cachedAllowedEmails = (env.MCP_ALLOWED_EMAILS ?? "").split(",").map((item) => item.trim().toLowerCase()).filter(Boolean);
+  }
+  if (cachedAllowedEmails.length === 0) throw new Error("oauth_allowlist_missing");
   const email = profile.email.trim().toLowerCase();
-  if (!allowed.includes(email)) throw new Error("oauth_user_not_allowed");
+  if (!cachedAllowedEmails.includes(email)) throw new Error("oauth_user_not_allowed");
   return { email, name: profile.name.trim() || email };
 }
 
@@ -255,7 +269,7 @@ async function readJsonLimited(response: Response, limit: number): Promise<unkno
 }
 
 function redirect(location: string, cookies: string[]): Response {
-  const headers = new Headers({ Location: location, "Cache-Control": "no-store", "Pragma": "no-cache" });
+  const headers = new Headers({ Location: location, "Cache-Control": "no-store", "Pragma": "no-cache", ...SECURITY_HEADERS });
   for (const cookie of cookies) headers.append("Set-Cookie", cookie);
   return new Response(null, { status: 302, headers });
 }
