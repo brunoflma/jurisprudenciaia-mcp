@@ -20,7 +20,7 @@
     "cf-types": "wrangler types"
   },
   "dependencies": {
-    "@cloudflare/workers-oauth-provider": "0.8.2",
+    "@cloudflare/workers-oauth-provider": "0.10.3",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "express": "^5.1.0",
     "helmet": "^8.3.0",
