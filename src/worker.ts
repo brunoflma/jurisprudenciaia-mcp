@@ -19,6 +19,7 @@ const MCP_PATH = "/mcp";
 const OAUTH_AUTHORIZE_PATH = "/authorize";
 const OAUTH_AUTHORIZE_COMPAT_PATH = "/oauth/authorize";
 const LEGACY_CHATGPT_CLIENT_ID = "jurisprudenciaia-mcp-client";
+const DISCOVERY_SCOPES = Object.freeze(["jurisprudence:read"]);
 const MAX_BODY_BYTES = 1_048_576;
 const MAX_JSON_RPC_BATCH_SIZE = 20;
 const SECURITY_HEADERS = {
@@ -133,7 +134,7 @@ function getOAuthProvider(origin: string): OAuthProvider<Env> {
     resourceMetadata: {
       resource: new URL(MCP_PATH, origin).href,
       authorization_servers: [origin],
-      scopes_supported: [...SUPPORTED_SCOPES],
+      scopes_supported: [...DISCOVERY_SCOPES],
       bearer_methods_supported: ["header"],
     }
   });
@@ -178,9 +179,39 @@ export default {
     const mcpRequest = oauthRequest.method === "POST" && new URL(oauthRequest.url).pathname === "/"
       ? withPathname(request, MCP_PATH)
       : oauthRequest;
-    return getOAuthProvider(publicOrigin(request, env)).fetch(mcpRequest, env, ctx);
+    const oauthResponse = await getOAuthProvider(publicOrigin(request, env)).fetch(mcpRequest, env, ctx);
+    return normalizeOAuthDiscoveryMetadata(mcpRequest, oauthResponse);
   }
 } satisfies ExportedHandler<Env>;
+
+async function normalizeOAuthDiscoveryMetadata(request: Request, response: Response): Promise<Response> {
+  const url = new URL(request.url);
+  if (request.method !== "GET"
+      || url.pathname !== "/.well-known/oauth-authorization-server"
+      || !response.ok) {
+    return response;
+  }
+
+  let payload: Record<string, unknown>;
+  try {
+    const parsed = await response.clone().json();
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return response;
+    payload = parsed as Record<string, unknown>;
+  } catch {
+    return response;
+  }
+
+  payload.scopes_supported = [...DISCOVERY_SCOPES];
+  const headers = new Headers(response.headers);
+  headers.delete("content-length");
+  headers.set("content-type", "application/json; charset=utf-8");
+  headers.set("cache-control", "no-store");
+  return new Response(JSON.stringify(payload), {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
 
 export async function ensureLegacyChatGptClient(request: Request, env: Pick<Env, "OAUTH_KV">): Promise<void> {
   const url = new URL(request.url);

@@ -47,7 +47,16 @@ describe("Cloudflare Worker", () => {
     const metadata = await worker.fetch(new Request("https://mcp.test/.well-known/oauth-protected-resource"), env, ctx);
     expect(await metadata.json()).toMatchObject({
       resource: "https://mcp.test/mcp",
-      scopes_supported: ["jurisprudence:read", "jurisprudenciaia:search"]
+      scopes_supported: ["jurisprudence:read"]
+    });
+
+    const serverMetadata = await worker.fetch(
+      new Request("https://mcp.test/.well-known/oauth-authorization-server"),
+      env,
+      ctx
+    );
+    expect(await serverMetadata.json()).toMatchObject({
+      scopes_supported: ["jurisprudence:read"]
     });
   });
 
