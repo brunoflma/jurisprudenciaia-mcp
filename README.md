@@ -1,76 +1,89 @@
+<img src="docs/cover.svg" width="100%" alt="JurisprudênciaIA MCP. Pesquisa jurídica conectada ao seu assistente de IA.">
+
 # JurisprudênciaIA MCP
 
-Conector MCP **auto-hospedado** para pesquisar jurisprudência brasileira direto no Claude, no Codex e em outros clientes MCP — sem instalar nada na máquina de quem vai usar.
+**Pesquise jurisprudência brasileira dentro da conversa em que você trabalha.**
 
-Você sobe o servidor uma única vez no seu Cloudflare Worker. Depois, qualquer pessoa autorizada conecta com a própria conta Google e começa a pesquisar. Sem Client ID, sem Client Secret, sem Bearer token para distribuir: o cliente MCP descobre o OAuth sozinho e abre o login do Google.
+Este conector aproxima o serviço JurisprudênciaIA de assistentes compatíveis com MCP. Você configura um servidor próprio no Cloudflare Workers; as pessoas autorizadas entram com a conta Google e passam a usar as ferramentas de pesquisa no assistente.
 
----
+**[Abrir o guia visual de conexão ↗](https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html)** · [Configurar o servidor](docs/deployment.md) · [Conectar no Codex](docs/codex.md) · [Conectar no Claude](docs/claude-3p.md)
 
-## Para o advogado: o caminho mais rápido
+## Da pesquisa à conversa
 
-Você não precisa entender de programação para usar. Existe um **guia visual passo a passo**, do zero até a conexão funcionando, com telas ilustradas:
+| O que você precisa | Como o conector ajuda |
+| :--- | :--- |
+| Consultar jurisprudência durante a análise de um assunto | Disponibiliza a pesquisa do JurisprudênciaIA como ferramentas do assistente. |
+| Compartilhar o acesso com pessoas autorizadas | Usa login Google e uma lista de e-mails permitidos no servidor. |
+| Manter a integração sob seu controle | O servidor é hospedado no seu próprio Cloudflare Worker. |
+| Conectar sem distribuir um token manual a cada usuário | O cliente compatível descobre o fluxo OAuth e apresenta o login. |
 
-### [Abrir o guia completo →](https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html)
+O conector cuida da integração e do acesso. A base e o serviço de pesquisa são do **JurisprudênciaIA**. Os resultados precisam ser lidos e conferidos nas fontes antes de uso profissional.
 
-O link abre o guia **já formatado** no navegador, com as telas e o botão "copiar" nos comandos. Nada para instalar nem extrair.
+## Escolha seu ponto de partida
 
-Prefere ler offline? [Baixe o pacote com as imagens (.zip)](docs/assets/oauth-guide/guia-conexao-advogado.zip), descompacte e dê dois cliques em `deploy-guide.html`.
+### Quero usar no meu assistente
 
----
+1. Peça a URL do servidor à pessoa responsável pela configuração.
+2. Adicione essa URL como conector no seu cliente compatível.
+3. Entre com a conta Google que foi autorizada.
+4. Confirme que o assistente passou a exibir as ferramentas do conector.
 
-## Como fica na prática
+O [guia visual](https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html) explica o caminho completo. Para ler offline, [baixe o guia com as imagens](docs/assets/oauth-guide/guia-conexao-advogado.zip), extraia o pacote e abra `deploy-guide.html`.
 
-Veja o que aparece na tela ao conectar (imagens ilustrativas com dados fictícios):
+### Quero configurar meu servidor
 
-**1. Adicionar o conector** — você informa um nome e a URL do seu servidor.
+Siga o [guia de implantação](docs/deployment.md). Ele reúne os requisitos, as variáveis e a configuração de autenticação.
 
-![Adicionar conector](docs/assets/oauth-guide/01-adicionar-conector.png)
+Os pontos centrais são:
 
-**2. Autorizar com o Google** — uma tela simples explica o acesso e pede para continuar com a sua conta.
+- **Servidor:** Cloudflare Workers.
+- **Identidade:** conta Google, com OAuth 2.1 e PKCE S256.
+- **Acesso:** e-mails autorizados em `MCP_ALLOWED_EMAILS`.
+- **Segredo do Google:** `MCP_GOOGLE_CLIENT_SECRET`, armazenado no Worker.
+- **Clientes:** registro dinâmico no fluxo de autenticação descrito nos guias.
 
-![Autorizar com Google](docs/assets/oauth-guide/02-autorizar-google.png)
-
-**3. Conexão concluída** — o conector aparece como ativo, com as ferramentas disponíveis.
-
-![Conexão concluída](docs/assets/oauth-guide/03-conexao-concluida.png)
-
----
-
-## Como funciona (versão simples)
+## O caminho de uma consulta
 
 ```mermaid
 flowchart LR
-    A["Seu app<br/>(Claude / Codex)"] --> B["Seu Worker<br/>(servidor MCP)"]
-    B --> C["Login com Google"]
-    C --> D{"Seu e-mail está<br/>na lista de autorizados?"}
-    D -- "sim" --> E["Pesquisa liberada"]
-    D -- "não" --> F["Acesso negado"]
+    A["Claude ou Codex"] --> B["Seu servidor MCP"]
+    B --> C["Login Google + e-mail autorizado"]
+    C --> D["Pesquisa no JurisprudênciaIA"]
+    D --> A
 ```
 
-Em três frases: você publica o servidor uma vez; cadastra os e-mails autorizados na variável `MCP_ALLOWED_EMAILS`; quem estiver na lista entra com o Google e usa, quem não estiver fica de fora.
+## Clientes documentados
 
----
+| Cliente | Guia | Autenticação |
+| :--- | :--- | :--- |
+| Claude | [Conexão no Claude](docs/claude-3p.md) | OAuth 2.1, PKCE S256 e Google |
+| Codex | [Conexão no Codex](docs/codex.md) | OAuth 2.1, PKCE S256 e Google |
 
-## Estado dos clientes
+Outros clientes MCP podem ter requisitos próprios. Verifique a compatibilidade do cliente com o fluxo de autenticação antes de utilizá-lo.
 
-| Cliente | Status | Autenticação |
-|---------|--------|--------------|
-| Codex | Suportado para uso normal | OAuth 2.1, PKCE S256 e Google |
-| Claude | Suportado para uso normal | OAuth 2.1, PKCE S256 e Google |
+<details>
+<summary><strong>Veja as etapas de conexão</strong></summary>
 
----
+As telas abaixo são ilustrativas e usam dados fictícios.
 
-## Visão técnica (para quem configura o servidor)
+**1. Adicionar o conector**
 
-Se você é a pessoa que vai subir o Worker, estes são os pontos essenciais:
+![Adicionar o conector](docs/assets/oauth-guide/01-adicionar-conector.png)
 
-- **Autenticação**: OAuth 2.1 com PKCE S256 e identidade Google. O cliente se registra dinamicamente; não há segredo adicional embutido. O Client Secret do Google fica no Worker, em `MCP_GOOGLE_CLIENT_SECRET` (e nunca no cliente final).
-- **Autorização**: allowlist de e-mails em `MCP_ALLOWED_EMAILS`.
-- **Hospedagem**: Cloudflare Workers.
+**2. Autorizar a conta Google**
 
-Documentação de referência:
+![Autorizar com Google](docs/assets/oauth-guide/02-autorizar-google.png)
 
-- [Guia de implantação (detalhado)](docs/deployment.md)
-- [Conectar no Codex](docs/codex.md)
-- [Conectar no Claude](docs/claude-3p.md)
-- [Compatibilidade, segurança e verificação](docs/compatibility-and-security.md)
+**3. Confirmar a conexão**
+
+![Conexão concluída](docs/assets/oauth-guide/03-conexao-concluida.png)
+
+</details>
+
+## Documentação e colaboração
+
+[Implantação](docs/deployment.md) · [Guia visual](https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html) · [Compatibilidade e segurança](docs/compatibility-and-security.md) · [Problemas e sugestões](https://github.com/brunoflma/jurisprudenciaia-mcp/issues)
+
+Ao relatar um problema, informe o cliente utilizado e a etapa em que a conexão falhou. Remova tokens, segredos e dados de processos dos exemplos enviados.
+
+Desenvolvido por [Bruno Ferreira](https://github.com/brunoflma). Conheça também o [Jusmanizer](https://github.com/brunoflma/jusmanizer), voltado à revisão do estilo da escrita jurídica.

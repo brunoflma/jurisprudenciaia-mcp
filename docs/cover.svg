@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="256" viewBox="0 0 1200 256" fill="none" role="img" aria-labelledby="title desc">
+<title id="title">JurisprudênciaIA MCP</title><desc id="desc">Pesquisa jurídica conectada ao seu assistente.</desc>
+<defs><pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" stroke="#29404C"/></pattern><linearGradient id="edge" x2="1200" y2="256" gradientUnits="userSpaceOnUse"><stop stop-color="#45DFFF"/><stop offset=".6" stop-color="#263C48"/><stop offset="1" stop-color="#45DFFF"/></linearGradient></defs>
+<rect x=".75" y=".75" width="1198.5" height="254.5" rx="17" fill="#0B121A" stroke="url(#edge)" stroke-width="1.5"/>
+<path d="M900 1H1182Q1199 1 1199 18V238Q1199 255 1182 255H900Z" fill="url(#grid)" opacity=".45"/>
+<path d="M39 43H63" stroke="#45DFFF" stroke-width="3"/>
+<text x="77" y="48" fill="#45DFFF" font-family="Consolas,monospace" font-size="14" letter-spacing="1.8">LEGAL TECH / MCP</text>
+<text x="36" y="132" fill="#F0F6FC" font-family="'Segoe UI','DejaVu Sans',sans-serif" font-weight="750" font-size="65" letter-spacing="-2">JurisprudênciaIA MCP<tspan fill="#45DFFF">.</tspan></text>
+<text x="40" y="177" fill="#B8C9D5" font-family="'Segoe UI',sans-serif" font-size="25">Pesquisa jurídica conectada ao seu assistente.</text>
+<text x="40" y="224" fill="#859DAD" font-family="Consolas,monospace" font-size="13" letter-spacing="2">BRUNO FERREIRA / BRUNOFLMA</text>
+<circle cx="1050" cy="127" r="89" stroke="#315361" stroke-dasharray="3 8"/><circle cx="1050" cy="127" r="66" stroke="#45DFFF" stroke-opacity=".45"/>
+<rect x="1005" y="82" width="90" height="90" rx="19" fill="#10222B" stroke="#45DFFF"/>
+<text x="1050" y="143" text-anchor="middle" fill="#45DFFF" font-family="Consolas,monospace" font-weight="bold" font-size="31">MCP</text>
+<circle cx="984" cy="93" r="4" fill="#45DFFF"/><circle cx="1120" cy="177" r="4" fill="#45DFFF"/>
+</svg>
