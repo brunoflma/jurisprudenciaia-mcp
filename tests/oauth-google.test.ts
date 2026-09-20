@@ -103,6 +103,7 @@ describe("Google OAuth for Claude", () => {
     expect(callback.status).toBe(302);
     expect(callback.headers.get("location")).toContain("jurisia-code");
     expect(completion).toMatchObject({ userId: "google-user", scope: ["jurisprudence:read"], metadata: { email: "advogado@example.com" } });
+    expect(completion?.revokeExistingGrants).toBe(false);
   });
 
   it("preserves the ChatGPT search scope in the issued authorization", async () => {

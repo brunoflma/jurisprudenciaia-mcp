@@ -157,7 +157,15 @@ async function finishGoogle(request: Request, env: GoogleOAuthEnv, googleFetch: 
   const identity = allowedIdentity(profile, env);
   const scopes = authRequest.scope.length > 0 ? SCOPES.filter((scope) => authRequest.scope.includes(scope)) : [...SCOPES];
   const props = { tenantId: "jurisia", userId: profile.sub, email: identity.email, name: identity.name, scopes };
-  const { redirectTo } = await env.OAUTH_PROVIDER.completeAuthorization({ request: authRequest, userId: profile.sub, metadata: { email: identity.email }, scope: scopes, props });
+  const { redirectTo } = await env.OAUTH_PROVIDER.completeAuthorization({
+    request: authRequest,
+    userId: profile.sub,
+    metadata: { email: identity.email },
+    scope: scopes,
+    props,
+    // Evita que o callback dependa da cota diaria de OAUTH_KV.list().
+    revokeExistingGrants:false
+  });
   console.log(JSON.stringify({ operation: "oauth_google_callback", stage: "authorization_completed" }));
   return redirect(redirectTo, [clearOAuthCookie("google")]);
 }
