@@ -154,11 +154,6 @@ function renderCatalog(catalog) {
   document.querySelectorAll("[data-tool-count]").forEach((item) => { item.textContent = catalog.length; });
 }
 
-wireTabs("[data-setup]", (tab) => {
-  document.querySelectorAll(".install-panel").forEach((panel) => {
-    panel.hidden = panel.id !== tab.getAttribute("aria-controls");
-  });
-});
 const menuButton = document.querySelector(".menu-toggle");
 function closeMenu() {
   menuButton.setAttribute("aria-expanded", "false");

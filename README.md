@@ -6,7 +6,7 @@
 
 Este conector aproxima o serviço JurisprudênciaIA de assistentes compatíveis com MCP. Você configura um servidor próprio no Cloudflare Workers; as pessoas autorizadas entram com a conta Google e passam a usar as ferramentas de pesquisa no assistente.
 
-**[Conheça a página e explore os roteiros ↗](https://brunoflma.github.io/jurisprudenciaia-mcp/)** · [Guia visual de conexão](https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html) · [Configurar o servidor](docs/deployment.md) · [Conectar no Codex](docs/codex.md) · [Conectar no Claude](docs/claude-3p.md)
+**[Conheça a página e explore os roteiros ↗](https://brunoflma.github.io/jurisprudenciaia-mcp/)** · [Instalar do zero](https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html#instalar) · [Conectar no Claude ou Codex](https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html#conectar) · [Operar o servidor](docs/deployment.md)
 
 **O conector foi útil para você?** Use **Star**, no topo do repositório, para salvá-lo e apoiar o projeto. Se já utilizou, [conte sua experiência ou sugira uma melhoria](https://github.com/brunoflma/jurisprudenciaia-mcp/issues/new?template=experiencia.yml). A estrela é opcional.
 
@@ -53,7 +53,7 @@ O conector cuida da integração e do acesso. A base e o serviço de pesquisa s�
 3. Entre com a conta Google que foi autorizada.
 4. Confirme que o assistente executa uma ferramenta sem erro; a lista exibida pode estar em cache.
 
-O [guia visual](https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html) explica o caminho completo. Para ler offline, [baixe o guia com as imagens](docs/assets/oauth-guide/guia-conexao-advogado.zip), extraia o pacote e abra `deploy-guide.html`.
+O [guia de instalação e conexão](https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html) acompanha a configuração na Cloudflare, o login Google e a primeira pesquisa no assistente. Para ler offline, [baixe o guia completo](docs/assets/oauth-guide/guia-conexao-advogado.zip), extraia o pacote e abra `deploy-guide.html`. O pacote inclui os estilos, a fonte e os recursos de cópia; os links para serviços externos precisam de internet.
 
 ### Quero configurar meu servidor
 

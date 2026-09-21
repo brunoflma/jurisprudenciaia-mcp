@@ -31,7 +31,7 @@ describe("production deployment architecture", () => {
 
     expect(deploymentGuide).toContain('{"ok":true,"service":"jurisprudenciaia-mcp"}');
     expect(deploymentGuide).not.toContain('"runtime":"cloudflare-workers"');
-    expect(visualGuide).not.toContain('{"ok":true,"service":"jurisprudenciaia-mcp"}');
+    expect(visualGuide).toContain('{"ok":true,"service":"jurisprudenciaia-mcp"}');
     expect(visualGuide).not.toContain('"runtime":"cloudflare-workers"');
   });
 

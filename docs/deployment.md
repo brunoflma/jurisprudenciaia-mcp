@@ -1,6 +1,6 @@
 # Operação e publicação do Worker
 
-Este documento é para quem administra a implantação. A instalação inicial passo a passo está no [README](../README.md); o usuário final precisa apenas do [guia visual](deploy-guide.html), que cobre adicionar a URL no Claude e autenticar com Google.
+Este documento é a referência de operação para quem administra a implantação. Para começar, siga o [guia de instalação completo](deploy-guide.html#instalar). Quem já recebeu um endereço e teve sua conta autorizada pode ir direto a [conectar no Claude ou Codex](deploy-guide.html#conectar).
 
 Nos exemplos, substitua `mcp.seu-dominio.com` pela origem pública do seu Worker.
 
@@ -24,7 +24,7 @@ O endpoint raiz também aceita `POST /` como alias protegido para compatibilidad
 [`wrangler.jsonc`](../wrangler.jsonc) é a fonte declarativa da implantação e contém apenas dados públicos ou identificadores de recursos:
 
 - Worker `jurisprudenciaia-mcp`;
-- domínio customizado;
+- endereço `workers.dev`, com opção de configurar um domínio customizado;
 - KV `JURIS_CACHE`;
 - KV `OAUTH_KV` para clientes, grants e tokens;
 - Durable Object `OAUTH_STATE` para transações de uso único;

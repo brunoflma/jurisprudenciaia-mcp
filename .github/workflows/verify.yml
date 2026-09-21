@@ -28,7 +28,11 @@ jobs:
       - name: Verify code and public content
         run: npm run verify
       - name: Verify presentation JavaScript
-        run: node --check docs/assets/site.js
+        run: |
+          node --check docs/assets/site.js
+          node --check docs/assets/guide.js
+      - name: Verify offline installation guide
+        run: python scripts/package-install-guide.py --check
       - name: Audit all dependencies
         run: npm audit --audit-level=high
       - name: Prepare isolated runtime

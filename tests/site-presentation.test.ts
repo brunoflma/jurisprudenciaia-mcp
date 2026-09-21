@@ -82,4 +82,36 @@ describe("public connector presentation", () => {
     expect(html).toContain('content="https://brunoflma.github.io/jurisprudenciaia-mcp/assets/social-preview.png"');
     expect(html).toContain('content="summary_large_image"');
   });
+
+  it("resolves both onboarding routes, guide anchors and local assets", () => {
+    const guide = readFileSync("docs/deploy-guide.html", "utf8");
+    const ids = [...guide.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const page of [html, guide]) {
+      for (const [, value] of page.matchAll(/\b(?:href|src)="([^"]+)"/g)) {
+        if (/^https?:\/\//.test(value)) continue;
+        const [path, anchor] = value.split("#");
+        if (path) expect(existsSync(join("docs", path.split("?")[0])), value).toBe(true);
+        if (anchor && (page === guide || path === "deploy-guide.html")) expect(ids, value).toContain(anchor);
+      }
+    }
+    expect(html).toContain('href="deploy-guide.html#instalar"');
+    expect(html).toContain('href="deploy-guide.html#conectar"');
+    for (const [, target] of guide.matchAll(/data-copy="([^"]+)"/g)) {
+      expect(ids, `Copy button target: ${target}`).toContain(target);
+    }
+    expect(guide).not.toMatch(/<script[^>]+src="https?:|<link[^>]+rel="stylesheet"[^>]+href="https?:/);
+  });
+
+  it("documents the clone destination correctly and keeps installation separate from connection", () => {
+    const guide = readFileSync("docs/deploy-guide.html", "utf8");
+    const clone = guide.match(/git clone https:\/\/github\.com\/brunoflma\/([^\s]+)\.git\s+cd ([^\s]+)/);
+    expect(clone).not.toBeNull();
+    expect(clone![2]).toBe(clone![1]);
+    const connection = guide.slice(guide.indexOf('id="conectar"'), guide.indexOf('id="ajuda"'));
+    expect(connection).not.toMatch(/wrangler (?:deploy|secret|kv)/);
+    expect(connection).toContain("codex mcp login jurisprudenciaia");
+    expect(connection).toContain("pesquisar_jurisprudencia");
+    expect(connection).toContain("Deixe Client ID e Client Secret vazios");
+  });
 });
