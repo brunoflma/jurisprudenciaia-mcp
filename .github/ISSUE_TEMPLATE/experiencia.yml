@@ -1,0 +1,38 @@
+name: Experiência com o JurisprudênciaIA MCP
+description: Conte como foi a conexão ou o uso do conector e sugira melhorias.
+title: "[Experiência]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por avaliar o conector. Este relato ficará público.
+        Não inclua credenciais, e-mails de contas, números de processos, documentos ou dados de clientes. Descreva a situação de forma geral.
+  - type: dropdown
+    id: cliente
+    attributes:
+      label: Qual cliente você utilizou?
+      options:
+        - Claude
+        - Codex
+        - Outro cliente MCP
+  - type: dropdown
+    id: etapa
+    attributes:
+      label: Sobre qual etapa é o relato?
+      options:
+        - Configuração do servidor
+        - Conexão e login
+        - Pesquisa ou ferramentas
+        - Documentação e exemplos
+  - type: textarea
+    id: experiencia
+    attributes:
+      label: Como foi a experiência?
+      description: Conte o que funcionou ou qual dificuldade encontrou, sem informações sensíveis.
+    validations:
+      required: true
+  - type: textarea
+    id: sugestao
+    attributes:
+      label: O que você sugere melhorar?
+      description: Opcional. Sugestões de clareza, uso e documentação são bem-vindas.

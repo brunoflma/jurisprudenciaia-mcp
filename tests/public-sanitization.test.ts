@@ -65,7 +65,7 @@ describe("public repository sanitization", () => {
   });
 
   it("keeps verification CI independent of deployment credentials", () => {
-    const workflow = readFileSync(".github/workflows/verify.yml", "utf8");
+    const workflow = readFileSync(".github/workflows/verify.yml", "utf8").replace(/\r\n/g, "\n");
     expect(workflow).toContain("contents: read");
     expect(workflow).toContain("persist-credentials: false");
     expect(workflow).toContain("--network none");

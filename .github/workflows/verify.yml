@@ -27,6 +27,8 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Verify code and public content
         run: npm run verify
+      - name: Verify presentation JavaScript
+        run: node --check docs/assets/site.js
       - name: Audit all dependencies
         run: npm audit --audit-level=high
       - name: Prepare isolated runtime

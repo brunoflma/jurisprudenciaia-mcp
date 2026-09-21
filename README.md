@@ -6,7 +6,32 @@
 
 Este conector aproxima o serviço JurisprudênciaIA de assistentes compatíveis com MCP. Você configura um servidor próprio no Cloudflare Workers; as pessoas autorizadas entram com a conta Google e passam a usar as ferramentas de pesquisa no assistente.
 
-**[Abrir o guia visual de conexão ↗](https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html)** · [Configurar o servidor](docs/deployment.md) · [Conectar no Codex](docs/codex.md) · [Conectar no Claude](docs/claude-3p.md)
+**[Conheça a página e explore os roteiros ↗](https://brunoflma.github.io/jurisprudenciaia-mcp/)** · [Guia visual de conexão](https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html) · [Configurar o servidor](docs/deployment.md) · [Conectar no Codex](docs/codex.md) · [Conectar no Claude](docs/claude-3p.md)
+
+**O conector foi útil para você?** Use **Star**, no topo do repositório, para salvá-lo e apoiar o projeto. Se já utilizou, [conte sua experiência ou sugira uma melhoria](https://github.com/brunoflma/jurisprudenciaia-mcp/issues/new?template=experiencia.yml). A estrela é opcional.
+
+## 14 ferramentas, vários recortes de pesquisa
+
+| Frente | O que as ferramentas solicitam ao serviço |
+| :--- | :--- |
+| **Pesquisa** | Consulta livre, jurisprudência, precedentes, informativos e precedentes qualificados. |
+| **Teses** | Análise de uma tese e comparação de duas teses para a mesma questão. |
+| **Processos** | Decisões e andamentos relevantes a partir de um número CNJ, conforme a cobertura da fonte. |
+| **Normas** | Legislação, citações de dispositivos e histórico de alterações. |
+| **Panorama** | Amostra de julgados, linha do tempo e entendimentos superados ou revistos. |
+
+Veja o [catálogo na página do projeto](https://brunoflma.github.io/jurisprudenciaia-mcp/#ferramentas) e as [definições no código](src/mcp/tool-definition.ts). São recortes que orientam pedidos ao mesmo serviço, e não bases independentes. O panorama da amostra não representa estatística oficial ou exaustiva de um tribunal.
+
+### Um pedido para experimentar após conectar
+
+```text
+Use o JurisprudênciaIA MCP para buscar precedentes sobre [TEMA].
+Apresente as referências, o tribunal, a data, os links e os pontos de cautela.
+Preserve a ementa e o inteiro teor disponibilizados pela fonte.
+Se o inteiro teor não estiver disponível, informe isso explicitamente.
+```
+
+Os [roteiros da página](https://brunoflma.github.io/jurisprudenciaia-mcp/#exemplos) mostram formas de pedir a pesquisa, sem realizar consultas nem apresentar julgados fictícios como resultados reais.
 
 ## Da pesquisa à conversa
 

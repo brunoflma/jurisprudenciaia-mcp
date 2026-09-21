@@ -1,0 +1,90 @@
+{
+  "tools": [
+    {"id":"consultar_jurisprudenciaia","title":"Consulta livre","group":"Pesquisa","description":"Formula uma consulta livre e solicita resposta em Markdown, tese principal, precedentes e cautelas."},
+    {"id":"pesquisar_jurisprudencia","title":"Pesquisar jurisprudência","group":"Pesquisa","description":"Pesquisa uma questão jurídica e solicita uma resposta consolidada com precedentes estruturados."},
+    {"id":"buscar_precedentes","title":"Buscar precedentes","group":"Pesquisa","description":"Procura precedentes sobre um tema, com metadados para conferir a fonte e recorte opcional por tribunais."},
+    {"id":"analisar_tese_juridica","title":"Analisar uma tese","group":"Teses","description":"Solicita apoio, oposição, lacunas e pontos de cautela na jurisprudência sobre uma tese."},
+    {"id":"comparar_teses_juridicas","title":"Comparar duas teses","group":"Teses","description":"Organiza a pesquisa sobre duas teses para a mesma questão, incluindo divergências e riscos apontados."},
+    {"id":"buscar_por_cnj","title":"Pesquisar por número CNJ","group":"Processos","description":"Busca decisões e andamentos relevantes relacionados a um número CNJ, conforme a cobertura da fonte."},
+    {"id":"pesquisar_legislacao","title":"Pesquisar legislação","group":"Normas","description":"Solicita texto, alterações e interpretação jurisprudencial de uma norma ou dispositivo, quando disponíveis."},
+    {"id":"buscar_informativos","title":"Buscar informativos","group":"Pesquisa","description":"Pesquisa informativos de jurisprudência de tribunais superiores sobre um tema."},
+    {"id":"analisar_jurimetria","title":"Panorama da amostra","group":"Panorama","description":"Estima um panorama dos julgados localizados. Não representa estatística oficial ou exaustiva do tribunal."},
+    {"id":"linha_do_tempo_precedentes","title":"Linha do tempo","group":"Panorama","description":"Solicita uma sequência cronológica de precedentes e mudanças de entendimento identificadas."},
+    {"id":"buscar_citacoes_dispositivo","title":"Citações de um dispositivo","group":"Normas","description":"Busca precedentes que citam ou aplicam um dispositivo legal, conforme a fonte."},
+    {"id":"historico_alteracoes_norma","title":"Alterações de uma norma","group":"Normas","description":"Pesquisa alterações legislativas e solicita as fontes oficiais correspondentes."},
+    {"id":"listar_overruling_tema","title":"Entendimentos revistos","group":"Panorama","description":"Pesquisa entendimentos superados ou revistos e os precedentes posteriores relacionados."},
+    {"id":"buscar_precedentes_qualificados","title":"Precedentes qualificados","group":"Pesquisa","description":"Prioriza precedentes vinculantes ou qualificados identificados na pesquisa e solicita sua autoridade."}
+  ],
+  "examples": [
+    {
+      "id":"precedentes","label":"Precedentes","title":"Comece pelo tema. Peça as referências.",
+      "context":"Um recorte de pesquisa para preparar a análise de um assunto.",
+      "question":"Encontre precedentes sobre responsabilidade civil por atraso na entrega de imóvel, priorizando o STJ.",
+      "tool":"buscar_precedentes",
+      "arguments":{"tema":"Responsabilidade civil por atraso na entrega de imóvel","tribunais":["STJ"]},
+      "request":["Precedentes relacionados ao recorte informado.","Referência, tribunal, data e links disponíveis.","Ementa, inteiro teor disponibilizado e pontos de cautela."],
+      "check":"Confira o julgado na fonte oficial e avalie se os fatos e fundamentos se aproximam da questão pesquisada.",
+      "prompt":"Use o JurisprudênciaIA MCP para buscar precedentes sobre responsabilidade civil por atraso na entrega de imóvel, priorizando o STJ. Apresente as referências, o tribunal, a data, os links e os pontos de cautela. Preserve a ementa e o inteiro teor disponibilizados pela fonte; se o inteiro teor não estiver disponível, informe isso explicitamente."
+    },
+    {
+      "id":"teses","label":"Teses","title":"Coloque duas leituras em perspectiva.",
+      "context":"Um roteiro para organizar argumentos e divergências antes de decidir como utilizá-los.",
+      "question":"Compare a preservação das condições pactuadas com a revisão contratual diante de fatos supervenientes.",
+      "tool":"comparar_teses_juridicas",
+      "arguments":{"questao":"Revisão de cláusula contratual por fatos supervenientes","tese_a":"Preservação das condições originalmente pactuadas","tese_b":"Revisão das condições diante de alteração relevante das circunstâncias"},
+      "request":["Apoio jurisprudencial encontrado para cada tese.","Divergências, lacunas e cautelas identificadas.","Referências para aprofundar a leitura dos julgados."],
+      "check":"Uma comparação de pesquisa não decide a estratégia do caso. Confira os fundamentos e as diferenças entre os contextos dos precedentes.",
+      "prompt":"Use o JurisprudênciaIA MCP para comparar duas teses sobre revisão contratual por fatos supervenientes: a preservação das condições originalmente pactuadas e a revisão diante de alteração relevante das circunstâncias. Separe apoio, divergências, lacunas e cautelas. Mostre as referências e os links disponíveis. Preserve o inteiro teor retornado pela fonte e informe as limitações da pesquisa."
+    },
+    {
+      "id":"processo","label":"Número CNJ","title":"Use o número para orientar a busca.",
+      "context":"Um pedido que você completa com o número de um processo que está autorizado a consultar.",
+      "question":"Busque decisões e andamentos relevantes relacionados ao processo [INFORME O NÚMERO CNJ].",
+      "tool":"buscar_por_cnj","requiresInput":true,
+      "arguments":{"numero_cnj":"[INFORME O NÚMERO CNJ]"},
+      "request":["Referências ao processo encontradas pela fonte.","Decisões e andamentos relevantes disponíveis.","Links que permitam conferir a informação no tribunal."],
+      "check":"A cobertura depende da fonte. O conector não substitui o acompanhamento no portal do tribunal nem concede acesso a conteúdo sigiloso.",
+      "prompt":"Use o JurisprudênciaIA MCP para pesquisar decisões e andamentos relevantes do processo [INFORME O NÚMERO CNJ]. Apresente as fontes e os links disponíveis. Informe lacunas ou limitações de cobertura e não trate a ausência de resultado como prova de inexistência de movimentação."
+    },
+    {
+      "id":"normas","label":"Legislação","title":"Relacione a norma à pesquisa jurisprudencial.",
+      "context":"Um ponto de partida para localizar referências normativas e sua interpretação.",
+      "question":"Pesquise referências ao Código de Defesa do Consumidor no contexto das relações de consumo.",
+      "tool":"pesquisar_legislacao",
+      "arguments":{"norma":"Código de Defesa do Consumidor","contexto":"Relações de consumo"},
+      "request":["Texto normativo e referências disponíveis.","Alterações e interpretação jurisprudencial localizadas.","Fontes para conferir a redação e o contexto de aplicação."],
+      "check":"Confira a redação vigente e a data de cada referência na fonte oficial. A pesquisa não garante cobertura integral das alterações legislativas.",
+      "prompt":"Use o JurisprudênciaIA MCP para pesquisar [NORMA OU DISPOSITIVO] no contexto de [RECORTE JURÍDICO]. Solicite o texto, as alterações e a interpretação jurisprudencial disponíveis. Mostre as fontes, diferencie o que foi encontrado do que não foi confirmado e preserve as transcrições retornadas."
+    },
+    {
+      "id":"qualificados","label":"Qualificados","title":"Dê atenção à autoridade do precedente.",
+      "context":"Uma pesquisa que prioriza precedentes qualificados ou vinculantes identificados pela fonte.",
+      "question":"Priorize precedentes qualificados sobre responsabilidade civil contratual e explique a autoridade identificada.",
+      "tool":"buscar_precedentes_qualificados",
+      "arguments":{"tema":"Responsabilidade civil contratual"},
+      "request":["Precedentes qualificados ou vinculantes localizados.","Autoridade identificada e referência correspondente.","Elementos para conferir alcance e situação do entendimento."],
+      "check":"Confirme a classificação e a situação do precedente no tribunal. A prioridade na busca não equivale à validação automática de sua aplicação.",
+      "prompt":"Use o JurisprudênciaIA MCP para priorizar precedentes qualificados ou vinculantes sobre [TEMA]. Informe a autoridade identificada, a referência, os links e as cautelas. Preserve a ementa e o inteiro teor quando disponibilizados e sinalize o que exige conferência na fonte oficial."
+    },
+    {
+      "id":"evolucao","label":"Evolução","title":"Veja como o entendimento se organiza no tempo.",
+      "context":"Um roteiro para ordenar precedentes e investigar mudanças de interpretação.",
+      "question":"Organize uma linha do tempo dos principais precedentes sobre responsabilidade civil contratual.",
+      "tool":"linha_do_tempo_precedentes",
+      "arguments":{"tema":"Responsabilidade civil contratual"},
+      "request":["Uma sequência cronológica dos precedentes localizados.","Mudanças de entendimento identificadas na pesquisa.","Referências para examinar cada etapa da evolução."],
+      "check":"Uma sequência encontrada não é uma história exaustiva. Confira datas, alcance dos julgados e eventual revisão posterior do entendimento.",
+      "prompt":"Use o JurisprudênciaIA MCP para organizar uma linha do tempo dos principais precedentes sobre [TEMA]. Mostre as datas, referências, links e mudanças de entendimento identificadas. Informe lacunas da pesquisa e preserve os textos disponibilizados pela fonte."
+    },
+    {
+      "id":"panorama","label":"Panorama","title":"Explore a amostra sem transformá-la em certeza.",
+      "context":"Uma leitura exploratória dos julgados encontrados, com limites explícitos.",
+      "question":"Faça um panorama da amostra de julgados sobre responsabilidade civil contratual no STJ.",
+      "tool":"analisar_jurimetria",
+      "arguments":{"tema":"Responsabilidade civil contratual","tribunal":"STJ","recorte":"Amostra localizada pela fonte"},
+      "request":["Um panorama do conjunto efetivamente localizado.","Recorte, limites e cautelas da amostra.","Referências que permitam verificar os julgados considerados."],
+      "check":"A ferramenta não produz estatística oficial ou exaustiva do tribunal e não calcula uma chance confiável de êxito para um caso.",
+      "prompt":"Use o JurisprudênciaIA MCP para obter um panorama da amostra localizada sobre [TEMA], no tribunal [TRIBUNAL]. Explicite o recorte, a amostra e as limitações. Não apresente o panorama como estatística oficial, levantamento exaustivo ou previsão de resultado de um processo."
+    }
+  ]
+}
