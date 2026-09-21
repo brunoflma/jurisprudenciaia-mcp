@@ -5,20 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b1118">
   <title>Guia de instalação e conexão | JurisprudênciaIA MCP</title>
-  <meta name="description" content="Comece do zero ou conecte um acesso existente. Um guia passo a passo para configurar o JurisprudênciaIA MCP, entrar com Google e pesquisar no Claude ou Codex.">
+  <meta name="description" content="Configure o JurisprudênciaIA MCP com seu agente de IA. Copie o prompt completo para instalar, conectar e testar. O guia manual e a conexão a um acesso existente também estão disponíveis.">
   <link rel="canonical" href="https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="pt_BR">
   <meta property="og:site_name" content="JurisprudênciaIA MCP">
-  <meta property="og:title" content="Da instalação à primeira pesquisa. JurisprudênciaIA MCP.">
-  <meta property="og:description" content="Escolha seu caminho: instalar o conector do zero ou conectar um acesso existente ao Claude e ao Codex.">
+  <meta property="og:title" content="Configure com IA. JurisprudênciaIA MCP.">
+  <meta property="og:description" content="Um prompt completo para seu agente conduzir a configuração até a primeira pesquisa. Copie, cole e acompanhe.">
   <meta property="og:url" content="https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html">
   <meta property="og:image" content="https://brunoflma.github.io/jurisprudenciaia-mcp/assets/social-preview.png">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preload" href="assets/fonts/manrope.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="assets/site.css?v=3">
-  <link rel="stylesheet" href="assets/guide.css?v=2">
+  <link rel="stylesheet" href="assets/site.css?v=4">
+  <link rel="stylesheet" href="assets/guide.css?v=3">
   <style>html { scroll-padding-top: 5.5rem; }</style>
   <script src="assets/guide.js?v=2" defer></script>
 </head>
@@ -30,19 +30,13 @@
   </div></header>
   <main id="main-content" tabindex="-1">
     <section class="guide-hero container" aria-labelledby="guide-title">
-      <p class="eyebrow">GUIA DE INSTALAÇÃO E CONEXÃO</p>
-      <h1 id="guide-title">O próximo passo para<br><em>a sua primeira pesquisa.</em></h1>
-      <p class="intro">Uma única configuração coloca o conector na nuvem. Depois, cada pessoa autorizada entra com Google e pesquisa pelo próprio assistente. Comece pelo caminho que corresponde ao seu caso.</p>
-      <div class="guide-map" aria-label="Como funciona"><span><b>01</b> Conector na Cloudflare</span><span aria-hidden="true">→</span><span><b>02</b> Acesso com Google</span><span aria-hidden="true">→</span><span><b>03</b> Pesquisa no assistente</span></div>
-      <div class="start-routes">
-        <article class="start-route featured"><span class="route-kicker">AINDA NÃO CONFIGUREI NADA</span><h2>Instalar do zero.</h2><p>Prepare as contas, publique o conector e escolha quem pode usá-lo. Este percurso usa o terminal e inclui todos os passos até a primeira conexão.</p><a class="button primary" href="#instalar">Começar a instalação <span aria-hidden="true">↓</span></a></article>
-        <article class="start-route"><span class="route-kicker">JÁ RECEBI UM LINK DE ACESSO</span><h2>Conectar e pesquisar.</h2><p>Se alguém da equipe já instalou o conector, você precisa apenas do endereço e de uma conta Google autorizada. Pule direto para o seu assistente.</p><a class="button secondary" href="#conectar">Tenho acesso, quero conectar <span aria-hidden="true">↓</span></a></article>
-      </div>
+      <p class="eyebrow">CONFIGURAÇÃO COM IA · COMECE POR AQUI</p>
+      <h1 id="guide-title">Configure com IA.<br><em>Pesquise no seu assistente.</em></h1>
+      <p class="intro">Leve o roteiro completo para o seu agente. Ele pode preparar o ambiente, configurar o conector e conferir o funcionamento. Você acompanha a execução e conclui os logins necessários.</p>
     </section>
     <section class="container" id="instalar-com-ia" aria-labelledby="agent-title">
       <div class="agent-assist">
-        <div class="agent-intro"><div><p class="eyebrow">PREFERE CONFIGURAR COM AJUDA DE IA?</p><h2 id="agent-title">Seu agente pode<br>conduzir a instalação.</h2><p>Copie o prompt e cole em um agente com acesso ao terminal, como Codex ou Claude Code. Ele recebe o roteiro completo para preparar o ambiente, configurar o conector e testar a primeira pesquisa.</p></div><ol class="agent-flow"><li><b>01</b><span><strong>Copie as instruções</strong>O prompt já inclui o projeto e a sequência de configuração.</span></li><li><b>02</b><span><strong>Cole no seu agente</strong>Ele confere o ambiente e pergunta apenas o que estiver faltando.</span></li><li><b>03</b><span><strong>Acompanhe a configuração</strong>Conclua os logins e confira o resultado dos testes.</span></li></ol></div>
-        <div class="agent-actions"><button class="button primary" data-copy="agent-setup-prompt" data-copy-message="Prompt completo copiado. Cole no seu agente de IA para começar." aria-label="Copiar prompt completo de configuração com IA" disabled>Copiar prompt completo <span aria-hidden="true">⧉</span></button><a class="button secondary" href="agent-setup-prompt.txt" download>Baixar em .txt <span aria-hidden="true">↓</span></a></div>
+        <div class="agent-intro"><div><p class="eyebrow">DO AMBIENTE À PRIMEIRA PESQUISA</p><h2 id="agent-title">Copie o prompt.<br>Seu agente conduz.</h2><p>Cole as instruções no Codex, Claude Code ou outro agente com acesso ao terminal. O roteiro inclui o projeto, os comandos e as verificações de cada etapa.</p><div class="agent-actions"><button class="button primary" data-copy="agent-setup-prompt" data-copy-message="Prompt completo copiado. Cole no seu agente de IA para começar." aria-label="Copiar prompt completo de configuração com IA" disabled>Copiar prompt completo <span aria-hidden="true">⧉</span></button><a class="button secondary" href="agent-setup-prompt.txt" download>Baixar em .txt <span aria-hidden="true">↓</span></a></div></div><ol class="agent-flow"><li><b>01</b><span><strong>Copie as instruções</strong>O prompt já inclui o projeto e a sequência de configuração.</span></li><li><b>02</b><span><strong>Cole no seu agente</strong>Ele confere o ambiente e pergunta apenas o que estiver faltando.</span></li><li><b>03</b><span><strong>Acompanhe a configuração</strong>Conclua os logins e confira o resultado dos testes.</span></li></ol></div>
         <p class="agent-note">Você participa dos logins e da inclusão de credenciais. O que o agente consegue executar depende das ferramentas e permissões disponíveis; esta página apenas entrega as instruções.</p>
         <details class="agent-preview"><summary>Ver o prompt completo antes de copiar</summary><pre id="agent-setup-prompt" tabindex="0" aria-label="Prompt completo para configurar o JurisprudênciaIA MCP">Quero que você configure o JurisprudênciaIA MCP para eu usar no meu assistente, acompanhando o trabalho até uma pesquisa de teste. Execute o que suas ferramentas e permissões permitirem; peça minha participação nas etapas interativas e continue depois delas.
 
@@ -114,6 +108,7 @@ Informe o que foi configurado, os testes realmente executados e os respectivos r
 Distinga “configurado”, “publicado”, “autenticado” e “pesquisa validada”. Se algo depender de mim ou de acesso indisponível, diga exatamente o próximo passo e continue após minha intervenção. Só declare o fluxo completo quando houver evidência da autenticação e de uma chamada de pesquisa concluída.</pre></details>
       </div>
     </section>
+    <section class="container guide-alternatives" aria-label="Outras formas de começar"><p class="alternative-label">OUTRAS FORMAS DE COMEÇAR</p><div class="start-routes alternative-routes"><article class="start-route"><span class="route-kicker">INSTALAÇÃO MANUAL</span><h3>Prefiro configurar por conta própria.</h3><p>Siga as etapas de Cloudflare, Google, publicação e teste no seu ritmo.</p><a class="button secondary" href="#instalar">Ver o passo a passo manual <span aria-hidden="true">↓</span></a></article><article class="start-route"><span class="route-kicker">JÁ TENHO ACESSO</span><h3>Recebi um link da minha equipe.</h3><p>Conecte ao seu assistente com o endereço recebido e sua conta Google autorizada.</p><a class="button secondary" href="#conectar">Conectar ao meu assistente <span aria-hidden="true">↓</span></a></article></div></section>
     <div class="container guide-layout">
       <aside class="guide-sidebar" aria-label="Índice do guia"><span class="small-label">SEU CAMINHO</span><nav aria-label="Etapas do guia">
         <a href="#instalar-com-ia"><span>IA</span> Configurar com IA</a>

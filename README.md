@@ -6,7 +6,7 @@
 
 Este conector aproxima o serviço JurisprudênciaIA de assistentes compatíveis com MCP. Você configura um servidor próprio no Cloudflare Workers; as pessoas autorizadas entram com a conta Google e passam a usar as ferramentas de pesquisa no assistente.
 
-**[Conheça a página e explore os roteiros ↗](https://brunoflma.github.io/jurisprudenciaia-mcp/)** · [Instalar do zero](https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html#instalar) · [Conectar no Claude ou Codex](https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html#conectar) · [Operar o servidor](docs/deployment.md)
+**[Configure com seu agente de IA ↗](https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html#instalar-com-ia)** · [Explore o projeto e os roteiros](https://brunoflma.github.io/jurisprudenciaia-mcp/) · [Instalação manual](https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html#instalar) · [Conectar no Claude ou Codex](https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html#conectar)
 
 **O conector foi útil para você?** Use **Star**, no topo do repositório, para salvá-lo e apoiar o projeto. Se já utilizou, [conte sua experiência ou sugira uma melhoria](https://github.com/brunoflma/jurisprudenciaia-mcp/issues/new?template=experiencia.yml). A estrela é opcional.
 
