@@ -1,0 +1,68 @@
+Quero que você configure o JurisprudênciaIA MCP para eu usar no meu assistente, acompanhando o trabalho até uma pesquisa de teste. Execute o que suas ferramentas e permissões permitirem; peça minha participação nas etapas interativas e continue depois delas.
+
+PROJETO E REFERÊNCIAS
+Repositório oficial: https://github.com/brunoflma/jurisprudenciaia-mcp
+Guia: https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html
+Leia a versão atual do README, docs/deployment.md, docs/codex.md e wrangler.jsonc. Use docs/claude-3p.md somente se meu cliente precisar da ponte local mcp-remote. Registre o commit consultado. Se este roteiro divergir do código atual, explique a diferença e ajuste os passos com base na implementação e na documentação oficial.
+
+1. ENTENDA MEU PONTO DE PARTIDA
+Confira o sistema operacional, Git, Node.js, npm, ferramentas disponíveis e se há uma instalação existente. Pergunte, somente se ainda não souber, qual assistente quero conectar (Claude, Codex ou outro), se já recebi uma URL de servidor e qual ambiente posso usar.
+Se eu já tiver uma URL e conta autorizada, pule a criação de infraestrutura e siga para conexão e teste.
+Se for uma instalação nova, confirme a conta Cloudflare, o projeto Google Cloud, o nome do Worker e quem terá acesso antes de criar recursos ou publicar. Não altere uma implantação existente sem eu ter indicado que ela é o destino. Dentro do escopo confirmado, avance sem pedir autorização para cada leitura, edição local ou verificação rotineira. Respeite as aprovações exigidas pelas suas ferramentas. Não contrate planos, habilite cobrança, aceite termos ou exclua recursos por conta própria.
+Se você não tiver terminal ou acesso necessário, explique a limitação e me conduza pelos passos que realmente faltam. Não apresente instruções como se já tivessem sido executadas.
+
+2. PREPARE E VERIFIQUE O CÓDIGO
+Use uma pasta nova ou uma cópia do projeto explicitamente destinada à instalação. Inspecione o estado do Git antes de editar e preserve alterações existentes.
+Para uma cópia nova:
+git clone https://github.com/brunoflma/jurisprudenciaia-mcp.git
+cd jurisprudenciaia-mcp
+npm ci --ignore-scripts
+Use Node.js 22 ou superior e respeite os requisitos atuais do projeto.
+Antes de preencher identificadores reais da implantação, execute npm run verify. Esse comando inclui tipos, testes, auditoria e build. Os testes de sanitização são voltados ao repositório público e rejeitam, por exemplo, um Client ID real do Google. Não remova testes nem enfraqueça suas regras para fazer uma instalação passar. Se houver uma falha de ambiente, diagnostique-a e registre o resultado sem esconder o erro.
+Não publique a cópia configurada, não envie commits com os dados da instalação e não mude a lógica de autenticação para facilitar o setup.
+
+3. PREPARE A CLOUDFLARE
+Confira se há uma sessão autorizada. Quando necessário, execute npx wrangler login e aguarde eu concluir o login. Confira a conta com npx wrangler whoami sem reproduzir identificadores pessoais no relatório.
+Liste os recursos existentes antes de criar outros. Reutilize somente recursos que eu tenha destinado a esta instalação; nunca adote os de outro ambiente pelo nome parecido.
+Para uma instalação nova, crie os namespaces necessários, um comando por vez:
+npx wrangler kv namespace create JURIS_CACHE
+npx wrangler kv namespace create OAUTH_KV
+Associe cada ID ao binding correto em wrangler.jsonc. Preserve OAUTH_STATE, migrations, observabilidade e as demais opções do projeto.
+Defina a origem HTTPS com o nome do Worker e o subdomínio workers.dev real da minha conta. Se eu escolher um domínio próprio, configure a rota e confira o DNS; editar uma variável não cria o domínio.
+Preencha MCP_PUBLIC_ORIGIN e MCP_GOOGLE_CALLBACK_ORIGIN com a mesma origem, sem caminho e sem barra final. Não use o endereço do GitHub Pages como servidor.
+
+4. CONFIGURE O GOOGLE OAUTH
+No projeto Google Cloud autorizado, configure a apresentação do app e o público no Google Auth Platform. Confira as restrições de público e os usuários de teste quando aplicável.
+Crie ou use o cliente OAuth destinado a esta instalação, do tipo Aplicativo da Web. Cadastre como URI de redirecionamento a origem HTTPS seguida exatamente de /oauth/google/callback.
+Distinga os três valores:
+- Origem nas variáveis do Worker: https://mcp.example.com
+- Retorno cadastrado no Google: https://mcp.example.com/oauth/google/callback
+- Endereço no assistente: https://mcp.example.com/mcp
+Esses endereços são exemplos: substitua pela origem real confirmada.
+Coloque o Client ID em MCP_GOOGLE_CLIENT_ID no arquivo local de configuração.
+Não peça que eu cole senhas, tokens, Client Secret, cookies ou códigos OAuth nesta conversa. Quando for necessário inserir um segredo, mostre a etapa e deixe-me digitá-lo diretamente no terminal ou no painel oficial, sem capturá-lo em logs, screenshots ou arquivos públicos. Não tente ler segredos que já estejam configurados.
+Use os comandos interativos, separadamente:
+npx wrangler secret put MCP_GOOGLE_CLIENT_SECRET
+npx wrangler secret put MCP_ALLOWED_EMAILS
+O primeiro recebe o Client Secret do Google. O segundo recebe a lista completa de e-mails autorizados, separados por vírgula. Confirme os destinatários comigo e preserve acessos existentes em uma atualização; não substitua a lista apenas pelo novo e-mail. Se não puder conhecer a lista com segurança, peça que eu a informe diretamente no campo privado.
+Se o Wrangler precisar criar o Worker antes de aceitar o primeiro segredo, confira o nome e a conta já autorizados. Não coloque os segredos em vars, no GitHub ou na configuração do assistente.
+
+5. VALIDE E PUBLIQUE
+Depois de personalizar a configuração, confira os bindings e as origens e execute npx wrangler deploy --dry-run para validar o pacote sem publicar. Não trate esse teste como uma publicação concluída.
+Com os recursos de destino confirmados e as verificações concluídas, publique com npm run deploy:worker. Se o nome já existir e não for a instalação autorizada, pare antes de sobrescrevê-la.
+Confira se a origem publicada coincide com as variáveis e com o retorno cadastrado no Google. Verifique GET /healthz: a resposta esperada no projeto atual é {"ok":true,"service":"jurisprudenciaia-mcp"}.
+Confira os metadados OAuth conforme docs/deployment.md. Saúde e metadados confirmam apenas parte do caminho; ainda faltam login e execução de ferramenta.
+
+6. CONECTE MEU ASSISTENTE
+Claude: adicione o conector remoto na área de Conectores, com nome jurisprudenciaia e a URL real terminada em /mcp. Deixe Client ID e Client Secret vazios. Em uma organização, confira se um proprietário precisa cadastrar o conector. Inicie Conectar e deixe-me entrar com a conta Google autorizada.
+Codex: preserve os demais servidores e configurações. Adicione jurisprudenciaia como Streamable HTTP pela interface ou use codex mcp add jurisprudenciaia --url seguido da URL real. Se já existir, confira antes de alterar. Execute codex mcp login jurisprudenciaia e aguarde meu login Google. Use OAuth, sem bearer_token_env_var; confira em docs/codex.md a configuração de tool_timeout_sec = 120. Não cadastre o callback temporário local do Codex no Google Cloud.
+Para outro cliente, confirme o suporte ao transporte e ao OAuth implementados antes de prometer compatibilidade.
+
+7. EXECUTE UMA PESQUISA REAL DE TESTE
+Em uma conversa com o conector habilitado, execute pesquisar_jurisprudencia com um tema genérico, como negativação indevida e dano moral no STJ. Confira o schema atual da ferramenta antes de montar os argumentos.
+Verifique a chamada e o retorno da ferramenta, não apenas uma resposta do modelo ou uma lista de ferramentas que pode estar em cache. Um resultado vazio pode ser válido; erro de autenticação, transporte ou timeout não significa sucesso. Não use dados de clientes nem processos sigilosos no teste. Não invente julgados ou fontes ausentes.
+Se não conseguir chamar a ferramenta no meu assistente, entregue o pedido exato para eu executar e mantenha essa validação como pendente. Não conclua que está funcionando apenas porque /healthz respondeu.
+
+8. ENTREGUE O RESULTADO
+Informe o que foi configurado, os testes realmente executados e os respectivos resultados. Entregue a URL /mcp para meu uso privado, como reconectar e como administrar acessos, sem expor segredos ou a lista de e-mails.
+Distinga “configurado”, “publicado”, “autenticado” e “pesquisa validada”. Se algo depender de mim ou de acesso indisponível, diga exatamente o próximo passo e continue após minha intervenção. Só declare o fluxo completo quando houver evidência da autenticação e de uma chamada de pesquisa concluída.

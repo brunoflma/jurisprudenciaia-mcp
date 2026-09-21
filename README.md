@@ -55,6 +55,8 @@ O conector cuida da integração e do acesso. A base e o serviço de pesquisa s�
 
 O [guia de instalação e conexão](https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html) acompanha a configuração na Cloudflare, o login Google e a primeira pesquisa no assistente. Para ler offline, [baixe o guia completo](docs/assets/oauth-guide/guia-conexao-advogado.zip), extraia o pacote e abra `deploy-guide.html`. O pacote inclui os estilos, a fonte e os recursos de cópia; os links para serviços externos precisam de internet.
 
+**Quer configurar com um agente de IA?** [Copie o prompt completo no guia](https://brunoflma.github.io/jurisprudenciaia-mcp/deploy-guide.html#instalar-com-ia) ou [baixe em texto](docs/agent-setup-prompt.txt). Ele orienta o agente desde a verificação do ambiente até o teste de pesquisa. Você acompanha os logins e a inclusão de credenciais; a execução depende das ferramentas e permissões do agente.
+
 ### Quero configurar meu servidor
 
 Siga o [guia de implantação](docs/deployment.md). Ele reúne os requisitos, as variáveis e a configuração de autenticação.

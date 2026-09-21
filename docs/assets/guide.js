@@ -12,7 +12,7 @@ for (const button of document.querySelectorAll("[data-copy]")) {
     try {
       await navigator.clipboard.writeText(text);
       clearTimeout(statusTimer);
-      status.textContent = "Copiado. Substitua os endereços de exemplo pelos do seu servidor, quando indicado.";
+      status.textContent = button.dataset.copyMessage || "Copiado. Substitua os endereços de exemplo pelos do seu servidor, quando indicado.";
       status.classList.add("visible");
       statusTimer = setTimeout(() => { status.classList.remove("visible"); }, 4500);
     } catch {
