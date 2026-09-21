@@ -191,6 +191,7 @@ async function loadContent() {
     renderExample("precedentes", false);
     byId("copy-example").addEventListener("click", copyPrompt);
     byId("copy-example").disabled = false;
+    document.querySelectorAll("[data-example]").forEach((button) => { button.disabled = false; });
   } catch {
     byId("demo-status").textContent = "Os roteiros não carregaram. Consulte as ferramentas e instruções no GitHub.";
     notify("Não foi possível carregar os roteiros. Tente recarregar a página.");
