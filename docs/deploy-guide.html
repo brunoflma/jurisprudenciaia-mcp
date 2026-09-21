@@ -65,7 +65,7 @@ cd jurisprudenciaia-mcp
 npm ci --ignore-scripts
 Use Node.js 22 ou superior e respeite os requisitos atuais do projeto.
 Antes de preencher identificadores reais da implantação, execute npm run verify. Esse comando inclui tipos, testes, auditoria e build. Os testes de sanitização são voltados ao repositório público e rejeitam, por exemplo, um Client ID real do Google. Não remova testes nem enfraqueça suas regras para fazer uma instalação passar. Se houver uma falha de ambiente, diagnostique-a e registre o resultado sem esconder o erro.
-Não publique a cópia configurada, não envie commits com os dados da instalação e não mude a lógica de autenticação para facilitar o setup.
+Não envie a cópia configurada nem commits com dados da instalação a um repositório público. Isso não impede a publicação do Worker no ambiente autorizado. Não mude a lógica de autenticação para facilitar o setup.
 
 3. PREPARE A CLOUDFLARE
 Confira se há uma sessão autorizada. Quando necessário, execute npx wrangler login e aguarde eu concluir o login. Confira a conta com npx wrangler whoami sem reproduzir identificadores pessoais no relatório.
