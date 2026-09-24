@@ -34,7 +34,7 @@
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vitest": "4.1.11",
-    "wrangler": "4.135.0"
+    "wrangler": "4.136.1"
   },
   "overrides": {
     "@hono/node-server": "2.0.11",
