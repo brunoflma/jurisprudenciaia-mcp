@@ -7,9 +7,36 @@ describe("OAuth client policy", () => {
     ["http://localhost:49152/oauth/callback", "loopback"],
     ["https://claude.ai/api/mcp/auth_callback", "hosted"],
     ["https://claude.com/api/mcp/auth_callback", "hosted"],
+    ["https://chatgpt.com/connector_platform_oauth_redirect", "hosted"],
     ["https://chatgpt.com/connector/oauth/AxMS-ux405ET", "hosted"]
   ] as const)("classifies the allowed redirect %s", (redirectUri, expected) => {
     expect(classifyOAuthRedirectUri(redirectUri)).toBe(expected);
+  });
+
+  it.each([
+    "http://chatgpt.com/connector_platform_oauth_redirect",
+    "https://chatgpt.com.evil.test/connector_platform_oauth_redirect",
+    "https://chatgpt.com:443/connector_platform_oauth_redirect",
+    "https://chatgpt.com:8443/connector_platform_oauth_redirect",
+    ["https://user", "chatgpt.com/connector_platform_oauth_redirect"].join("@"),
+    "https://chatgpt.com/connector_platform_oauth_redirect?next=evil",
+    "https://chatgpt.com/connector_platform_oauth_redirect#fragment",
+    "https://chatgpt.com/connector_platform_oauth_redirect/",
+    "https://chatgpt.com/%63onnector_platform_oauth_redirect",
+    "https://chatgpt.com/other/../connector_platform_oauth_redirect",
+    " https://chatgpt.com/connector_platform_oauth_redirect"
+  ])("rejects altered stable ChatGPT callback %s", (redirectUri) => {
+    expect(classifyOAuthRedirectUri(redirectUri)).toBeUndefined();
+  });
+
+  it("accepts stable ChatGPT metadata and rejects mixed or altered redirects", () => {
+    const callback = "https://chatgpt.com/connector_platform_oauth_redirect";
+    const metadata = { redirect_uris: [callback], token_endpoint_auth_method: "none",
+      grant_types: ["authorization_code", "refresh_token"], response_types: ["code"] };
+    expect(validateDynamicClientMetadata(metadata)).toBe(true);
+    expect(validateDynamicClientMetadata({ ...metadata,
+      redirect_uris: [callback, "http://127.0.0.1:3334/oauth/callback"] })).toBe(false);
+    expect(validateDynamicClientMetadata({ ...metadata, redirect_uris: [callback, `${callback}?next=evil`] })).toBe(false);
   });
 
   it.each([

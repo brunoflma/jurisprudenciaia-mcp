@@ -5,10 +5,13 @@ const HOSTED_CALLBACKS = new Set([
   "https://claude.com/api/mcp/auth_callback"
 ]);
 const CHATGPT_CALLBACK_PATH = /^\/connector\/oauth\/[A-Za-z0-9_-]{8,128}$/;
+const CHATGPT_STABLE_CALLBACK = "https://chatgpt.com/connector_platform_oauth_redirect";
 
 export type OAuthRedirectProfile = "hosted" | "loopback";
 
 export function classifyOAuthRedirectUri(value: string): OAuthRedirectProfile | undefined {
+  // Match the stable callback literally so URL normalization cannot admit variants.
+  if (value === CHATGPT_STABLE_CALLBACK) return "hosted";
   try {
     const url = new URL(value);
     if (HOSTED_CALLBACKS.has(url.href)) return "hosted";
