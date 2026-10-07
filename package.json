@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "0.10.3",
-    "@modelcontextprotocol/sdk": "1.30.0",
+    "@modelcontextprotocol/sdk": "1.31.0",
     "express": "^5.1.0",
     "helmet": "^8.3.0",
     "zod": "4.6.0"
@@ -34,7 +34,7 @@
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vitest": "4.1.11",
-    "wrangler": "4.136.1"
+    "wrangler": "4.148.0"
   },
   "overrides": {
     "@hono/node-server": "2.0.11",
@@ -48,7 +48,9 @@
     "proxy-addr": "2.0.8",
     "qs": "6.16.0",
     "zod": "4.6.0",
-    "nanoid": "3.3.19"
+    "nanoid": "3.3.19",
+    "source-map-js": "1.2.2",
+    "sharp": "0.35.5"
   },
   "engines": {
     "node": ">=22"
