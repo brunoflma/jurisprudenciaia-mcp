@@ -128,6 +128,7 @@ function parseAuthRequest(value: unknown): AuthRequest {
   };
   if (typeof value.codeChallenge === "string") result.codeChallenge = value.codeChallenge;
   if (typeof value.codeChallengeMethod === "string") result.codeChallengeMethod = value.codeChallengeMethod;
+  if (typeof value.issuer === "string") result.issuer = value.issuer;
   if (typeof value.resource === "string" || Array.isArray(value.resource) && value.resource.every((item) => typeof item === "string")) result.resource = value.resource;
   return result;
 }
