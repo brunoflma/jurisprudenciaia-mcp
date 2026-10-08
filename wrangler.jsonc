@@ -21,8 +21,6 @@
     }
   ],
   "vars": {
-    "MCP_OAUTH_V2_ENABLED": "false",
-    "MCP_OAUTH_V2_ISSUANCE_PAUSED": "false",
     "MCP_OAUTH_V2_POLICY": "{\"allowedScopes\":[\"jurisprudence:read\",\"jurisprudenciaia:search\"],\"codeTtlMs\":300000,\"accessTtlMs\":3600000,\"receiptTtlMs\":120000,\"refresh\":{\"tokenTtlMs\":2592000000,\"absoluteTtlMs\":2592000000,\"idleTtlMs\":2592000000}}",
     "JURISPRUDENCIAIA_URL": "https://www.jurisprudenciaia.com.br/",
     "REQUEST_TIMEOUT_MS": "120000",

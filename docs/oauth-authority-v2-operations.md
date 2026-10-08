@@ -4,9 +4,18 @@ O Wrangler declara o binding SQLite `MCP_OAUTH_V2_LEDGER` e a migração da clas
 `McpOAuthV2Ledger`. A ativação fica desligada por padrão. Declarar a migração
 não comprova implantação ou ativação.
 
+As flags `MCP_OAUTH_V2_ENABLED` e `MCP_OAUTH_V2_ISSUANCE_PAUSED`
+são operacionais e não são declaradas em `vars`. `keep_vars=true`
+preserva seus valores publicados; ausência equivale a desativado.
+Um deploy de código não deve desligar v2 nem retirar uma pausa de emissão.
+Quando há uma nova migração de Durable Objects, `versions upload` não a
+aplica: a publicação inicial exige `wrangler deploy` sob os mesmos controles.
+
 A ativação exige `MCP_OAUTH_V2_POLICY` e uma chave `MCP_OAUTH_V2_RECEIPT_KEY`
 diferente por autoridade: 32 bytes aleatórios em base64url canônico.
-O titular fornece a chave diretamente à CLI nativa, por entrada protegida.
+Uma chave nova pode ser gerada por CSPRNG em processo protegido e fornecida
+diretamente à entrada padrão do Wrangler nativo, sem impressão ou arquivo.
+Credenciais existentes fornecidas pelo titular usam entrada protegida.
 Valores não pertencem a chat, histórico de comandos, arquivos, fixtures ou
 repositório. Chaves existentes não são substituídas como diagnóstico.
 
