@@ -1,3 +1,4 @@
+import { nodeAuthorityMiddleware, type TrustedNodeAuthority } from "./authority-v2.js";
 import express from "express";
 import type { Express } from "express";
 import helmet from "helmet";
@@ -7,6 +8,7 @@ import type { JurisprudenciaIaRunner } from "../jurisprudenciaia/types.js";
 import { createJurisprudenciaIaMcpServer } from "../mcp/create-server.js";
 
 type CreateAppOptions = {
+  oauthV2?: { enabled?: string; authority?: TrustedNodeAuthority };
   connectorPath: string;
   rateLimitWindowMs: number;
   rateLimitMaxRequests: number;
@@ -42,6 +44,8 @@ export function createApp(options: CreateAppOptions): Express {
   app.get("/healthz", (_req, res) => {
     res.json({ ok: true, service: "jurisprudenciaia-mcp" });
   });
+
+  if (options.oauthV2?.enabled === "true") app.use(options.connectorPath, nodeAuthorityMiddleware(options.oauthV2.authority));
 
   if (runner) {
     app.post(options.connectorPath, async (req, res) => {

@@ -1,0 +1,12 @@
+{
+  "source": "workspace/oauth-v2-core",
+  "scope": "disabled local candidate; no production defaults or wiring",
+  "files": {
+    "index.mjs": "10c7eb90cf28cd81fe53a6762b0ac64866bfcc23177406ab5c112956f5335d4b",
+    "index.d.mts": "e35b388be1c023366418f605a2d08efb546911ae674061fa636619122b4e2184",
+    "src/ledger.mjs": "7c58f7a30bd96443478eaa7e0f81e1594278b3c56a51364d01fc11c6254cdc5f",
+    "src/ledger.d.ts": "099aecf286fc4cec6a10710014f88dff7a75195b866fa6b2e296b2a92bdf25d1",
+    "CONTRACT.md": "c3ec3b912ab0f0d70da85bdb11cab0cdc68963caeb467a1da7c5181654a9832a",
+    "src/ledger.d.mts": "903c29028469869a58743bff1ed1a6cab99741c3a8882341be9295523206df12"
+  }
+}

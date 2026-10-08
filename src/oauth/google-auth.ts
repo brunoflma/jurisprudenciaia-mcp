@@ -1,10 +1,14 @@
+import { canonicalOAuthOrigin, MCP_SCOPES, requireSupportedScopes } from "./access-policy.js";
 import type { AuthRequest, CompleteAuthorizationOptions } from "@cloudflare/workers-oauth-provider";
 import { classifyOAuthRedirectUri, requireLoopbackPkce } from "./client-policy.js";
+import type { TrustedGoogleIdentity } from "./authority-v2/adapter.js";
+import type { OAuthTransaction } from "./state.js";
 import type { OAuthStateNamespace } from "./state.js";
 import {
   clearOAuthCookie,
   consumeOAuthTransaction,
   createOAuthTransaction,
+  createGooglePkce,
   GOOGLE_CALLBACK_PATH,
   googleAuthorizationUrl
 } from "./state.js";
@@ -15,7 +19,7 @@ const SECURITY_HEADERS = {
   "x-frame-options": "DENY",
   "x-xss-protection": "1; mode=block"
 } as const;
-const SCOPES = Object.freeze(["jurisprudence:read", "jurisprudenciaia:search"]);
+const SCOPES = MCP_SCOPES;
 const MAX_FORM_BYTES = 8_192;
 const MAX_GOOGLE_BYTES = 32_768;
 const GOOGLE_TOKEN_ERRORS = new Set(["invalid_client", "invalid_grant", "invalid_request", "unauthorized_client", "unsupported_grant_type"]);
@@ -108,18 +112,27 @@ export function consentPage(clientName: string, token: string, nonce: string, lo
 <footer class="foot"><span><strong>JurisprudênciaIA</strong> · servidor MCP auto-hospedado</span><span>Conexão protegida · acesso revogável</span></footer></main></body></html>`;
 }
 
-export async function handleGoogleAuth(request: Request, env: GoogleOAuthEnv, fallback: () => Promise<Response>, googleFetch: FetchLike = fetch): Promise<Response> {
+export type AuthorityGoogleHooks = {
+  parseAuthorization(request: Request): Promise<OAuthTransaction>;
+  completeAuthorization(auth: AuthRequest, identity: TrustedGoogleIdentity): Promise<{ redirectTo: string }>;
+  legacyAuthorizationAllowed(): boolean;
+};
+
+export async function handleGoogleAuth(request: Request, env: GoogleOAuthEnv, fallback: () => Promise<Response>, googleFetch: FetchLike = fetch, authority?: AuthorityGoogleHooks): Promise<Response> {
   const path = new URL(request.url).pathname;
   if (path !== "/authorize" && path !== GOOGLE_CALLBACK_PATH) return fallback();
   requireConfiguration(env);
-  if (path === "/authorize" && request.method === "GET") return showConsent(request, env);
+  if (path === "/authorize" && request.method === "GET") return showConsent(request, env, authority);
   if (path === "/authorize" && request.method === "POST") return startGoogle(request, env);
-  if (path === GOOGLE_CALLBACK_PATH && request.method === "GET") return finishGoogle(request, env, googleFetch);
+  if (path === GOOGLE_CALLBACK_PATH && request.method === "GET") return finishGoogle(request, env, googleFetch, authority);
   return new Response("Method Not Allowed", { status: 405, headers: { Allow: "GET, POST", ...SECURITY_HEADERS } });
 }
 
-async function showConsent(request: Request, env: GoogleOAuthEnv): Promise<Response> {
-  const authRequest = await env.OAUTH_PROVIDER.parseAuthRequest(request);
+async function showConsent(request: Request, env: GoogleOAuthEnv, authority?: AuthorityGoogleHooks): Promise<Response> {
+  const authRequest = authority ? await authority.parseAuthorization(request) : await env.OAUTH_PROVIDER.parseAuthRequest(request);
+  requireSupportedScopes(authRequest.scope);
+  // Keep RFC 9207 issuer stable through both one-shot state transitions.
+  authRequest.issuer = canonicalOAuthOrigin(env.MCP_PUBLIC_ORIGIN!);
   requireLoopbackPkce(authRequest);
   const client = await env.OAUTH_PROVIDER.lookupClient(authRequest.clientId);
   if (!client) throw new Error("oauth_unknown_client");
@@ -143,26 +156,34 @@ async function startGoogle(request: Request, env: GoogleOAuthEnv): Promise<Respo
   const token = form.get("transaction") ?? "";
   if (!/^[0-9a-f-]{36}$/.test(token)) throw new Error("oauth_invalid_transaction");
   const authRequest = await consumeOAuthTransaction(env.OAUTH_STATE, "consent", token, request);
-  const state = await createOAuthTransaction(env.OAUTH_STATE, "google", authRequest);
+  const pkce = await createGooglePkce();
+  const state = await createOAuthTransaction(env.OAUTH_STATE, "google", { ...authRequest, googleCodeVerifier: pkce.verifier });
   const callbackOrigin = env.MCP_GOOGLE_CALLBACK_ORIGIN || env.MCP_PUBLIC_ORIGIN!;
-  return redirect(googleAuthorizationUrl({ clientId: env.MCP_GOOGLE_CLIENT_ID!, publicOrigin: callbackOrigin, state: state.token }), [clearOAuthCookie("consent"), state.setCookie]);
+  return redirect(googleAuthorizationUrl({ clientId: env.MCP_GOOGLE_CLIENT_ID!, publicOrigin: callbackOrigin, state: state.token, codeChallenge: pkce.challenge }), [clearOAuthCookie("consent"), state.setCookie]);
 }
 
-async function finishGoogle(request: Request, env: GoogleOAuthEnv, googleFetch: FetchLike): Promise<Response> {
+async function finishGoogle(request: Request, env: GoogleOAuthEnv, googleFetch: FetchLike, authority?: AuthorityGoogleHooks): Promise<Response> {
   const url = new URL(request.url);
   const code = url.searchParams.get("code") ?? "";
   const state = url.searchParams.get("state") ?? "";
   if (!code || !state) throw new Error("oauth_invalid_google_callback");
   console.log(JSON.stringify({ operation: "oauth_google_callback", stage: "received" }));
-  const authRequest = await consumeOAuthTransaction(env.OAUTH_STATE, "google", state, request);
+  const { googleCodeVerifier, ...authRequest } = await consumeOAuthTransaction(env.OAUTH_STATE, "google", state, request);
   console.log(JSON.stringify({ operation: "oauth_google_callback", stage: "state_verified" }));
-  const accessToken = await exchangeGoogleCode(code, env, googleFetch);
+  if (authRequest.authorityVersion === 2 && !authority) throw new Error("oauth_google_temporarily_unavailable");
+  const accessToken = await exchangeGoogleCode(code, env, googleFetch, googleCodeVerifier);
   console.log(JSON.stringify({ operation: "oauth_google_callback", stage: "code_exchanged" }));
   const profile = await googleProfile(accessToken, googleFetch);
   console.log(JSON.stringify({ operation: "oauth_google_callback", stage: "profile_verified" }));
   const identity = allowedIdentity(profile, env);
   const scopes = authRequest.scope.length > 0 ? SCOPES.filter((scope) => authRequest.scope.includes(scope)) : [...SCOPES];
-  const props = { tenantId: "jurisia", userId: profile.sub, email: identity.email, name: identity.name, scopes };
+  const props = { tenantId: "jurisia", userId: profile.sub, email: identity.email, name: identity.name, scopes, mcpRedirectUri: authRequest.redirectUri };
+  if (authRequest.authorityVersion === 2) {
+    if (!authority) throw new Error("oauth_google_temporarily_unavailable");
+    const { redirectTo } = await authority.completeAuthorization(authRequest, { sub: profile.sub, email: identity.email, email_verified: true });
+    return redirect(redirectTo, [clearOAuthCookie("google")]);
+  }
+  if (authority && !authority.legacyAuthorizationAllowed()) throw new Error("oauth_invalid_transaction");
   const { redirectTo } = await env.OAUTH_PROVIDER.completeAuthorization({
     request: authRequest,
     userId: profile.sub,
@@ -176,9 +197,10 @@ async function finishGoogle(request: Request, env: GoogleOAuthEnv, googleFetch: 
   return redirect(redirectTo, [clearOAuthCookie("google")]);
 }
 
-async function exchangeGoogleCode(code: string, env: GoogleOAuthEnv, googleFetch: FetchLike): Promise<string> {
+async function exchangeGoogleCode(code: string, env: GoogleOAuthEnv, googleFetch: FetchLike, googleCodeVerifier?: string): Promise<string> {
   const callbackOrigin = env.MCP_GOOGLE_CALLBACK_ORIGIN || env.MCP_PUBLIC_ORIGIN!;
   const body = new URLSearchParams({ code, client_id: env.MCP_GOOGLE_CLIENT_ID!, client_secret: env.MCP_GOOGLE_CLIENT_SECRET!, redirect_uri: new URL(GOOGLE_CALLBACK_PATH, callbackOrigin).href, grant_type: "authorization_code" });
+  if (googleCodeVerifier) body.set("code_verifier", googleCodeVerifier);
   const { response, payload } = await fetchJsonBounded(googleFetch, new Request("https://oauth2.googleapis.com/token", { method: "POST", body }), 15_000, MAX_GOOGLE_BYTES);
   if (!response.ok) {
     const record = parseRecord(payload);
@@ -231,9 +253,19 @@ async function fetchJsonBounded(fetcher: FetchLike, request: Request, timeoutMs:
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetcher(new Request(request, { signal: controller.signal }));
+    let response: Response;
+    try { response = await fetcher(new Request(request, { signal: controller.signal })); }
+    catch { throw new Error("oauth_google_temporarily_unavailable"); }
+    if (response.status === 429 || response.status >= 500) {
+      controller.abort();
+      throw new Error("oauth_google_temporarily_unavailable");
+    }
     const payload = await readJsonLimited(response, maxBytes);
     return { response, payload };
+  }
+  catch (error) {
+    if (controller.signal.aborted) throw new Error("oauth_google_temporarily_unavailable");
+    throw error;
   }
   finally { clearTimeout(timer); }
 }

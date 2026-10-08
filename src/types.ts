@@ -1,3 +1,4 @@
+import type { LedgerNamespace } from "./oauth/authority-v2/runtime.mjs";
 import type { OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 
 export type CacheLike = {
@@ -9,6 +10,12 @@ export type CacheLike = {
 export type OAuthStateNamespace = Pick<DurableObjectNamespace, "idFromName" | "get">;
 
 type SecretEnv = {
+  MCP_OAUTH_V2_ENABLED?: string;
+  MCP_OAUTH_V2_ISSUANCE_PAUSED?: string;
+  MCP_OAUTH_V2_POLICY?: string;
+  MCP_OAUTH_V2_RECEIPT_KEY?: string;
+  MCP_OAUTH_V2_BACKCHANNEL_KEY?: string;
+  MCP_OAUTH_V2_LEDGER?: LedgerNamespace;
   MCP_GOOGLE_CLIENT_ID?: string;
   MCP_GOOGLE_CLIENT_SECRET?: string;
   MCP_PUBLIC_ORIGIN?: string;
@@ -26,4 +33,4 @@ type SecretEnv = {
   JURIS_CACHE: KVNamespace;
 };
 
-export type Env = Cloudflare.Env & SecretEnv;
+export type Env = Omit<Cloudflare.Env, keyof SecretEnv> & SecretEnv;

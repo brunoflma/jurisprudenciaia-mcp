@@ -1,0 +1,10 @@
+{
+  "worker-config.mjs": {
+    "source_sha256": "8bec863d520952ff2af5ea03c98423fb76589eb57c72253cf8551c074da09735",
+    "vendored_sha256": "a7584dd7cbcc79968cf6b84a8e0abb4b5d4ebd5067ad8ff297f5926f9a5bd314"
+  },
+  "worker-config.d.mts": {
+    "source_sha256": "f2f360e69049df3fa4feb1681d03127d7127b4f51cdaac6abc454ad1c1485e8a",
+    "vendored_sha256": "3560bfc8a65afe6512e06beab70adf12b094d5ae838da01e50a8dfc1e5fb6aad"
+  }
+}

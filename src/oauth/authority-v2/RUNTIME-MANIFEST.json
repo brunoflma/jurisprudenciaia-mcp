@@ -1,0 +1,15 @@
+{
+  "source": "workspace/oauth-v2-do-tests",
+  "scope": "internal RPC candidate; no class export, binding or entrypoint activation",
+  "transformation": "replace exactly one '../oauth-v2-core/index.mjs' with './core/index.mjs' per file",
+  "files": {
+    "runtime.mjs": {
+      "source_sha256": "fce3b603574902025763abb45ae8eeca32572e5796a9eee14948e8715e2bd6ff",
+      "vendored_sha256": "16250bd29d196cd37172bcf3c3a72107c5987c8bb50cbd2a21547f5d8883ce5a"
+    },
+    "runtime.d.mts": {
+      "source_sha256": "44bce56e7b27388c96b89cd09a9ee96b13601b176053e013edc5fe1fa7640144",
+      "vendored_sha256": "546951bcbf898a466a6a7c91c9fc17569adff2f6ca69465e8f1b4909405c06f4"
+    }
+  }
+}

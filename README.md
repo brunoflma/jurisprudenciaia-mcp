@@ -114,3 +114,5 @@ As telas abaixo são ilustrativas e usam dados fictícios.
 Ao relatar um problema, informe o cliente utilizado e a etapa em que a conexão falhou. Remova tokens, segredos e dados de processos dos exemplos enviados.
 
 Desenvolvido por [Bruno Ferreira](https://github.com/brunoflma). Conheça também o [Jusmanizer](https://github.com/brunoflma/jusmanizer), voltado à revisão do estilo da escrita jurídica.
+
+Política de manutenção OAuth: [baseline local de 2026-10-06](docs/oauth-baseline-2026-10-06.md), com contratos preservados, diferenças desta distribuição e pendências verificadas.
