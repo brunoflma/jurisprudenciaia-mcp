@@ -2,6 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "jurisprudenciaia-mcp",
   "main": "src/worker.ts",
+  "assets": { "directory": "./public" },
   "compatibility_date": "2026-07-25",
   "compatibility_flags": [
     "nodejs_compat",
@@ -13,11 +14,11 @@
   "kv_namespaces": [
     {
       "binding": "JURIS_CACHE",
-      "id": "replace-with-your-juris-cache-kv-id"
+      "id": "f33140a43d6048ac9704d7f6cb2e5db5"
     },
     {
       "binding": "OAUTH_KV",
-      "id": "replace-with-your-oauth-kv-id"
+      "id": "7897ddd454a54bbdb1456a0c0308271f"
     }
   ],
   "vars": {
@@ -25,10 +26,7 @@
     "JURISPRUDENCIAIA_URL": "https://www.jurisprudenciaia.com.br/",
     "REQUEST_TIMEOUT_MS": "120000",
     "RATE_LIMIT_WINDOW_MS": "60000",
-    "RATE_LIMIT_MAX_REQUESTS": "30",
-    "MCP_PUBLIC_ORIGIN": "https://mcp.example.com",
-    "MCP_GOOGLE_CALLBACK_ORIGIN": "https://mcp.example.com",
-    "MCP_GOOGLE_CLIENT_ID": "replace-with-your-google-client-id.apps.googleusercontent.com"
+    "RATE_LIMIT_MAX_REQUESTS": "30"
   },
   "durable_objects": {
     "bindings": [

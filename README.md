@@ -44,6 +44,10 @@ Os [roteiros da página](https://brunoflma.github.io/jurisprudenciaia-mcp/#exemp
 
 O conector cuida da integração e do acesso. A base e o serviço de pesquisa são do **JurisprudênciaIA**. Os resultados precisam ser lidos e conferidos nas fontes antes de uso profissional.
 
+## Interface pública do servidor
+
+A raiz (`GET /`) e `GET /mcp` quando solicitados por um navegador apresentam a página de conexão do JurisprudênciaIA. Clientes MCP continuam usando `POST /mcp` com OAuth; `POST /` permanece como alias protegido para compatibilidade.
+
 ## Escolha seu ponto de partida
 
 ### Quero usar no meu assistente

@@ -75,29 +75,43 @@ describe("Cloudflare Worker", () => {
     });
   });
 
-  it("serves a minimal landing page and hides MCP details from browsers", async () => {
+  it("serves the shared public page at the root and browser MCP route", async () => {
     const landing = await worker.fetch(new Request("https://mcp.test/", { headers: { accept: "text/html" } }), env, ctx);
     expect(landing.status).toBe(200);
     const html = await landing.text();
-    expect(html).toContain("Conector MCP auto-hospedado · acesso restrito.");
-    expect(html).toContain("JurisprudênciaIA MCP");
-    expect(html).toContain('rel="stylesheet" href="/landing.css"');
+    expect(html).toContain("Explore a jurisprudência");
+    expect(html).toContain("JurisprudênciaIA · conexão MCP");
+    expect(html).toContain('rel="stylesheet" href="/landing.css?v=20261009"');
+    expect(html).toContain('aria-label="URL do servidor MCP">https://mcp.test/mcp</code>');
     expect(html).not.toContain("<style>");
-    expect(landing.headers.get("content-security-policy")).toContain("style-src 'self'");
+    expect(landing.headers.get("content-security-policy")).toContain("font-src 'self'");
 
     const stylesheet = await worker.fetch(new Request("https://mcp.test/landing.css"), env, ctx);
     expect(stylesheet.status).toBe(200);
     expect(stylesheet.headers.get("content-type")).toContain("text/css");
+    expect(await stylesheet.text()).toContain("/fonts/libre-caslon-text-400.woff2");
 
     const mcp = await worker.fetch(new Request("https://mcp.test/mcp", { headers: { accept: "text/html" } }), env, ctx);
-    expect(mcp.status).toBe(404);
-    expect(await mcp.json()).toEqual({ error: "not_found" });
+    expect(mcp.status).toBe(200);
+    expect(mcp.headers.get("content-type")).toContain("text/html");
+    expect(await mcp.text()).toContain("Explore a jurisprudência");
+
+    const jsonProbe = await worker.fetch(new Request("https://mcp.test/mcp", {
+      headers: { accept: "application/json, text/event-stream" }
+    }), env, ctx);
+    expect(jsonProbe.status).toBe(401);
+    expect(jsonProbe.headers.get("www-authenticate")).toContain("resource_metadata");
   });
 
   it("serves SVG, PNG, and ICO favicons", async () => {
     const svg = await worker.fetch(new Request("https://mcp.test/favicon.svg"), env, ctx);
     expect(svg.status).toBe(200);
     expect(svg.headers.get("content-type")).toContain("image/svg+xml");
+    expect(await svg.text()).toContain("JurisprudênciaIA — Pesquisa assistida");
+
+    const legacySvg = await worker.fetch(new Request("https://mcp.test/icon.svg"), env, ctx);
+    expect(legacySvg.status).toBe(200);
+    expect(await legacySvg.text()).toContain("JurisprudênciaIA — Pesquisa assistida");
 
     const png = await worker.fetch(new Request("https://mcp.test/favicon.png"), env, ctx);
     expect(png.status).toBe(200);

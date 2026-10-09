@@ -16,8 +16,8 @@ import { validateMcpClientRegistration } from "./oauth/client-registration.js";
 import { OAuthStateStore } from "./oauth/state-store.js";
 import { FixedWindowRateLimiter } from "./infra/rate-limit.js";
 import { GOOGLE_CALLBACK_PATH } from "./oauth/state.js";
-
 import type { Env } from "./types.js";
+import { SERVICE_PAGE_CSS, renderProductIcon, renderServicePage } from "./service-page.js";
 
 export { OAuthStateStore };
 export { classifyOAuthRedirectUri };
@@ -37,8 +37,7 @@ const SECURITY_HEADERS = {
   "X-Frame-Options": "DENY",
   "X-XSS-Protection": "1; mode=block"
 } as const;
-const LANDING_CSS = ":root{color-scheme:dark}html,body{height:100%}body{margin:0;display:flex;align-items:center;justify-content:center;padding:2rem;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:radial-gradient(120% 120% at 50% 0%,#0b211e 0%,#071614 60%,#040d0c 100%);color:#e9e2cf}main{text-align:center}img{width:64px;height:64px}h1{margin:.9rem 0 .35rem;font-size:1.3rem;letter-spacing:.2px}p{margin:0;color:#8aa79c;font-size:.9rem}";
-const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Balança da justiça"><title>Balança da justiça</title><rect width="96" height="96" rx="20" fill="#0b1014"/><rect x="5" y="5" width="86" height="86" rx="17" fill="none" stroke="#1f2a33" stroke-width="2"/><path d="M48 22v55M18 36h60M27 38 14 62M27 38l13 24M69 38 56 62M69 38l13 24M10 62h34l-7 11H17zM52 62h34l-7 11H59zM35 82h26" fill="none" stroke="#d98a4a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const FAVICON_SVG = renderProductIcon("jurisprudenciaia");
 
 const mcpApiHandler = {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -78,7 +77,7 @@ const applicationWorker = {
       return json({ ok: true, service: "jurisprudenciaia-mcp" });
     }
     if (url.pathname === "/landing.css" && request.method === "GET") {
-      return new Response(LANDING_CSS, { headers: {
+      return new Response(SERVICE_PAGE_CSS, { headers: {
         "Content-Type": "text/css; charset=utf-8",
         "Cache-Control": "public, max-age=86400",
         ...SECURITY_HEADERS
@@ -98,7 +97,7 @@ const applicationWorker = {
         ...SECURITY_HEADERS
       }});
     }
-    if (url.pathname === "/favicon.svg" && request.method === "GET") {
+    if ((url.pathname === "/favicon.svg" || url.pathname === "/icon.svg") && request.method === "GET") {
       return new Response(FAVICON_SVG, { headers: {
         "Content-Type": "image/svg+xml; charset=utf-8",
         "Cache-Control": "public, max-age=86400, immutable",
@@ -106,7 +105,7 @@ const applicationWorker = {
       }});
     }
     if (url.pathname === "/" && request.method === "GET") {
-      return landingPage();
+      return publicServicePage(url.origin);
     }
     return json({ error: "not_found" }, 404);
   }
@@ -225,7 +224,7 @@ export default {
     // intermediate array allocations and reduce GC overhead on every MCP request.
     const acceptsHtml = (request.headers.get("accept") ?? "").toLowerCase().includes("text/html");
     if (request.method === "GET" && url.pathname === MCP_PATH && acceptsHtml) {
-      return json({ error: "not_found" }, 404);
+      return publicServicePage(url.origin);
     }
     const oauthRequest = url.pathname === OAUTH_AUTHORIZE_COMPAT_PATH
       ? withPathname(request, OAUTH_AUTHORIZE_PATH)
@@ -484,12 +483,12 @@ function json(value: unknown, status = 200, headers?: Record<string, string>): R
   return Response.json(value, { status, headers: { "Cache-Control": "no-store", "Pragma": "no-cache", ...SECURITY_HEADERS, ...headers } });
 }
 
-function landingPage(): Response {
-  const body = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#0b1014"><title>JurisprudênciaIA MCP</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/landing.css"></head><body><main><img src="/favicon.svg" width="64" height="64" alt=""><h1>JurisprudênciaIA MCP</h1><p>Conector MCP auto-hospedado · acesso restrito.</p></main></body></html>`;
+function publicServicePage(origin: string): Response {
+  const body = renderServicePage(origin, "jurisprudenciaia", "", true);
   return new Response(body, { headers: {
     "Content-Type": "text/html; charset=utf-8",
     "Cache-Control": "public, max-age=300",
-    "Content-Security-Policy": "default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    "Content-Security-Policy": "default-src 'none'; style-src 'self'; img-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
     "Referrer-Policy": "no-referrer",
     ...SECURITY_HEADERS
   }});
