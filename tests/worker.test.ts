@@ -21,6 +21,18 @@ function fakeRunner(markdown: string): JurisprudenciaIaRunner {
 }
 
 describe("Cloudflare Worker", () => {
+  it.each(["", "?utm_source=hub&next=https%3A%2F%2Fexample.org"])("temporarily redirects root navigation to /mcp preserving query %s", async (query) => {
+    for (const accept of [undefined, "text/html", "application/json, text/event-stream"]) {
+      const response = await worker.fetch(new Request(`https://mcp.test/${query}`, {
+        headers: accept ? { accept } : {}
+      }), env, ctx);
+      expect(response.status).toBe(302);
+      expect(response.headers.get("location")).toBe(`https://mcp.test/mcp${query}`);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(await response.text()).toBe("");
+    }
+  });
+
   it("bootstraps the fixed legacy ChatGPT client only for an official callback", async () => {
     const stored = new Map<string, string>();
     const kv = {
@@ -75,29 +87,43 @@ describe("Cloudflare Worker", () => {
     });
   });
 
-  it("serves a minimal landing page and hides MCP details from browsers", async () => {
-    const landing = await worker.fetch(new Request("https://mcp.test/", { headers: { accept: "text/html" } }), env, ctx);
+  it("serves the public connection page at the browser MCP route", async () => {
+    const landing = await worker.fetch(new Request("https://mcp.test/mcp", { headers: { accept: "text/html" } }), env, ctx);
     expect(landing.status).toBe(200);
     const html = await landing.text();
-    expect(html).toContain("Conector MCP auto-hospedado · acesso restrito.");
-    expect(html).toContain("JurisprudênciaIA MCP");
-    expect(html).toContain('rel="stylesheet" href="/landing.css"');
+    expect(html).toContain("Pesquisa jurídica.");
+    expect(html).toContain("JurisprudênciaIA · conexão MCP");
+    expect(html).toContain('rel="stylesheet" href="/landing.css?v=20261009-editorial3"');
+    expect(html).toContain('aria-label="URL do servidor MCP">https://mcp.test/mcp</code>');
     expect(html).not.toContain("<style>");
-    expect(landing.headers.get("content-security-policy")).toContain("style-src 'self'");
+    expect(landing.headers.get("content-security-policy")).toContain("font-src 'self'");
 
     const stylesheet = await worker.fetch(new Request("https://mcp.test/landing.css"), env, ctx);
     expect(stylesheet.status).toBe(200);
     expect(stylesheet.headers.get("content-type")).toContain("text/css");
+    expect(await stylesheet.text()).toContain("/fonts/outfit-400.woff2");
 
     const mcp = await worker.fetch(new Request("https://mcp.test/mcp", { headers: { accept: "text/html" } }), env, ctx);
-    expect(mcp.status).toBe(404);
-    expect(await mcp.json()).toEqual({ error: "not_found" });
+    expect(mcp.status).toBe(200);
+    expect(mcp.headers.get("content-type")).toContain("text/html");
+    expect(await mcp.text()).toContain("Pesquisa jurídica.");
+
+    const jsonProbe = await worker.fetch(new Request("https://mcp.test/mcp", {
+      headers: { accept: "application/json, text/event-stream" }
+    }), env, ctx);
+    expect(jsonProbe.status).toBe(401);
+    expect(jsonProbe.headers.get("www-authenticate")).toContain("resource_metadata");
   });
 
   it("serves SVG, PNG, and ICO favicons", async () => {
     const svg = await worker.fetch(new Request("https://mcp.test/favicon.svg"), env, ctx);
     expect(svg.status).toBe(200);
     expect(svg.headers.get("content-type")).toContain("image/svg+xml");
+    expect(await svg.text()).toContain("JurisprudênciaIA — livro aberto e passagem em destaque");
+
+    const legacySvg = await worker.fetch(new Request("https://mcp.test/icon.svg"), env, ctx);
+    expect(legacySvg.status).toBe(200);
+    expect(await legacySvg.text()).toContain("JurisprudênciaIA — livro aberto e passagem em destaque");
 
     const png = await worker.fetch(new Request("https://mcp.test/favicon.png"), env, ctx);
     expect(png.status).toBe(200);

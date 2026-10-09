@@ -2,6 +2,8 @@
 
 # JurisprudênciaIA MCP
 
+`GET /` redireciona temporariamente (302, sem cache) para `/mcp`, preservando a query e reservando a raiz para uma futura landing page. `GET /mcp` com `Accept: text/html` apresenta o endereço de conexão e o guia inicial com identidade editorial de pesquisa jurídica: papel claro, tinta azul profunda, acentos de cobre, Libre Caslon Text e Outfit. A marca é um livro aberto com uma passagem em destaque; SVG, PNG, ICO e ícone Apple usam o mesmo desenho. O exemplo visual é uma pergunta, sem simular julgados ou resultados. Fontes com licenças OFL e ícones são servidos na própria origem. O transporte MCP, o OAuth e as permissões permanecem sob os contratos do serviço.
+
 **Pesquise jurisprudência brasileira dentro da conversa em que você trabalha.**
 
 Este conector aproxima o serviço JurisprudênciaIA de assistentes compatíveis com MCP. Você configura um servidor próprio no Cloudflare Workers; as pessoas autorizadas entram com a conta Google e passam a usar as ferramentas de pesquisa no assistente.
@@ -43,6 +45,10 @@ Os [roteiros da página](https://brunoflma.github.io/jurisprudenciaia-mcp/#exemp
 | Conectar sem distribuir um token manual a cada usuário | O cliente compatível descobre o fluxo OAuth e apresenta o login. |
 
 O conector cuida da integração e do acesso. A base e o serviço de pesquisa são do **JurisprudênciaIA**. Os resultados precisam ser lidos e conferidos nas fontes antes de uso profissional.
+
+## Interface pública do servidor
+
+A raiz (`GET /`) redireciona para `/mcp` com status 302 e `Cache-Control: no-store`; a query é preservada. A página de conexão é apresentada apenas em `GET /mcp` solicitado por um navegador. Clientes MCP continuam usando `POST /mcp` com OAuth; `POST /` permanece como alias protegido para compatibilidade.
 
 ## Escolha seu ponto de partida
 
