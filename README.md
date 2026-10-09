@@ -2,7 +2,7 @@
 
 # JurisprudênciaIA MCP
 
-`GET /` redireciona temporariamente (302, sem cache) para `/mcp`, preservando a query e reservando a raiz para uma futura landing page. `GET /mcp` com `Accept: text/html` apresenta o endereço de conexão e o guia inicial com identidade própria de estúdio de pesquisa: azul cobalto, composição assimétrica, diagrama de pesquisa e tipografia Outfit. Fontes com licenças OFL e ícones são servidos na própria origem. Fons é referência de qualidade, sem reproduzir seu layout. O transporte MCP, o OAuth e as permissões permanecem sob os contratos do serviço.
+`GET /` redireciona temporariamente (302, sem cache) para `/mcp`, preservando a query e reservando a raiz para uma futura landing page. `GET /mcp` com `Accept: text/html` apresenta o endereço de conexão e o guia inicial com identidade editorial de pesquisa jurídica: papel claro, tinta azul profunda, acentos de cobre, Libre Caslon Text e Outfit. A marca é um livro aberto com uma passagem em destaque; SVG, PNG, ICO e ícone Apple usam o mesmo desenho. O exemplo visual é uma pergunta, sem simular julgados ou resultados. Fontes com licenças OFL e ícones são servidos na própria origem. O transporte MCP, o OAuth e as permissões permanecem sob os contratos do serviço.
 
 **Pesquise jurisprudência brasileira dentro da conversa em que você trabalha.**
 

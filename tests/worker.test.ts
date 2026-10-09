@@ -91,9 +91,9 @@ describe("Cloudflare Worker", () => {
     const landing = await worker.fetch(new Request("https://mcp.test/mcp", { headers: { accept: "text/html" } }), env, ctx);
     expect(landing.status).toBe(200);
     const html = await landing.text();
-    expect(html).toContain("Explore a jurisprudência");
+    expect(html).toContain("Pesquisa jurídica.");
     expect(html).toContain("JurisprudênciaIA · conexão MCP");
-    expect(html).toContain('rel="stylesheet" href="/landing.css?v=20261009-identity2"');
+    expect(html).toContain('rel="stylesheet" href="/landing.css?v=20261009-editorial3"');
     expect(html).toContain('aria-label="URL do servidor MCP">https://mcp.test/mcp</code>');
     expect(html).not.toContain("<style>");
     expect(landing.headers.get("content-security-policy")).toContain("font-src 'self'");
@@ -106,7 +106,7 @@ describe("Cloudflare Worker", () => {
     const mcp = await worker.fetch(new Request("https://mcp.test/mcp", { headers: { accept: "text/html" } }), env, ctx);
     expect(mcp.status).toBe(200);
     expect(mcp.headers.get("content-type")).toContain("text/html");
-    expect(await mcp.text()).toContain("Explore a jurisprudência");
+    expect(await mcp.text()).toContain("Pesquisa jurídica.");
 
     const jsonProbe = await worker.fetch(new Request("https://mcp.test/mcp", {
       headers: { accept: "application/json, text/event-stream" }
@@ -119,11 +119,11 @@ describe("Cloudflare Worker", () => {
     const svg = await worker.fetch(new Request("https://mcp.test/favicon.svg"), env, ctx);
     expect(svg.status).toBe(200);
     expect(svg.headers.get("content-type")).toContain("image/svg+xml");
-    expect(await svg.text()).toContain("JurisprudênciaIA — Pesquisa assistida");
+    expect(await svg.text()).toContain("JurisprudênciaIA — livro aberto e passagem em destaque");
 
     const legacySvg = await worker.fetch(new Request("https://mcp.test/icon.svg"), env, ctx);
     expect(legacySvg.status).toBe(200);
-    expect(await legacySvg.text()).toContain("JurisprudênciaIA — Pesquisa assistida");
+    expect(await legacySvg.text()).toContain("JurisprudênciaIA — livro aberto e passagem em destaque");
 
     const png = await worker.fetch(new Request("https://mcp.test/favicon.png"), env, ctx);
     expect(png.status).toBe(200);
