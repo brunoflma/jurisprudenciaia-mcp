@@ -307,7 +307,7 @@ describe("disabled v2 candidate with the installed provider and real SQLite", ()
   it("preserves legacy body bytes and request headers after version routing", async () => {
     const body = "grant_type=authorization_code&code=legacy%2Bcode&client_id=one+two&scope=x%20y&opaque=%2f%2F";
     const request = new Request(`${ORIGIN}/oauth/token?synthetic=1`, { method: "POST", body,
-      headers: { "content-type": "application/x-www-form-urlencoded;charset=UTF-8", "x-synthetic-marker": "unchanged", authorization: `Basic ${btoa("synthetic:fixture")}` } });
+      headers: { "content-type": "application/x-www-form-urlencoded;charset=UTF-8", "x-synthetic-marker": "unchanged", authorization: "Bearer mock-synthetic-token-v1" } });
     const legacy = vi.fn(async (received: Request) => {
       expect(received.url).toBe(request.url); expect(received.method).toBe(request.method);
       expect([...received.headers.entries()]).toEqual([...request.headers.entries()]);
