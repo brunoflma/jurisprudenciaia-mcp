@@ -2,6 +2,8 @@
 
 # JurisprudênciaIA MCP
 
+As rotas `/` e `GET /mcp` com `Accept: text/html` apresentam o endereço de conexão e o guia inicial com identidade própria de estúdio de pesquisa: azul cobalto, composição assimétrica, diagrama de pesquisa e tipografia Outfit. Fontes com licenças OFL e ícones são servidos na própria origem. Fons é referência de qualidade, sem reproduzir seu layout. O transporte MCP, o OAuth e as permissões permanecem sob os contratos do serviço.
+
 **Pesquise jurisprudência brasileira dentro da conversa em que você trabalha.**
 
 Este conector aproxima o serviço JurisprudênciaIA de assistentes compatíveis com MCP. Você configura um servidor próprio no Cloudflare Workers; as pessoas autorizadas entram com a conta Google e passam a usar as ferramentas de pesquisa no assistente.

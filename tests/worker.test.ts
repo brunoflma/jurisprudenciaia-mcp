@@ -81,7 +81,7 @@ describe("Cloudflare Worker", () => {
     const html = await landing.text();
     expect(html).toContain("Explore a jurisprudência");
     expect(html).toContain("JurisprudênciaIA · conexão MCP");
-    expect(html).toContain('rel="stylesheet" href="/landing.css?v=20261009"');
+    expect(html).toContain('rel="stylesheet" href="/landing.css?v=20261009-identity2"');
     expect(html).toContain('aria-label="URL do servidor MCP">https://mcp.test/mcp</code>');
     expect(html).not.toContain("<style>");
     expect(landing.headers.get("content-security-policy")).toContain("font-src 'self'");
@@ -89,7 +89,7 @@ describe("Cloudflare Worker", () => {
     const stylesheet = await worker.fetch(new Request("https://mcp.test/landing.css"), env, ctx);
     expect(stylesheet.status).toBe(200);
     expect(stylesheet.headers.get("content-type")).toContain("text/css");
-    expect(await stylesheet.text()).toContain("/fonts/libre-caslon-text-400.woff2");
+    expect(await stylesheet.text()).toContain("/fonts/outfit-400.woff2");
 
     const mcp = await worker.fetch(new Request("https://mcp.test/mcp", { headers: { accept: "text/html" } }), env, ctx);
     expect(mcp.status).toBe(200);
