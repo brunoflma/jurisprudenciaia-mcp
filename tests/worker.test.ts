@@ -21,6 +21,18 @@ function fakeRunner(markdown: string): JurisprudenciaIaRunner {
 }
 
 describe("Cloudflare Worker", () => {
+  it.each(["", "?utm_source=hub&next=https%3A%2F%2Fexample.org"])("temporarily redirects root navigation to /mcp preserving query %s", async (query) => {
+    for (const accept of [undefined, "text/html", "application/json, text/event-stream"]) {
+      const response = await worker.fetch(new Request(`https://mcp.test/${query}`, {
+        headers: accept ? { accept } : {}
+      }), env, ctx);
+      expect(response.status).toBe(302);
+      expect(response.headers.get("location")).toBe(`https://mcp.test/mcp${query}`);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(await response.text()).toBe("");
+    }
+  });
+
   it("bootstraps the fixed legacy ChatGPT client only for an official callback", async () => {
     const stored = new Map<string, string>();
     const kv = {
@@ -75,8 +87,8 @@ describe("Cloudflare Worker", () => {
     });
   });
 
-  it("serves the shared public page at the root and browser MCP route", async () => {
-    const landing = await worker.fetch(new Request("https://mcp.test/", { headers: { accept: "text/html" } }), env, ctx);
+  it("serves the public connection page at the browser MCP route", async () => {
+    const landing = await worker.fetch(new Request("https://mcp.test/mcp", { headers: { accept: "text/html" } }), env, ctx);
     expect(landing.status).toBe(200);
     const html = await landing.text();
     expect(html).toContain("Explore a jurisprudência");

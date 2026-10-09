@@ -2,7 +2,7 @@
 
 # JurisprudênciaIA MCP
 
-As rotas `/` e `GET /mcp` com `Accept: text/html` apresentam o endereço de conexão e o guia inicial com identidade própria de estúdio de pesquisa: azul cobalto, composição assimétrica, diagrama de pesquisa e tipografia Outfit. Fontes com licenças OFL e ícones são servidos na própria origem. Fons é referência de qualidade, sem reproduzir seu layout. O transporte MCP, o OAuth e as permissões permanecem sob os contratos do serviço.
+`GET /` redireciona temporariamente (302, sem cache) para `/mcp`, preservando a query e reservando a raiz para uma futura landing page. `GET /mcp` com `Accept: text/html` apresenta o endereço de conexão e o guia inicial com identidade própria de estúdio de pesquisa: azul cobalto, composição assimétrica, diagrama de pesquisa e tipografia Outfit. Fontes com licenças OFL e ícones são servidos na própria origem. Fons é referência de qualidade, sem reproduzir seu layout. O transporte MCP, o OAuth e as permissões permanecem sob os contratos do serviço.
 
 **Pesquise jurisprudência brasileira dentro da conversa em que você trabalha.**
 
@@ -48,7 +48,7 @@ O conector cuida da integração e do acesso. A base e o serviço de pesquisa s�
 
 ## Interface pública do servidor
 
-A raiz (`GET /`) e `GET /mcp` quando solicitados por um navegador apresentam a página de conexão do JurisprudênciaIA. Clientes MCP continuam usando `POST /mcp` com OAuth; `POST /` permanece como alias protegido para compatibilidade.
+A raiz (`GET /`) redireciona para `/mcp` com status 302 e `Cache-Control: no-store`; a query é preservada. A página de conexão é apresentada apenas em `GET /mcp` solicitado por um navegador. Clientes MCP continuam usando `POST /mcp` com OAuth; `POST /` permanece como alias protegido para compatibilidade.
 
 ## Escolha seu ponto de partida
 

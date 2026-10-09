@@ -105,7 +105,10 @@ const applicationWorker = {
       }});
     }
     if (url.pathname === "/" && request.method === "GET") {
-      return publicServicePage(url.origin);
+      url.pathname = MCP_PATH;
+      return new Response(null, { status: 302, headers: {
+        "Location": url.toString(), "Cache-Control": "no-store"
+      }});
     }
     return json({ error: "not_found" }, 404);
   }
