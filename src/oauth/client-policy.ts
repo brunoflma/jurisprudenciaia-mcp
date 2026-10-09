@@ -32,7 +32,7 @@ export function classifyOAuthRedirectUri(value: string): OAuthRedirectProfile | 
 
 export function validateDynamicClientMetadata(clientMetadata: Record<string, unknown>): boolean {
   const redirects = stringArray(clientMetadata.redirect_uris);
-  if (!redirects || redirects.length === 0) return false;
+  if (!redirects || redirects.length === 0 || redirects.length > 10) return false;
 
   const profiles = redirects.map(classifyOAuthRedirectUri);
   if (profiles.some((profile) => profile === undefined) || new Set(profiles).size !== 1) return false;

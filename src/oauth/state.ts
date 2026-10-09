@@ -3,6 +3,8 @@ import type { AuthRequest } from "@cloudflare/workers-oauth-provider";
 const TTL_SECONDS = 600;
 export const GOOGLE_CALLBACK_PATH = "/oauth/google/callback";
 
+export type OAuthTransaction = AuthRequest & { googleCodeVerifier?: string; authorityVersion?: 2 };
+
 export type OAuthStateNamespace = Pick<DurableObjectNamespace, "idFromName" | "get">;
 
 function safePrefix(type: string): string {
@@ -57,7 +59,7 @@ async function equalConstantTime(left: string, right: string): Promise<boolean> 
   return difference === 0;
 }
 
-export async function createOAuthTransaction(namespace: OAuthStateNamespace, type: string, payload: AuthRequest): Promise<{ token: string; setCookie: string }> {
+export async function createOAuthTransaction(namespace: OAuthStateNamespace, type: string, payload: OAuthTransaction): Promise<{ token: string; setCookie: string }> {
   const prefix = safePrefix(type);
   const token = crypto.randomUUID();
   const binding = await sha256(token);
@@ -74,7 +76,7 @@ export async function createOAuthTransaction(namespace: OAuthStateNamespace, typ
   };
 }
 
-export async function consumeOAuthTransaction(namespace: OAuthStateNamespace, type: string, token: string, request: Request): Promise<AuthRequest> {
+export async function consumeOAuthTransaction(namespace: OAuthStateNamespace, type: string, token: string, request: Request): Promise<OAuthTransaction> {
   const prefix = safePrefix(type);
   const expected = await sha256(token);
   const received = readCookie(request, cookieName(prefix));
@@ -96,7 +98,18 @@ export function clearOAuthCookie(type: string): string {
   return `${cookieName(type)}=; HttpOnly; Secure; Path=/; SameSite=Lax; Max-Age=0`;
 }
 
-export function googleAuthorizationUrl(options: { clientId: string; publicOrigin: string; state: string }): string {
+function base64Url(bytes: Uint8Array): string {
+  return btoa(String.fromCharCode(...bytes)).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+}
+
+// This verifier belongs only to the Worker-to-Google transaction, never the MCP client.
+export async function createGooglePkce(): Promise<{ verifier: string; challenge: string }> {
+  const verifier = base64Url(crypto.getRandomValues(new Uint8Array(32)));
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
+  return { verifier, challenge: base64Url(new Uint8Array(digest)) };
+}
+
+export function googleAuthorizationUrl(options: { clientId: string; publicOrigin: string; state: string; codeChallenge?: string }): string {
   const origin = new URL(options.publicOrigin);
   if (origin.protocol !== "https:" || origin.username || origin.password || origin.search || origin.hash) throw new Error("oauth_public_origin_invalid");
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
@@ -106,6 +119,10 @@ export function googleAuthorizationUrl(options: { clientId: string; publicOrigin
   url.searchParams.set("scope", "openid email profile");
   url.searchParams.set("state", options.state);
   url.searchParams.set("prompt", "select_account");
+  if (options.codeChallenge) {
+    url.searchParams.set("code_challenge", options.codeChallenge);
+    url.searchParams.set("code_challenge_method", "S256");
+  }
   return url.href;
 }
 
@@ -113,22 +130,32 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function parseAuthRequest(value: unknown): AuthRequest {
+function parseAuthRequest(value: unknown): OAuthTransaction {
   if (!isRecord(value) || typeof value.responseType !== "string" || typeof value.clientId !== "string" ||
       typeof value.redirectUri !== "string" || typeof value.state !== "string" ||
       !Array.isArray(value.scope) || !value.scope.every((item) => typeof item === "string")) {
     throw new Error("oauth_state_invalid");
   }
-  const result: AuthRequest = {
+  const result: OAuthTransaction = {
     responseType: value.responseType,
     clientId: value.clientId,
     redirectUri: value.redirectUri,
     state: value.state,
     scope: value.scope
   };
+  if ("authorityVersion" in value) {
+    if (value.authorityVersion !== 2) throw new Error("oauth_state_invalid");
+    result.authorityVersion = 2;
+  }
+  if (typeof value.issuer === "string") result.issuer = value.issuer;
   if (typeof value.codeChallenge === "string") result.codeChallenge = value.codeChallenge;
   if (typeof value.codeChallengeMethod === "string") result.codeChallengeMethod = value.codeChallengeMethod;
-  if (typeof value.issuer === "string") result.issuer = value.issuer;
   if (typeof value.resource === "string" || Array.isArray(value.resource) && value.resource.every((item) => typeof item === "string")) result.resource = value.resource;
+  // Existing transactions expire after 600 seconds and may predate upstream PKCE.
+  // A present but invalid verifier must never silently downgrade to that legacy path.
+  if ("googleCodeVerifier" in value) {
+    if (typeof value.googleCodeVerifier !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(value.googleCodeVerifier)) throw new Error("oauth_state_invalid");
+    result.googleCodeVerifier = value.googleCodeVerifier;
+  }
   return result;
 }

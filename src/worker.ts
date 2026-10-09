@@ -1,4 +1,11 @@
+import { bufferAuthorityRequest, createWorkerAuthority, withAuthorityCors } from "./oauth/authority-v2/worker-integration.js";
+import { isAuthorityV2Enabled } from "./oauth/authority-v2/worker-config.mjs";
+import { AUTHORITY_BACKCHANNEL_PATH } from "./oauth/authority-v2/backchannel.js";
+import { oauthFailure, PRIVATE_DEPLOYMENT } from "./oauth/authority-v2/adapter.js";
+export { McpOAuthV2Ledger } from "./oauth/authority-v2/durable-object.js";
 import OAuthProvider from "@cloudflare/workers-oauth-provider";
+import { redirectUriExchangePolicy, type TokenExchangePolicy } from "./oauth/token-policy.js";
+import { authorizeMcpToken, canonicalOAuthOrigin, hasInvalidAuthorizeResource, logOAuthProviderError, MCP_SCOPES, safeOAuthErrorCode } from "./oauth/access-policy.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { createJurisprudenciaIaMcpServer } from "./mcp/create-server.js";
 import { HttpApiJurisprudenciaIaRunner } from "./jurisprudenciaia/http-api-runner.js";
@@ -21,7 +28,6 @@ const OAUTH_AUTHORIZE_PATH = "/authorize";
 const OAUTH_AUTHORIZE_COMPAT_PATH = "/oauth/authorize";
 const LEGACY_CHATGPT_CLIENT_ID = "jurisprudenciaia-mcp-client";
 const DISCOVERY_SCOPES = Object.freeze(["jurisprudence:read"]);
-const SUPPORTED_SCOPES = ["jurisprudence:read", "jurisprudenciaia:search"] as const;
 const oauthProviders = new Map<string, OAuthProvider<Env>>();
 const MAX_BODY_BYTES = 1_048_576;
 const MAX_JSON_RPC_BATCH_SIZE = 20;
@@ -36,6 +42,18 @@ const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"
 
 const mcpApiHandler = {
   async fetch(request: Request, env: Env): Promise<Response> {
+    // The provider validates the bearer/audience before entering this handler.
+    // Its ctx.props may still contain grant scopes after a downscope, so read the token summary.
+    let denied: "access_denied" | "insufficient_scope" | undefined;
+    try {
+      denied = await authorizeMcpToken(request, env.OAUTH_PROVIDER, env.MCP_ALLOWED_EMAILS);
+    } catch {
+      console.error(JSON.stringify({ operation: "oauth_access", code: "temporarily_unavailable" }));
+      return json({ error: "temporarily_unavailable" }, 503);
+    }
+    if (denied) return json({ error: denied }, 403, denied === "insufficient_scope"
+      ? { "WWW-Authenticate": 'Bearer error="insufficient_scope", scope="jurisprudence:read"' }
+      : undefined);
     return handleMcp(request, env);
   }
 } satisfies ExportedHandler<Env>;
@@ -96,29 +114,30 @@ const applicationWorker = {
 
 const googleAuthHandler = {
   async fetch(request: Request, env: Env): Promise<Response> {
+    let authority;
+    if (isAuthorityV2Enabled(env)) {
+      try { authority = createWorkerAuthority(env, env.OAUTH_PROVIDER, publicOrigin(request, env)).googleHooks; }
+      catch { return json({ error: "temporarily_unavailable" }, 503); }
+    }
     try {
-      return await handleGoogleAuth(request, env, () => applicationWorker.fetch(request, env));
+      return await handleGoogleAuth(request, env, () => applicationWorker.fetch(request, env), fetch, authority);
     } catch (error) {
-      console.error(JSON.stringify({ operation: "oauth_google", code: safeErrorCode(error) }));
+      if (isAuthorityV2Enabled(env) && error && typeof error === "object" && "code" in error) return oauthFailure(error);
+      const code = safeErrorCode(error);
+      console.error(JSON.stringify({ operation: "oauth_google", code }));
+      if (code === "oauth_invalid_scope") return json({ error: "invalid_scope" }, 400);
+      if (code === "oauth_google_temporarily_unavailable") return json({ error: "temporarily_unavailable" }, 503);
       return json({ ok: false, erro: "autorização inválida" }, 400);
     }
   }
 } satisfies ExportedHandler<Env>;
 
 function publicOrigin(request: Request, env: Env): string {
-  const configured = env.MCP_PUBLIC_ORIGIN?.trim();
-  if (configured) {
-    try {
-      return new URL(configured).origin;
-    } catch {
-      // Falls back to the request origin when MCP_PUBLIC_ORIGIN is malformed.
-    }
-  }
-  return new URL(request.url).origin;
+  return canonicalOAuthOrigin(env.MCP_PUBLIC_ORIGIN?.trim() || new URL(request.url).origin);
 }
 
-function getOAuthProvider(origin: string): OAuthProvider<Env> {
-  const cached = oauthProviders.get(origin);
+function getOAuthProvider(origin: string, tokenExchangeCallback?: TokenExchangePolicy): OAuthProvider<Env> {
+  const cached = tokenExchangeCallback ? undefined : oauthProviders.get(origin);
   if (cached) return cached;
 
   const provider = new OAuthProvider<Env>({
@@ -132,7 +151,9 @@ function getOAuthProvider(origin: string): OAuthProvider<Env> {
     clientRegistrationTTL: 30 * 24 * 60 * 60,
     accessTokenTTL: 60 * 60,
     refreshTokenTTL: 30 * 24 * 60 * 60,
-    scopesSupported: [...SUPPORTED_SCOPES],
+    scopesSupported: [...MCP_SCOPES],
+    onError: logOAuthProviderError,
+    tokenExchangeCallback,
     allowPlainPKCE: false,
     allowImplicitFlow: false,
     allowTokenExchangeGrant: false,
@@ -144,7 +165,7 @@ function getOAuthProvider(origin: string): OAuthProvider<Env> {
     }
   });
 
-  oauthProviders.set(origin, provider);
+  if (!tokenExchangeCallback) oauthProviders.set(origin, provider);
   return provider;
 }
 
@@ -172,14 +193,26 @@ function getRegistrationRateLimiter(env: Env): FixedWindowRateLimiter {
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+    let origin: string;
+    try { origin = publicOrigin(request, env); }
+    catch { return json({ error: "oauth_configuration_invalid" }, 503); }
+    if (hasInvalidAuthorizeResource(request, origin)) return json({ error: "invalid_target" }, 400);
 
+    const authorityV2 = isAuthorityV2Enabled(env);
+    if (url.pathname === AUTHORITY_BACKCHANNEL_PATH && !authorityV2) return json({ error: "not_found" }, 404);
+    if (url.pathname === AUTHORITY_BACKCHANNEL_PATH && request.method !== "POST") return json({ error: "method_not_allowed" }, 405, { allow: "POST" });
+    const v2TokenBody = authorityV2 && (["/oauth/token", "/oauth/revoke"].includes(url.pathname) || url.pathname === AUTHORITY_BACKCHANNEL_PATH);
     if (request.method === "POST" || request.method === "PUT") {
-      if (!(await withinBodyLimit(request))) {
+      if ((authorityV2 && !v2TokenBody) || url.pathname === "/oauth/register") {
+        const buffered = await bufferAuthorityRequest(request, url.pathname === "/oauth/register" ? 16384 : MAX_BODY_BYTES);
+        if (!buffered) return json({ error: "payload_too_large" }, 413);
+        request = buffered;
+      } else if (!authorityV2 && !(await withinBodyLimit(request))) {
         return json({ error: "payload_too_large" }, 413);
       }
     }
 
-    if (url.pathname === OAUTH_AUTHORIZE_PATH || url.pathname === OAUTH_AUTHORIZE_COMPAT_PATH || url.pathname === "/oauth/token" || url.pathname === "/oauth/register" || url.pathname === GOOGLE_CALLBACK_PATH) {
+    if (url.pathname === OAUTH_AUTHORIZE_PATH || url.pathname === OAUTH_AUTHORIZE_COMPAT_PATH || url.pathname === "/oauth/token" || url.pathname === "/oauth/register" || url.pathname === GOOGLE_CALLBACK_PATH || (isAuthorityV2Enabled(env) && url.pathname === "/oauth/revoke")) {
       const limiter = url.pathname === "/oauth/register" ? getRegistrationRateLimiter(env) : getRateLimiter(env);
       const ip = request.headers.get("cf-connecting-ip") || "unknown";
       const decision = limiter.allow(ip);
@@ -197,16 +230,34 @@ export default {
     const oauthRequest = url.pathname === OAUTH_AUTHORIZE_COMPAT_PATH
       ? withPathname(request, OAUTH_AUTHORIZE_PATH)
       : request;
-    await ensureLegacyChatGptClient(oauthRequest, env);
-    const mcpRequest = oauthRequest.method === "POST" && new URL(oauthRequest.url).pathname === "/"
-      ? withPathname(request, MCP_PATH)
-      : oauthRequest;
-    const oauthResponse = await getOAuthProvider(publicOrigin(request, env)).fetch(mcpRequest, env, ctx);
-    return normalizeOAuthDiscoveryMetadata(mcpRequest, oauthResponse);
+    try {
+      if (!isAuthorityV2Enabled(env)) await ensureLegacyChatGptClient(oauthRequest, env);
+      const mcpRequest = oauthRequest.method === "POST" && new URL(oauthRequest.url).pathname === "/"
+        ? withPathname(request, MCP_PATH)
+        : oauthRequest;
+      if (isAuthorityV2Enabled(env)) {
+        // Public provider API supplies registered-client helpers via its default handler.
+        // This local bootstrap has no copied user headers/body and performs no network request.
+        const helperEnv = { ...env, OAUTH_PROVIDER: undefined, MCP_OAUTH_V2_ENABLED: undefined } as unknown as Env;
+        await getOAuthProvider(origin).fetch(new Request(new URL("/__authority_helpers", origin)), helperEnv, ctx);
+        const authorityEnv = { ...env, OAUTH_PROVIDER: helperEnv.OAUTH_PROVIDER };
+        const authority = createWorkerAuthority(authorityEnv, helperEnv.OAUTH_PROVIDER, origin);
+        if (!PRIVATE_DEPLOYMENT) await ensureLegacyChatGptClient(oauthRequest, env);
+        const legacy = async (incoming: Request) => getOAuthProvider(origin, await redirectUriExchangePolicy(incoming)).fetch(incoming, authorityEnv, ctx);
+        const response = await authority.route(mcpRequest, legacy, incoming => handleMcp(incoming, authorityEnv));
+        return normalizeOAuthDiscoveryMetadata(mcpRequest, withAuthorityCors(mcpRequest, response), origin, true);
+      }
+      const tokenPolicy = await redirectUriExchangePolicy(mcpRequest);
+      const oauthResponse = await getOAuthProvider(origin, tokenPolicy).fetch(mcpRequest, env, ctx);
+      return normalizeOAuthDiscoveryMetadata(mcpRequest, oauthResponse, origin);
+    } catch {
+      console.error(JSON.stringify({ operation: "oauth_provider", code: "temporarily_unavailable" }));
+      return json({ error: "temporarily_unavailable" }, 503);
+    }
   }
 } satisfies ExportedHandler<Env>;
 
-async function normalizeOAuthDiscoveryMetadata(request: Request, response: Response): Promise<Response> {
+async function normalizeOAuthDiscoveryMetadata(request: Request, response: Response, origin: string, authorityV2 = false): Promise<Response> {
   const url = new URL(request.url);
   if (request.method !== "GET"
       || url.pathname !== "/.well-known/oauth-authorization-server"
@@ -223,7 +274,18 @@ async function normalizeOAuthDiscoveryMetadata(request: Request, response: Respo
     return response;
   }
 
+  payload.issuer = origin;
+  payload.authorization_endpoint = new URL(OAUTH_AUTHORIZE_PATH, origin).href;
+  payload.token_endpoint = new URL("/oauth/token", origin).href;
+  payload.registration_endpoint = new URL("/oauth/register", origin).href;
+  payload.revocation_endpoint = new URL(authorityV2 ? "/oauth/revoke" : "/oauth/token", origin).href;
   payload.scopes_supported = [...DISCOVERY_SCOPES];
+  if (authorityV2) {
+    payload.code_challenge_methods_supported = ["S256"];
+    payload.response_types_supported = ["code"];
+    payload.grant_types_supported = ["authorization_code", "refresh_token"];
+    payload.token_endpoint_auth_methods_supported = ["none", "client_secret_basic", "client_secret_post"];
+  }
   const headers = new Headers(response.headers);
   headers.delete("content-length");
   headers.set("content-type", "application/json; charset=utf-8");
@@ -416,8 +478,7 @@ function positiveInteger(value: string | undefined, fallback: number): number {
 }
 
 function safeErrorCode(error: unknown): string {
-  if (!(error instanceof Error)) return "unknown";
-  return /^oauth_[a-z0-9_:.-]{1,96}$/.test(error.message) ? error.message : error.name;
+  return safeOAuthErrorCode(error);
 }
 function json(value: unknown, status = 200, headers?: Record<string, string>): Response {
   return Response.json(value, { status, headers: { "Cache-Control": "no-store", "Pragma": "no-cache", ...SECURITY_HEADERS, ...headers } });

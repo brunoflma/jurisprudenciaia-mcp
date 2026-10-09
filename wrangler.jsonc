@@ -21,6 +21,7 @@
     }
   ],
   "vars": {
+    "MCP_OAUTH_V2_POLICY": "{\"allowedScopes\":[\"jurisprudence:read\",\"jurisprudenciaia:search\"],\"codeTtlMs\":300000,\"accessTtlMs\":3600000,\"receiptTtlMs\":120000,\"refresh\":{\"tokenTtlMs\":2592000000,\"absoluteTtlMs\":2592000000,\"idleTtlMs\":2592000000}}",
     "JURISPRUDENCIAIA_URL": "https://www.jurisprudenciaia.com.br/",
     "REQUEST_TIMEOUT_MS": "120000",
     "RATE_LIMIT_WINDOW_MS": "60000",
@@ -31,6 +32,10 @@
   },
   "durable_objects": {
     "bindings": [
+      {
+        "name": "MCP_OAUTH_V2_LEDGER",
+        "class_name": "McpOAuthV2Ledger"
+      },
       {
         "name": "OAUTH_STATE",
         "class_name": "OAuthStateStore"
@@ -43,6 +48,10 @@
       "new_sqlite_classes": [
         "OAuthStateStore"
       ]
+    },
+    {
+      "tag": "v2-mcp-oauth-ledger",
+      "new_sqlite_classes": ["McpOAuthV2Ledger"]
     }
   ],
   "observability": {
