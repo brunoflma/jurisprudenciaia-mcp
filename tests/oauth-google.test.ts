@@ -44,7 +44,7 @@ describe("Google OAuth for Claude", () => {
   it("uses the visual layout and escapes the client name", () => {
     const html = consentPage("Claude <script>", "transaction", "nonce");
     expect(html).toContain("JurisprudênciaIA MCP");
-    expect(html).toContain("OAuth 2.1");
+    expect(html).toContain('data-oauth-presentation="lex-operandi-v1"');
     expect(html).toContain("Claude &lt;script&gt;");
     expect(html).not.toContain("Claude <script>");
     expect(html).not.toContain("AMF");
