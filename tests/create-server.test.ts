@@ -163,7 +163,7 @@ describe("createJurisprudenciaIaMcpServer", () => {
         ]);
         expect(tool).toMatchObject({
           name: "consultar_jurisprudenciaia",
-          title: "Consultar JurisprudenciaIA",
+          title: "Consultar o JurisprudênciaIA",
           outputSchema: {
             type: "object",
             properties: {
@@ -180,7 +180,7 @@ describe("createJurisprudenciaIaMcpServer", () => {
           }
         });
         expect(tools.every((item) => item.outputSchema !== undefined)).toBe(true);
-        expect(tool?.description).toContain("JurisprudenciaIA");
+        expect(tool?.description).toContain("JurisprudênciaIA");
 
         const result = await client.callTool({
           name: "consultar_jurisprudenciaia",

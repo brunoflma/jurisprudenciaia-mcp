@@ -1,9 +1,9 @@
 import { z } from "zod";
 import type { JurisprudenciaIaQuery } from "../jurisprudenciaia/types.js";
 
-const QUERY_DESCRIPTION = "Consulta juridica a ser pesquisada no JurisprudenciaIA.";
-const MAX_WAIT_DESCRIPTION = "Tempo maximo de espera pelo resultado, limitado a 120 segundos.";
-const INCLUDE_DEBUG_DESCRIPTION = "Inclui texto bruto extraido da fonte quando verdadeiro.";
+const QUERY_DESCRIPTION = "Consulta jurídica a ser pesquisada no JurisprudênciaIA.";
+const MAX_WAIT_DESCRIPTION = "Tempo máximo de espera pelo resultado, limitado a 120 segundos.";
+const INCLUDE_DEBUG_DESCRIPTION = "Inclui texto bruto extraído da fonte quando verdadeiro.";
 const STRUCTURED_RESULT_INSTRUCTION =
   "Estruture a resposta com tese principal, precedentes citados por referencia, tribunal, tipo/numero, data de julgamento, ementa, inteiro teor ou transcricao integral disponibilizada pela fonte, link quando disponivel e pontos de cautela. Nao substitua o inteiro teor por resumo, recorte ou excerto; quando a fonte nao disponibilizar inteiro teor, informe isso explicitamente.";
 const DIRECT_ANSWER_INSTRUCTION = "Responda diretamente, sem pedir esclarecimentos.";
@@ -191,7 +191,7 @@ const searchJsonToolInputSchema = {
 } as const satisfies JsonToolInputSchema;
 
 const precedentsZodToolInputSchema = {
-  tema: z.string().describe("Tema juridico para localizar precedentes."),
+  tema: z.string().describe("Tema jurídico para localizar precedentes."),
   tribunais: z
     .array(z.string())
     .optional()
@@ -209,7 +209,7 @@ const precedentsJsonToolInputSchema = {
   properties: {
     tema: {
       type: "string",
-      description: "Tema juridico para localizar precedentes."
+      description: "Tema jurídico para localizar precedentes."
     },
     tribunais: {
       type: "array",
@@ -228,7 +228,7 @@ const precedentsJsonToolInputSchema = {
 } as const satisfies JsonToolInputSchema;
 
 const thesisZodToolInputSchema = {
-  tese: z.string().describe("Tese juridica que deve ser confrontada com a jurisprudencia."),
+  tese: z.string().describe("Tese jurídica que deve ser confrontada com a jurisprudência."),
   contexto: z.string().optional().describe("Contexto resumido do caso concreto."),
   max_wait_seconds: z
     .number()
@@ -243,7 +243,7 @@ const thesisJsonToolInputSchema = {
   properties: {
     tese: {
       type: "string",
-      description: "Tese juridica que deve ser confrontada com a jurisprudencia."
+      description: "Tese jurídica que deve ser confrontada com a jurisprudência."
     },
     contexto: {
       type: "string",
@@ -261,9 +261,9 @@ const thesisJsonToolInputSchema = {
 } as const satisfies JsonToolInputSchema;
 
 const compareZodToolInputSchema = {
-  questao: z.string().describe("Questao juridica central a ser comparada."),
-  tese_a: z.string().describe("Primeira tese juridica."),
-  tese_b: z.string().describe("Segunda tese juridica."),
+  questao: z.string().describe("Questão jurídica central a ser comparada."),
+  tese_a: z.string().describe("Primeira tese jurídica."),
+  tese_b: z.string().describe("Segunda tese jurídica."),
   max_wait_seconds: z
     .number()
     .int()
@@ -277,15 +277,15 @@ const compareJsonToolInputSchema = {
   properties: {
     questao: {
       type: "string",
-      description: "Questao juridica central a ser comparada."
+      description: "Questão jurídica central a ser comparada."
     },
     tese_a: {
       type: "string",
-      description: "Primeira tese juridica."
+      description: "Primeira tese jurídica."
     },
     tese_b: {
       type: "string",
-      description: "Segunda tese juridica."
+      description: "Segunda tese jurídica."
     },
     max_wait_seconds: {
       type: "integer",
@@ -299,7 +299,7 @@ const compareJsonToolInputSchema = {
 } as const satisfies JsonToolInputSchema;
 
 const cnjZodToolInputSchema = {
-  numero_cnj: z.string().describe("Numero unico do processo no padrao CNJ (NNNNNNN-DD.AAAA.J.TR.OOOO)."),
+  numero_cnj: z.string().describe("Número único do processo no padrão CNJ (NNNNNNN-DD.AAAA.J.TR.OOOO)."),
   max_wait_seconds: z
     .number()
     .int()
@@ -313,7 +313,7 @@ const cnjJsonToolInputSchema = {
   properties: {
     numero_cnj: {
       type: "string",
-      description: "Numero unico do processo no padrao CNJ (NNNNNNN-DD.AAAA.J.TR.OOOO)."
+      description: "Número único do processo no padrão CNJ (NNNNNNN-DD.AAAA.J.TR.OOOO)."
     },
     max_wait_seconds: {
       type: "integer",
@@ -328,7 +328,7 @@ const cnjJsonToolInputSchema = {
 
 const legislationZodToolInputSchema = {
   norma: z.string().describe("Norma, artigo ou dispositivo legal a ser consultado, por exemplo 'CDC art. 6, V'."),
-  contexto: z.string().optional().describe("Contexto do caso para orientar a interpretacao do dispositivo."),
+  contexto: z.string().optional().describe("Contexto do caso para orientar a interpretação do dispositivo."),
   max_wait_seconds: z
     .number()
     .int()
@@ -346,7 +346,7 @@ const legislationJsonToolInputSchema = {
     },
     contexto: {
       type: "string",
-      description: "Contexto do caso para orientar a interpretacao do dispositivo."
+      description: "Contexto do caso para orientar a interpretação do dispositivo."
     },
     max_wait_seconds: {
       type: "integer",
@@ -360,7 +360,7 @@ const legislationJsonToolInputSchema = {
 } as const satisfies JsonToolInputSchema;
 
 const informativesZodToolInputSchema = {
-  tema: z.string().describe("Tema juridico para localizar informativos de tribunais superiores."),
+  tema: z.string().describe("Tema jurídico para localizar informativos de tribunais superiores."),
   tribunais: z
     .array(z.string())
     .optional()
@@ -378,7 +378,7 @@ const informativesJsonToolInputSchema = {
   properties: {
     tema: {
       type: "string",
-      description: "Tema juridico para localizar informativos de tribunais superiores."
+      description: "Tema jurídico para localizar informativos de tribunais superiores."
     },
     tribunais: {
       type: "array",
@@ -397,12 +397,12 @@ const informativesJsonToolInputSchema = {
 } as const satisfies JsonToolInputSchema;
 
 const jurimetricsZodToolInputSchema = {
-  tema: z.string().describe("Tema ou classe processual para o levantamento jurimetrico."),
+  tema: z.string().describe("Tema ou classe processual para o levantamento jurimétrico."),
   tribunal: z.string().optional().describe("Tribunal de interesse para o levantamento, por exemplo TJSP ou STJ."),
   recorte: z
     .string()
     .optional()
-    .describe("Recorte estatistico desejado, por exemplo resultado, relator, orgao julgador ou tempo de tramitacao."),
+    .describe("Recorte estatístico desejado, por exemplo resultado, relator, orgao julgador ou tempo de tramitacao."),
   max_wait_seconds: z
     .number()
     .int()
@@ -416,7 +416,7 @@ const jurimetricsJsonToolInputSchema = {
   properties: {
     tema: {
       type: "string",
-      description: "Tema ou classe processual para o levantamento jurimetrico."
+      description: "Tema ou classe processual para o levantamento jurimétrico."
     },
     tribunal: {
       type: "string",
@@ -425,7 +425,7 @@ const jurimetricsJsonToolInputSchema = {
     recorte: {
       type: "string",
       description:
-        "Recorte estatistico desejado, por exemplo resultado, relator, orgao julgador ou tempo de tramitacao."
+        "Recorte estatístico desejado, por exemplo resultado, relator, orgao julgador ou tempo de tramitacao."
     },
     max_wait_seconds: {
       type: "integer",
@@ -439,7 +439,7 @@ const jurimetricsJsonToolInputSchema = {
 } as const satisfies JsonToolInputSchema;
 
 const timelineZodToolInputSchema = {
-  tema: z.string().describe("Tema juridico para montar a linha do tempo de precedentes."),
+  tema: z.string().describe("Tema jurídico para montar a linha do tempo de precedentes."),
   max_wait_seconds: z
     .number()
     .int()
@@ -453,7 +453,7 @@ const timelineJsonToolInputSchema = {
   properties: {
     tema: {
       type: "string",
-      description: "Tema juridico para montar a linha do tempo de precedentes."
+      description: "Tema jurídico para montar a linha do tempo de precedentes."
     },
     max_wait_seconds: {
       type: "integer",
@@ -529,9 +529,9 @@ const qualifiedPrecedentsJsonToolInputSchema = singleTextJsonToolInputSchema(
 export const TOOL_DEFINITIONS: JurisprudenciaIaToolDefinition[] = [
   {
     name: "consultar_jurisprudenciaia",
-    title: "Consultar JurisprudenciaIA",
+    title: "Consultar o JurisprudênciaIA",
     description:
-      "Consulta livre no JurisprudenciaIA e retorna Markdown com resposta, tese principal, precedentes e pontos de cautela.",
+      "Consulta livre no JurisprudênciaIA e retorna Markdown com resposta, tese principal, precedentes e pontos de cautela.",
     inputSchema: genericZodToolInputSchema,
     jsonInputSchema: genericJsonToolInputSchema,
     normalizeInput(input) {
@@ -547,9 +547,9 @@ export const TOOL_DEFINITIONS: JurisprudenciaIaToolDefinition[] = [
   },
   {
     name: "pesquisar_jurisprudencia",
-    title: "Pesquisar jurisprudencia",
+    title: "Pesquisar jurisprudência",
     description:
-      "Pesquisa jurisprudencia por consulta direta e retorna uma resposta consolidada com precedentes estruturados.",
+      "Pesquisa jurisprudência por consulta direta e retorna uma resposta consolidada com precedentes estruturados.",
     inputSchema: searchZodToolInputSchema,
     jsonInputSchema: searchJsonToolInputSchema,
     normalizeInput(input) {
@@ -565,9 +565,9 @@ export const TOOL_DEFINITIONS: JurisprudenciaIaToolDefinition[] = [
   },
   {
     name: "buscar_precedentes",
-    title: "Buscar precedentes",
+    title: "Buscar precedentes por tema",
     description:
-      "Localiza precedentes sobre um tema juridico e destaca metadados essenciais para conferencia da fonte.",
+      "Localiza precedentes sobre um tema jurídico e destaca metadados essenciais para conferência da fonte.",
     inputSchema: precedentsZodToolInputSchema,
     jsonInputSchema: precedentsJsonToolInputSchema,
     normalizeInput(input) {
@@ -590,9 +590,9 @@ export const TOOL_DEFINITIONS: JurisprudenciaIaToolDefinition[] = [
   },
   {
     name: "analisar_tese_juridica",
-    title: "Analisar tese juridica",
+    title: "Analisar tese à luz da jurisprudência",
     description:
-      "Analisa uma tese juridica contra a jurisprudencia e separa apoio, oposicao, lacunas e cautelas.",
+      "Analisa uma tese jurídica contra a jurisprudência e separa apoio, oposição, lacunas e cautelas.",
     inputSchema: thesisZodToolInputSchema,
     jsonInputSchema: thesisJsonToolInputSchema,
     normalizeInput(input) {
@@ -614,9 +614,9 @@ export const TOOL_DEFINITIONS: JurisprudenciaIaToolDefinition[] = [
   },
   {
     name: "comparar_teses_juridicas",
-    title: "Comparar teses juridicas",
+    title: "Comparar apoio jurisprudencial de duas teses",
     description:
-      "Compara duas teses juridicas para a mesma questao e indica apoio jurisprudencial, divergencias e riscos.",
+      "Compara duas teses jurídicas para a mesma questão e indica apoio jurisprudencial, divergências e riscos.",
     inputSchema: compareZodToolInputSchema,
     jsonInputSchema: compareJsonToolInputSchema,
     normalizeInput(input) {
@@ -637,9 +637,9 @@ export const TOOL_DEFINITIONS: JurisprudenciaIaToolDefinition[] = [
   },
   {
     name: "buscar_por_cnj",
-    title: "Buscar por numero CNJ",
+    title: "Pesquisar decisões por número CNJ",
     description:
-      "Localiza decisoes e andamentos relevantes de um processo a partir do numero unico CNJ.",
+      "Localiza decisões e andamentos relevantes de um processo a partir do número único CNJ.",
     inputSchema: cnjZodToolInputSchema,
     jsonInputSchema: cnjJsonToolInputSchema,
     normalizeInput(input) {
@@ -660,9 +660,9 @@ export const TOOL_DEFINITIONS: JurisprudenciaIaToolDefinition[] = [
   },
   {
     name: "pesquisar_legislacao",
-    title: "Pesquisar legislacao",
+    title: "Pesquisar legislação e dispositivos legais",
     description:
-      "Pesquisa referencias a uma norma ou dispositivo e solicita texto, alteracoes e interpretacao jurisprudencial, conforme a cobertura da fonte.",
+      "Pesquisa referências a uma norma ou dispositivo e solicita texto, alterações e interpretação jurisprudencial, conforme a cobertura da fonte.",
     inputSchema: legislationZodToolInputSchema,
     jsonInputSchema: legislationJsonToolInputSchema,
     normalizeInput(input) {
@@ -685,9 +685,9 @@ export const TOOL_DEFINITIONS: JurisprudenciaIaToolDefinition[] = [
   },
   {
     name: "buscar_informativos",
-    title: "Buscar informativos",
+    title: "Pesquisar informativos de jurisprudência",
     description:
-      "Localiza informativos de jurisprudencia de tribunais superiores sobre um tema juridico.",
+      "Localiza informativos de jurisprudência de tribunais superiores sobre um tema jurídico.",
     inputSchema: informativesZodToolInputSchema,
     jsonInputSchema: informativesJsonToolInputSchema,
     normalizeInput(input) {
@@ -710,9 +710,9 @@ export const TOOL_DEFINITIONS: JurisprudenciaIaToolDefinition[] = [
   },
   {
     name: "analisar_jurimetria",
-    title: "Analisar jurimetria",
+    title: "Pesquisar panorama de julgados",
     description:
-      "Estima um panorama da amostra de julgados encontrada, sem representar estatistica oficial ou exaustiva do tribunal.",
+      "Estima um panorama da amostra de julgados encontrada, sem representar estatística oficial ou exaustiva do tribunal.",
     inputSchema: jurimetricsZodToolInputSchema,
     jsonInputSchema: jurimetricsJsonToolInputSchema,
     normalizeInput(input) {
@@ -738,9 +738,9 @@ export const TOOL_DEFINITIONS: JurisprudenciaIaToolDefinition[] = [
   },
   {
     name: "linha_do_tempo_precedentes",
-    title: "Linha do tempo de precedentes",
+    title: "Pesquisar evolução dos precedentes",
     description:
-      "Monta uma linha do tempo cronologica dos principais precedentes sobre um tema, apontando mudancas de entendimento.",
+      "Monta uma linha do tempo cronológica dos principais precedentes sobre um tema, apontando mudanças de entendimento.",
     inputSchema: timelineZodToolInputSchema,
     jsonInputSchema: timelineJsonToolInputSchema,
     normalizeInput(input) {
@@ -761,7 +761,7 @@ export const TOOL_DEFINITIONS: JurisprudenciaIaToolDefinition[] = [
   },
   {
     name: "buscar_citacoes_dispositivo",
-    title: "Buscar citacoes de dispositivo",
+    title: "Pesquisar julgados que citam dispositivo legal",
     description:
       "Pesquisa precedentes que citam ou aplicam um dispositivo legal, conforme a cobertura da fonte.",
     inputSchema: citationsByStatuteZodToolInputSchema,
@@ -784,9 +784,9 @@ export const TOOL_DEFINITIONS: JurisprudenciaIaToolDefinition[] = [
   },
   {
     name: "historico_alteracoes_norma",
-    title: "Historico de alteracoes de norma",
+    title: "Pesquisar alterações de uma norma",
     description:
-      "Pesquisa alteracoes legislativas de uma norma e solicita fontes oficiais, conforme a cobertura da fonte.",
+      "Pesquisa alterações legislativas de uma norma e solicita fontes oficiais, conforme a cobertura da fonte.",
     inputSchema: statuteHistoryZodToolInputSchema,
     jsonInputSchema: statuteHistoryJsonToolInputSchema,
     normalizeInput(input) {
@@ -808,7 +808,7 @@ export const TOOL_DEFINITIONS: JurisprudenciaIaToolDefinition[] = [
   },
   {
     name: "listar_overruling_tema",
-    title: "Listar overruling por tema",
+    title: "Pesquisar entendimentos superados ou revistos",
     description:
       "Pesquisa entendimentos superados ou revistos sobre um tema e os precedentes posteriores relacionados.",
     inputSchema: overrulingZodToolInputSchema,
@@ -832,7 +832,7 @@ export const TOOL_DEFINITIONS: JurisprudenciaIaToolDefinition[] = [
   },
   {
     name: "buscar_precedentes_qualificados",
-    title: "Buscar precedentes qualificados",
+    title: "Pesquisar precedentes qualificados",
     description:
       "Prioriza precedentes vinculantes ou qualificados sobre um tema e informa a autoridade identificada.",
     inputSchema: qualifiedPrecedentsZodToolInputSchema,
