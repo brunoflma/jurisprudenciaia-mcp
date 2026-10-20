@@ -31,7 +31,7 @@ export function createJurisprudenciaIaMcpServer(runner: JurisprudenciaIaRunner):
         description: definition.description,
         inputSchema: definition.inputSchema,
         outputSchema: TOOL_OUTPUT_SCHEMA,
-        annotations: TOOL_ANNOTATIONS
+        annotations: { ...TOOL_ANNOTATIONS, title: definition.title }
       },
       async (input) => runTool(definition, input, runner)
     );
