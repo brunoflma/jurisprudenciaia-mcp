@@ -1,0 +1,38 @@
+version: 2.1
+jobs:
+  verify:
+    docker:
+      - image: cimg/node:22.22
+    resource_class: medium
+    environment:
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - checkout
+      - run:
+          name: Remove checkout credentials before repository scripts
+          command: |
+            git config --local --unset-all credential.helper || true
+            git config --global --unset-all credential.helper || true
+            git config --local --unset-all http.https://github.com/.extraheader || true
+            git config --global --unset-all http.https://github.com/.extraheader || true
+            rm -f "$HOME/.git-credentials"
+      - setup_remote_docker:
+          version: default
+      - run:
+          name: Verify code, presentation, installation guide and dependency audit
+          command: |
+            npm ci --ignore-scripts
+            npm run verify
+            node --check docs/assets/site.js
+            node --check docs/assets/guide.js
+            python3 scripts/package-install-guide.py --check
+            npm audit --audit-level=high
+      - run:
+          name: Verify parser boundary in a read-only runtime without network
+          command: bash scripts/ci/parser-isolated.sh
+      - run:
+          name: Validate Worker bundle without deployment
+          command: npx wrangler deploy --dry-run
+workflows:
+  verify:
+    jobs: [verify]
