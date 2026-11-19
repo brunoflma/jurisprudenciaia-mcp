@@ -51,3 +51,9 @@ manifesto público. Os exemplos de configuração e imagens usam dados fictício
 Depois de corrigir uma conexão, confirme a execução de uma ferramenta de leitura.
 Uma lista de ferramentas em cache, sozinha, não prova que o servidor está funcionando.
 Se uma conversa antiga não receber o catálogo atualizado, teste uma conversa nova.
+
+## Versão 0.2.2
+
+O MCP informa a versão 0.2.2 durante a inicialização. O Worker aplica o limite de requisições OAuth antes da leitura do corpo e mantém um prazo de cinco segundos para as chamadas ao armazenamento de estado. O servidor Node identifica a conexão pela origem observada no socket.
+
+O provedor OAuth 1.2.4 vincula o código ao recurso e ao redirecionamento autorizado. Um pedido de renovação com escopo fora da concessão retorna `invalid_scope`. O caminho de descoberta do recurso continua disponível em `/.well-known/oauth-protected-resource` e em `/.well-known/oauth-protected-resource/mcp`. Para clientes nativos, a porta explícita de loopback aceita os caminhos exatos `/callback` e `/oauth/callback`, com o perfil público e PKCE S256.

@@ -1,10 +1,11 @@
+import { SECURITY_HEADERS } from "../../http/security-headers.js";
 import type { CredentialInspectionInput } from "./core/index.mjs";
 import type { AuthRequest, ClientInfo, OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import { authorizeMcpProps, canonicalOAuthOrigin, MCP_SCOPES } from "../access-policy.js";
 import { classifyOAuthRedirectUri } from "../client-policy.js";
 
 /** Integrated only behind the explicit v2 flag; legacy remains the default. */
-export const PROVIDER_VERSION = "0.10.3";
+export const PROVIDER_VERSION = "1.2.4";
 export const PRIVATE_DEPLOYMENT = false;
 export type AuthorityContext = { issuer: string; resource: string; tenantId: string; subject: string };
 export type Principal = AuthorityContext & { clientId: string; familyId: string; scopes: string[]; props: unknown; epoch: number; expiresAt: number };
@@ -40,7 +41,7 @@ export function oauthFailure(error: unknown): Response {
     code = error.code;
     status = code === "temporarily_unavailable" ? 503 : code === "invalid_client" || code === "invalid_token" ? 401 : code === "access_denied" || code === "insufficient_scope" ? 403 : 400;
   }
-  return Response.json({ error: code }, { status, headers: { "cache-control": "no-store", pragma: "no-cache" } });
+  return Response.json({ error: code }, { status, headers: { "cache-control": "no-store", pragma: "no-cache", ...SECURITY_HEADERS } });
 }
 
 /** Consumes the original source once; exact bounded bytes are available for version dispatch. */
@@ -156,7 +157,7 @@ export function createAuthorityAdapter(options: AdapterOptions) {
       redirect.searchParams.set("code", result.code);
       redirect.searchParams.set("state", checked.state);
       redirect.searchParams.set("iss", context.issuer);
-      return new Response(null, { status: 302, headers: { location: redirect.href, "cache-control": "no-store", pragma: "no-cache" } });
+      return new Response(null, { status: 302, headers: { location: redirect.href, "cache-control": "no-store", pragma: "no-cache", ...SECURITY_HEADERS } });
     },
     async token(request: Request): Promise<Response> {
       try {
@@ -179,7 +180,7 @@ export function createAuthorityAdapter(options: AdapterOptions) {
           : await ledger.refresh({ refreshToken: form.get("refresh_token") ?? "", clientId, resource, scopes });
         return Response.json({ access_token: result.accessToken, token_type: result.tokenType, expires_in: result.expiresIn,
           scope: result.scope, resource: result.resource, ...(result.refreshToken ? { refresh_token: result.refreshToken } : {}) },
-        { headers: { "cache-control": "no-store", pragma: "no-cache" } });
+        { headers: { "cache-control": "no-store", pragma: "no-cache", ...SECURITY_HEADERS } });
       } catch (error) { return oauthFailure(error); }
     },
     async revoke(request: Request): Promise<Response> {
@@ -190,7 +191,7 @@ export function createAuthorityAdapter(options: AdapterOptions) {
         if (!token) throw new CandidateError("invalid_request");
         // The full credential must be found by hash; no caller-supplied subject/family is accepted.
         await ledger.revokeToken({ token, clientId });
-        return Response.json({}, { headers: { "cache-control": "no-store", pragma: "no-cache" } });
+        return Response.json({}, { headers: { "cache-control": "no-store", pragma: "no-cache", ...SECURITY_HEADERS } });
       } catch (error) { return oauthFailure(error); }
     },
     async authorize(request: Request, requiredScopes: string[] = []): Promise<Principal> {

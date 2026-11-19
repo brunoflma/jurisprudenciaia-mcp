@@ -23,7 +23,7 @@ export function classifyOAuthRedirectUri(value: string): OAuthRedirectProfile | 
     const port = Number(url.port);
     const validPort = url.port !== "" && Number.isInteger(port) && port >= 1 && port <= 65_535;
     const cleanUrl = url.protocol === "http:" && !url.username && !url.password && !url.search && !url.hash;
-    if (loopbackHost && validPort && cleanUrl && url.pathname === "/oauth/callback") return "loopback";
+    if (loopbackHost && validPort && cleanUrl && (url.pathname === "/oauth/callback" || url.pathname === "/callback")) return "loopback";
   } catch {
     // Invalid redirect URIs are rejected by returning no profile.
   }

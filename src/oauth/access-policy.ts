@@ -1,3 +1,4 @@
+import { SECURITY_HEADERS } from "../http/security-headers.js";
 import type { OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 
 export const MCP_SCOPES = Object.freeze(["jurisprudence:read", "jurisprudenciaia:search"]);
@@ -22,13 +23,24 @@ export function requireSupportedScopes(scopes: string[]): void {
   if (scopes.some(scope => !MCP_SCOPES.includes(scope))) throw new Error("oauth_invalid_scope");
 }
 
+let cachedEmailList: string | undefined;
+let allowedEmails = new Set<string>();
+
+export function isAllowedEmail(email: string, configured: string | undefined): boolean {
+  if (configured !== cachedEmailList) {
+    allowedEmails = new Set((configured ?? "").split(",").map(value => value.trim().toLowerCase()).filter(Boolean));
+    cachedEmailList = configured;
+  }
+  return allowedEmails.has(email.trim().toLowerCase());
+}
+
 /** Runs only after the provider has verified the token and decrypted its props. */
 export function authorizeMcpProps(props: unknown, scopes: string[], userId: string, allowedEmails: string | undefined): "access_denied" | "insufficient_scope" | undefined {
   if (!props || typeof props !== "object" || Array.isArray(props)) return "access_denied";
   const value = props as Record<string, unknown>;
   if (value.tenantId !== "jurisia" || typeof value.userId !== "string" || !value.userId.trim() || value.userId !== userId || typeof value.email !== "string") return "access_denied";
-  const allowed = (allowedEmails ?? "").split(",").map(email => email.trim().toLowerCase()).filter(Boolean);
-  if (!allowed.includes(value.email.trim().toLowerCase())) return "access_denied";
+
+  if (!isAllowedEmail(value.email, allowedEmails)) return "access_denied";
   if (!scopes.some(scope => MCP_SCOPES.includes(scope))) return "insufficient_scope";
   return undefined;
 }
@@ -57,6 +69,7 @@ export function logOAuthProviderError(error: { code: string; status: number; hea
   headers.set("content-type", "application/json; charset=utf-8");
   headers.set("cache-control", "no-store");
   headers.set("pragma", "no-cache");
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) headers.set(name, value);
   return Response.json({ error: code }, { status: error.status, headers });
 }
 

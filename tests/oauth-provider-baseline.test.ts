@@ -364,7 +364,7 @@ describe("OAuth baseline with the pinned real provider and synthetic storage", (
     expect((await f.listTools(token.access_token)).status).toBe(200);
   });
 
-  it("preserves the pinned provider's registered-redirect behavior for legacy grants without the new binding", async () => {
+  it("rejects a different registered redirect even when application props lack a redirect binding", async () => {
     const f = fixture();
     const secondRedirect = "https://claude.com/api/mcp/auth_callback";
     const clientId = await f.register([REDIRECT, secondRedirect]);
@@ -378,8 +378,10 @@ describe("OAuth baseline with the pinned real provider and synthetic storage", (
     });
     const code = new URL(legacy.redirectTo).searchParams.get("code")!;
     const response = await f.exchange({ clientId, code }, { redirect_uri: secondRedirect });
-    expect(response.status).toBe(200);
-    const token = await response.json() as TokenResponse;
+    expect(response.status).toBe(400);
+    const valid = await f.exchange({ clientId, code });
+    expect(valid.status).toBe(200);
+    const token = await valid.json() as TokenResponse;
     expect((await f.listTools(token.access_token)).status).toBe(200);
   });
 
@@ -425,7 +427,7 @@ describe("OAuth baseline with the pinned real provider and synthetic storage", (
     expect(f.state.values.size).toBe(1);
   });
 
-  it("enforces actual empty token scope after refresh downscoping, not original props.scopes", async () => {
+  it("rejects a refresh requesting scopes outside its grant", async () => {
     const f = fixture();
     const auth = await f.authorize();
     const token = await f.tokens(auth);
@@ -433,10 +435,8 @@ describe("OAuth baseline with the pinned real provider and synthetic storage", (
       headers: { "content-type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ grant_type: "refresh_token", client_id: auth.clientId,
         refresh_token: token.refresh_token, resource: RESOURCE, scope: "not-granted" }) });
-    expect(refreshed.status).toBe(200);
-    const reduced = await refreshed.json() as TokenResponse;
-    expect(reduced.scope).toBe("");
-    expect((await f.listTools(reduced.access_token)).status).toBe(403);
+    expect(refreshed.status).toBe(400);
+    expect(await refreshed.json()).toMatchObject({ error: "invalid_scope" });
     expect((await f.listTools(token.access_token)).status).toBe(200);
   });
 

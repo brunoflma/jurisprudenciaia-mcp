@@ -1,11 +1,13 @@
 import { OAuthError, type TokenExchangeCallbackOptions } from "@cloudflare/workers-oauth-provider";
 
-export type TokenExchangePolicy = (options: TokenExchangeCallbackOptions) => void;
+import type { Env } from "../types.js";
+
+export type TokenExchangePolicy = (options: TokenExchangeCallbackOptions<Env>) => void;
 
 /** The Worker calls this only after its existing body limit and rate limit. */
 export async function redirectUriExchangePolicy(request: Request): Promise<TokenExchangePolicy | undefined> {
   if (request.method !== "POST" || new URL(request.url).pathname !== "/oauth/token") return undefined;
-  // Match provider 0.10.3: other media types return invalid_request before exchange.
+  // Match the provider: other media types return invalid_request before exchange.
   if ((request.headers.get("content-type") ?? "").split(";")[0]!.trim().toLowerCase() !== "application/x-www-form-urlencoded") return undefined;
   let form: FormData;
   try { form = await request.clone().formData(); }

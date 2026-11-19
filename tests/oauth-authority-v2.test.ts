@@ -54,6 +54,7 @@ async function fixture(options: { subject?: string; tenantId?: string; clientMet
     defaultHandler: { fetch: (_request: Request, env) => { helpers = env.OAUTH_PROVIDER; return new Response("ready"); } },
     authorizeEndpoint: "/authorize", tokenEndpoint: "/oauth/token", clientRegistrationEndpoint: "/oauth/register",
     scopesSupported: POLICY.allowedScopes,
+    resourceMetadata: { resource: RESOURCE },
   });
   await provider.fetch(new Request(`${ORIGIN}/fixture`), { OAUTH_KV: kv }, {} as ExecutionContext);
   if (!helpers) throw new Error("synthetic_provider_helpers_missing");

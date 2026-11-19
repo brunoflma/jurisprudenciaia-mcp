@@ -65,10 +65,18 @@ export async function createOAuthTransaction(namespace: OAuthStateNamespace, typ
   const binding = await sha256(token);
   const key = `mcp:oauth:${prefix}:${token}`;
   const stub = namespace.get(namespace.idFromName(key));
-  const response = await stub.fetch(new Request("https://oauth-state.internal/", {
-    method: "PUT",
-    body: JSON.stringify({ payload, binding, expiresAt: Date.now() + TTL_SECONDS * 1_000 })
-  }));
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  let response;
+  try {
+    response = await stub.fetch(new Request("https://oauth-state.internal/", {
+      method: "PUT",
+      body: JSON.stringify({ payload, binding, expiresAt: Date.now() + TTL_SECONDS * 1_000 }),
+      signal: controller.signal
+    }));
+  } finally {
+    clearTimeout(timeoutId);
+  }
   if (!response.ok) throw new Error("oauth_state_write_failed");
   return {
     token,
@@ -83,10 +91,18 @@ export async function consumeOAuthTransaction(namespace: OAuthStateNamespace, ty
   if (!(await equalConstantTime(received, expected))) throw new Error("oauth_state_not_bound");
   const key = `mcp:oauth:${prefix}:${token}`;
   const stub = namespace.get(namespace.idFromName(key));
-  const response = await stub.fetch(new Request("https://oauth-state.internal/consume", {
-    method: "POST",
-    headers: { "x-mcp-oauth-binding": received }
-  }));
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  let response;
+  try {
+    response = await stub.fetch(new Request("https://oauth-state.internal/consume", {
+      method: "POST",
+      headers: { "x-mcp-oauth-binding": received },
+      signal: controller.signal
+    }));
+  } finally {
+    clearTimeout(timeoutId);
+  }
   if (response.status === 403) throw new Error("oauth_state_not_bound");
   if (!response.ok) throw new Error("oauth_state_invalid");
   const value: unknown = await response.json();
@@ -150,7 +166,15 @@ function parseAuthRequest(value: unknown): OAuthTransaction {
   if (typeof value.issuer === "string") result.issuer = value.issuer;
   if (typeof value.codeChallenge === "string") result.codeChallenge = value.codeChallenge;
   if (typeof value.codeChallengeMethod === "string") result.codeChallengeMethod = value.codeChallengeMethod;
-  if (typeof value.resource === "string" || Array.isArray(value.resource) && value.resource.every((item) => typeof item === "string")) result.resource = value.resource;
+  if (value.resource !== undefined) {
+    // Older transactions may represent a single audience as a repeated parameter.
+    const resource = Array.isArray(value.resource) ? value.resource[0] : value.resource;
+    if (typeof resource !== "string" || !resource ||
+        (Array.isArray(value.resource) && !value.resource.every(item => item === resource))) {
+      throw new Error("oauth_state_invalid");
+    }
+    result.resource = resource;
+  }
   // Existing transactions expire after 600 seconds and may predate upstream PKCE.
   // A present but invalid verifier must never silently downgrade to that legacy path.
   if ("googleCodeVerifier" in value) {

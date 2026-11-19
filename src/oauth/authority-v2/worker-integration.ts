@@ -1,6 +1,7 @@
+import { SECURITY_HEADERS } from "../../http/security-headers.js";
 import type { AuthRequest, ClientInfo, OAuthHelpers } from "@cloudflare/workers-oauth-provider";
 import type { Env } from "../../types.js";
-import { authorizeMcpProps, MCP_SCOPES } from "../access-policy.js";
+import { authorizeMcpProps, isAllowedEmail, MCP_SCOPES } from "../access-policy.js";
 import { authenticateV2Client, createAuthorityAdapter, oauthFailure, PRIVATE_DEPLOYMENT, readTokenForm, validateV2Authorization, type TrustedGoogleIdentity } from "./adapter.js";
 import { createLedgerDirectory, type RuntimeLedger } from "./runtime.mjs";
 import { isAuthorityV2IssuancePaused, readAuthorityPolicy, readAuthorityReceiptKey, readLegacyCutoff } from "./worker-config.mjs";
@@ -8,7 +9,6 @@ import { createResourceMiddleware, createVersionRouter } from "./router.js";
 import type { OAuthTransaction } from "../state.js";
 import { AUTHORITY_BACKCHANNEL_PATH } from "./backchannel.js";
 import { handleAuthorityBackchannel } from "./worker-backchannel.js";
-
 
 /** Read the original stream once; preserve bytes/headers without a tee or unbounded buffering. */
 export async function bufferAuthorityRequest(request: Request, limit: number): Promise<Request | undefined> {
@@ -55,7 +55,7 @@ export function withAuthorityCors(request: Request, response: Response): Respons
   return result;
 }
 
-/** Exact SHA-256 hex format used by the installed provider 0.10.3 client store. */
+/** Exact SHA-256 hex format used by the provider client store. */
 export async function verifyRegisteredClientSecret(client: ClientInfo, secret: string): Promise<boolean> {
   if (!/^[a-f0-9]{64}$/.test(client.clientSecret ?? "")) return false;
   const bytes = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(secret)));
@@ -93,7 +93,7 @@ export function createWorkerAuthority(env: Env, provider: OAuthHelpers, issuer: 
       if (!ledger) {
         if (revocation) {
           await authenticateV2Client(replay, form, provider, verifyRegisteredClientSecret);
-          return Response.json({}, { headers: { "cache-control": "no-store" } });
+          return Response.json({}, { headers: { "cache-control": "no-store", ...SECURITY_HEADERS } });
         }
         return oauthFailure({ code: "invalid_grant" });
       }
@@ -108,7 +108,7 @@ export function createWorkerAuthority(env: Env, provider: OAuthHelpers, issuer: 
       return { ...parsed, authorityVersion: 2 };
     },
     async completeAuthorization(auth: AuthRequest, identity: TrustedGoogleIdentity): Promise<{ redirectTo: string }> {
-      if (identity.email_verified !== true || !identity.sub || !identity.email || !(env.MCP_ALLOWED_EMAILS ?? "").split(",").map(value => value.trim().toLowerCase()).includes(identity.email.trim().toLowerCase())) throw { code: "access_denied" };
+      if (identity.email_verified !== true || !identity.sub || !identity.email || !isAllowedEmail(identity.email, env.MCP_ALLOWED_EMAILS)) throw { code: "access_denied" };
       const ledger = await directory.getOrCreate({ issuer, resource: `${issuer}/mcp`, tenantId: "jurisia", subject: identity.sub });
       const response = await adapter(ledger).completeTrustedGoogle(auth, identity);
       return { redirectTo: response.headers.get("location")! };
@@ -126,10 +126,10 @@ export function createWorkerAuthority(env: Env, provider: OAuthHelpers, issuer: 
       });
     },
     async route(request: Request, legacy: (request: Request) => Promise<Response>, authorized: (request: Request) => Promise<Response>) {
-      // Provider 0.10.3 matches apiRoute by prefix. Never let suffixes fall into v1.
+      // The legacy route matches apiRoute by prefix. Never let suffixes fall into v1.
       const path = new URL(request.url).pathname;
       if (path === AUTHORITY_BACKCHANNEL_PATH) return this.backchannel(request);
-      if (path.startsWith("/mcp") && path !== "/mcp") return Promise.resolve(Response.json({ error: "not_found" }, { status: 404 }));
+      if (path.startsWith("/mcp") && path !== "/mcp") return Promise.resolve(Response.json({ error: "not_found" }, { status: 404, headers: SECURITY_HEADERS }));
       if (request.method === "OPTIONS" && ["/mcp", "/", "/oauth/token", "/oauth/revoke"].includes(path)) return new Response(null, { status: 204 });
       if (isAuthorityV2IssuancePaused(env)) {
         if (["/authorize", "/oauth/authorize", "/oauth/google/callback"].includes(path)) return oauthFailure({ code: "temporarily_unavailable" });
