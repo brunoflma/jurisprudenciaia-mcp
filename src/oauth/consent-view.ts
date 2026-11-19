@@ -26,7 +26,23 @@ export function consentPage(clientName: string, token: string, nonce: string, lo
 <li class="permission"><span class="permission-mark" aria-hidden="true">01</span><div><span class="permission-code">Pesquisa</span><strong class="permission-title">Consulta às fontes integradas</strong><p class="permission-copy">Pesquisar jurisprudência e legislação pelos provedores configurados, com indicação da origem de cada resultado.</p></div></li>
 <li class="permission"><span class="permission-mark" aria-hidden="true">02</span><div><span class="permission-code">Ferramentas</span><strong class="permission-title">Uso limitado ao conector</strong><p class="permission-copy">Executar apenas as ferramentas publicadas pelo servidor MCP; nenhuma escrita em sistemas externos.</p></div></li>
 <li class="permission"><span class="permission-mark" aria-hidden="true">03</span><div><span class="permission-code">Identidade</span><strong class="permission-title">Conta Google verificada</strong><p class="permission-copy">Confirmar que seu e-mail está no cadastro de pessoas autorizadas a usar esta instância.</p></div></li></ul>
-<form class="action" method="post" action="/authorize"><input type="hidden" name="transaction" value="${escapeHtml(token)}"><div class="trust"><span class="diamond" aria-hidden="true"></span><span><span class="trust-label">${localClient ? "Retorno local" : "Contexto"}</span><br>${clientContext}</span></div><button type="submit">Continuar com Google <span class="arrow" aria-hidden="true">→</span></button></form>`,
+<form class="action" method="post" action="/authorize"><input type="hidden" name="transaction" value="${escapeHtml(token)}"><div class="trust"><span class="diamond" aria-hidden="true"></span><span><span class="trust-label">${localClient ? "Retorno local" : "Contexto"}</span><br>${clientContext}</span></div><button type="submit">Continuar com Google <span class="arrow" aria-hidden="true">→</span></button></form><script nonce="${escapeHtml(nonce)}">
+const form = document.querySelector("form.action");
+const button = form.querySelector("button");
+const label = button.textContent;
+form.addEventListener("submit", () => {
+  button.disabled = true;
+  button.setAttribute("aria-busy", "true");
+  button.textContent = "Aguarde…";
+});
+window.addEventListener("pageshow", event => {
+  if (event.persisted) {
+    button.disabled = false;
+    button.removeAttribute("aria-busy");
+    button.textContent = label;
+  }
+});
+</script>`,
   });
 }
 

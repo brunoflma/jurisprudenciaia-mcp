@@ -1,8 +1,9 @@
+import { SECURITY_HEADERS } from "../../http/security-headers.js";
 import { AUTHORITY_BACKCHANNEL_PATH, decodeBackchannelJson, readBackchannelBytes, verifyAuthorityRequest } from "./backchannel.js";
 import type { Principal } from "./adapter.js";
 
 export async function handleAuthorityBackchannel(request: Request, key: string | undefined, issuer: string, authorize: (request: Request) => Promise<Principal>): Promise<Response> {
-  const headers = { "cache-control": "no-store", pragma: "no-cache" };
+  const headers = { "cache-control": "no-store", pragma: "no-cache", ...SECURITY_HEADERS };
   if (request.method !== "POST") return Response.json({ error: "method_not_allowed" }, { status: 405, headers: { ...headers, allow: "POST" } });
   try {
     const bytes = await readBackchannelBytes(request);

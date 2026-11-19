@@ -1,3 +1,4 @@
+import { SECURITY_HEADERS } from "./http/security-headers.js";
 import { bufferAuthorityRequest, createWorkerAuthority, withAuthorityCors } from "./oauth/authority-v2/worker-integration.js";
 import { isAuthorityV2Enabled } from "./oauth/authority-v2/worker-config.mjs";
 import { AUTHORITY_BACKCHANNEL_PATH } from "./oauth/authority-v2/backchannel.js";
@@ -31,12 +32,7 @@ const DISCOVERY_SCOPES = Object.freeze(["jurisprudence:read"]);
 const oauthProviders = new Map<string, OAuthProvider<Env>>();
 const MAX_BODY_BYTES = 1_048_576;
 const MAX_JSON_RPC_BATCH_SIZE = 20;
-const SECURITY_HEADERS = {
-  "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
-  "X-Content-Type-Options": "nosniff",
-  "X-Frame-Options": "DENY",
-  "X-XSS-Protection": "1; mode=block"
-} as const;
+
 const FAVICON_SVG = renderProductIcon("jurisprudenciaia");
 
 const mcpApiHandler = {
@@ -107,7 +103,7 @@ const applicationWorker = {
     if (url.pathname === "/" && request.method === "GET") {
       url.pathname = MCP_PATH;
       return new Response(null, { status: 302, headers: {
-        "Location": url.toString(), "Cache-Control": "no-store"
+        "Location": url.toString(), "Cache-Control": "no-store", ...SECURITY_HEADERS
       }});
     }
     return json({ error: "not_found" }, 404);
@@ -156,8 +152,8 @@ function getOAuthProvider(origin: string, tokenExchangeCallback?: TokenExchangeP
     scopesSupported: [...MCP_SCOPES],
     onError: logOAuthProviderError,
     tokenExchangeCallback,
-    allowPlainPKCE: false,
-    allowImplicitFlow: false,
+
+
     allowTokenExchangeGrant: false,
     resourceMetadata: {
       resource: new URL(MCP_PATH, origin).href,
@@ -200,26 +196,30 @@ export default {
     catch { return json({ error: "oauth_configuration_invalid" }, 503); }
     if (hasInvalidAuthorizeResource(request, origin)) return json({ error: "invalid_target" }, 400);
 
+    // Keep both discovery URLs on the configured issuer, including requests via an alias.
+    if (["GET", "HEAD", "OPTIONS"].includes(request.method) &&
+        ["/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp"].includes(url.pathname)) {
+      const metadata = new Request(new URL("/.well-known/oauth-protected-resource/mcp", origin), { method: request.method });
+      return getOAuthProvider(origin).fetch(metadata, env, ctx);
+    }
     const authorityV2 = isAuthorityV2Enabled(env);
     if (url.pathname === AUTHORITY_BACKCHANNEL_PATH && !authorityV2) return json({ error: "not_found" }, 404);
     if (url.pathname === AUTHORITY_BACKCHANNEL_PATH && request.method !== "POST") return json({ error: "method_not_allowed" }, 405, { allow: "POST" });
-    const v2TokenBody = authorityV2 && (["/oauth/token", "/oauth/revoke"].includes(url.pathname) || url.pathname === AUTHORITY_BACKCHANNEL_PATH);
-    if (request.method === "POST" || request.method === "PUT") {
-      if ((authorityV2 && !v2TokenBody) || url.pathname === "/oauth/register") {
-        const buffered = await bufferAuthorityRequest(request, url.pathname === "/oauth/register" ? 16384 : MAX_BODY_BYTES);
-        if (!buffered) return json({ error: "payload_too_large" }, 413);
-        request = buffered;
-      } else if (!authorityV2 && !(await withinBodyLimit(request))) {
-        return json({ error: "payload_too_large" }, 413);
-      }
-    }
-
     if (url.pathname === OAUTH_AUTHORIZE_PATH || url.pathname === OAUTH_AUTHORIZE_COMPAT_PATH || url.pathname === "/oauth/token" || url.pathname === "/oauth/register" || url.pathname === GOOGLE_CALLBACK_PATH || (isAuthorityV2Enabled(env) && url.pathname === "/oauth/revoke")) {
       const limiter = url.pathname === "/oauth/register" ? getRegistrationRateLimiter(env) : getRateLimiter(env);
       const ip = request.headers.get("cf-connecting-ip") || "unknown";
       const decision = limiter.allow(ip);
       if (!decision.allowed) {
         return json({ error: "rate_limited" }, 429, { "Retry-After": Math.ceil(decision.retryAfterMs / 1000).toString() });
+      }
+    }
+
+    const v2TokenBody = authorityV2 && (["/oauth/token", "/oauth/revoke"].includes(url.pathname) || url.pathname === AUTHORITY_BACKCHANNEL_PATH);
+    if (request.method === "POST" || request.method === "PUT") {
+      if (!v2TokenBody) {
+        const buffered = await bufferAuthorityRequest(request, url.pathname === "/oauth/register" ? 16384 : MAX_BODY_BYTES);
+        if (!buffered) return json({ error: "payload_too_large" }, 413);
+        request = buffered;
       }
     }
 
@@ -261,6 +261,14 @@ export default {
 
 async function normalizeOAuthDiscoveryMetadata(request: Request, response: Response, origin: string, authorityV2 = false): Promise<Response> {
   const url = new URL(request.url);
+  if (url.pathname === MCP_PATH && response.status === 401) {
+    const challenge = response.headers.get("www-authenticate");
+    if (challenge?.startsWith("Bearer ") && !challenge.includes("resource_metadata=")) {
+      const headers = new Headers(response.headers);
+      headers.set("www-authenticate", challenge + ', resource_metadata="' + origin + '/.well-known/oauth-protected-resource/mcp"');
+      return new Response(response.body, { status: response.status, headers });
+    }
+  }
   if (request.method !== "GET"
       || url.pathname !== "/.well-known/oauth-authorization-server"
       || !response.ok) {
@@ -339,8 +347,18 @@ export async function handleWorkerRequest(request: Request, env: Env, runner?: J
 async function handleMcp(request: Request, env: Env, customRunner?: JurisprudenciaIaRunner): Promise<Response> {
   if (request.method !== "POST") return json({ error: "method_not_allowed" }, 405, { Allow: "POST" });
   if (!validOrigin(request, env)) return json({ error: "invalid_origin" }, 403);
-  if (!(await withinBodyLimit(request))) return json({ error: "payload_too_large" }, 413);
-  if (await exceedsJsonRpcBatchLimit(request)) {
+  // Bound the original stream before any JSON parser; avoid tee cancellation waits.
+  const boundedRequest = await bufferAuthorityRequest(request, MAX_BODY_BYTES);
+  if (!boundedRequest) return json({ error: "payload_too_large" }, 413);
+  request = boundedRequest;
+  let payload: unknown;
+  try {
+    payload = await request.clone().json();
+  } catch {
+    // Invalid JSON will be reported by the MCP transport itself.
+  }
+
+  if (exceedsJsonRpcBatchLimit(payload)) {
     return json({
       jsonrpc: "2.0",
       error: { code: -32600, message: `Batch size exceeds maximum of ${MAX_JSON_RPC_BATCH_SIZE}` },
@@ -348,7 +366,7 @@ async function handleMcp(request: Request, env: Env, customRunner?: Jurisprudenc
     }, 400);
   }
 
-  const rpcMethod = await safeRpcMethod(request);
+  const rpcMethod = safeRpcMethod(payload);
   const startedAt = Date.now();
   const requestedVersion = request.headers.get("mcp-protocol-version");
   const protocolVersion = requestedVersion && /^\d{4}-\d{2}-\d{2}$/.test(requestedVersion)
@@ -399,16 +417,11 @@ const DIAGNOSTIC_METHODS = new Set([
   "prompts/list", "prompts/get", "ping",
 ]);
 
-async function safeRpcMethod(request: Request): Promise<string> {
-  try {
-    const payload = await request.clone().json();
-    if (Array.isArray(payload)) return "batch";
-    if (payload && typeof payload === "object" && typeof (payload as { method?: unknown }).method === "string") {
-      const method = (payload as { method: string }).method;
-      return DIAGNOSTIC_METHODS.has(method) ? method : "unknown";
-    }
-  } catch {
-    // Invalid JSON will be reported by the MCP transport itself.
+function safeRpcMethod(payload: unknown): string {
+  if (Array.isArray(payload)) return "batch";
+  if (payload && typeof payload === "object" && typeof (payload as { method?: unknown }).method === "string") {
+    const method = (payload as { method: string }).method;
+    return DIAGNOSTIC_METHODS.has(method) ? method : "unknown";
   }
   return "unknown";
 }
@@ -433,39 +446,8 @@ function validOrigin(request: Request, env: Env): boolean {
   } catch { return false; }
 }
 
-async function withinBodyLimit(request: Request): Promise<boolean> {
-  const declared = Number(request.headers.get("content-length") ?? 0);
-  if (!Number.isFinite(declared) || declared > MAX_BODY_BYTES) return false;
-  const reader = request.clone().body?.getReader();
-  if (!reader) return true;
-  let total = 0;
-  const cancel = () => {
-    // A cloned body is a tee: awaiting only one branch can wait indefinitely.
-    void reader.cancel().catch(() => {});
-    void request.body?.cancel().catch(() => {});
-  };
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) return true;
-      total += value.byteLength;
-      if (total > MAX_BODY_BYTES) { cancel(); return false; }
-    }
-  } catch {
-    cancel();
-    return false;
-  } finally {
-    reader.releaseLock();
-  }
-}
-
-async function exceedsJsonRpcBatchLimit(request: Request): Promise<boolean> {
-  try {
-    const payload = await request.clone().json();
-    return Array.isArray(payload) && payload.length > MAX_JSON_RPC_BATCH_SIZE;
-  } catch {
-    return false;
-  }
+function exceedsJsonRpcBatchLimit(payload: unknown): boolean {
+  return Array.isArray(payload) && payload.length > MAX_JSON_RPC_BATCH_SIZE;
 }
 
 function withPathname(request: Request, pathname: string): Request {

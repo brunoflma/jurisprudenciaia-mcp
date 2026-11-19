@@ -14,7 +14,7 @@ describe("OAuth access and discovery policy", () => {
     expect(authorizeMcpProps(identity, ["jurisprudenciaia:search"], identity.userId, identity.email)).toBeUndefined();
   });
 
-  it.each(["bearer", "BEARER"])("supports scheme casing in the helper while recording the pinned provider limit (%s)", async scheme => {
+  it.each(["bearer", "BEARER"])("looks up bearer tokens case-insensitively and rejects an unknown token (%s)", async scheme => {
     const request = new Request("https://mcp.example.invalid/mcp", {
       method: "POST", headers: { authorization: `${scheme} synthetic:grant:token` }, body: "{}",
     });
@@ -22,13 +22,12 @@ describe("OAuth access and discovery policy", () => {
       scope: ["jurisprudence:read"], userId: identity.userId, grant: { props: identity },
     }) };
     await expect(authorizeMcpToken(request, provider, identity.email)).resolves.toBeUndefined();
-    // Provider 0.10.3 itself requires the exact "Bearer " scheme before reaching the helper.
     const get = vi.fn();
     const response = await worker.fetch(request, {
       MCP_PUBLIC_ORIGIN: "https://mcp.example.invalid", OAUTH_KV: { get },
     } as unknown as Env, context);
     expect(response.status).toBe(401);
-    expect(get).not.toHaveBeenCalled();
+    expect(get).toHaveBeenCalled();
   });
 
   it("checks current admission and durable subject/tenant on every request", () => {

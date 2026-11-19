@@ -38,9 +38,12 @@ export class OAuthStateStore {
 
   async fetch(request: Request): Promise<Response> {
     if (request.method === "PUT") {
-      const contentLength = Number(request.headers.get("content-length") ?? 0);
-      if (contentLength > 1_048_576) return json({ ok: false }, 413);
-      const value: unknown = await request.json();
+      let value: unknown;
+      try {
+        value = await readJsonLimited(request, 1_048_576);
+      } catch {
+        return json({ ok: false }, 413);
+      }
       const record = isRecord(value) ? value : null;
       if (typeof record?.binding !== "string" || typeof record.expiresAt !== "number" || !Number.isFinite(record.expiresAt)) {
         return json({ ok: false }, 400);
@@ -74,4 +77,24 @@ export class OAuthStateStore {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+async function readJsonLimited(request: Request, limit: number): Promise<unknown> {
+  const declared = Number(request.headers.get("content-length") ?? 0);
+  if (!Number.isFinite(declared) || declared > limit) throw new Error("body_too_large");
+  const reader = request.body?.getReader();
+  if (!reader) return null;
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > limit) { await reader.cancel(); throw new Error("body_too_large"); }
+    chunks.push(value);
+  }
+  const result = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { result.set(chunk, offset); offset += chunk.byteLength; }
+  return JSON.parse(new TextDecoder().decode(result)) as unknown;
 }

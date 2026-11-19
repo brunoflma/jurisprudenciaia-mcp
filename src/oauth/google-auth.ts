@@ -74,7 +74,7 @@ async function showConsent(request: Request, env: GoogleOAuthEnv, authority?: Au
   const localClient = classifyOAuthRedirectUri(authRequest.redirectUri) === "loopback";
   return new Response(consentPage(client.clientName ?? "Claude", transaction.token, nonce, localClient), { headers: {
     "content-type": "text/html; charset=utf-8",
-    "content-security-policy": `default-src 'none'; style-src 'nonce-${nonce}'; form-action 'self' https://accounts.google.com; base-uri 'none'; frame-ancestors 'none'`,
+    "content-security-policy": `default-src 'none'; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}'; form-action 'self' https://accounts.google.com; base-uri 'none'; frame-ancestors 'none'`,
     "set-cookie": transaction.setCookie,
     "cache-control": "no-store",
     "pragma": "no-cache",

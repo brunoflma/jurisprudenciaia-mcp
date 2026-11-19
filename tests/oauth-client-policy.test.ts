@@ -5,6 +5,7 @@ describe("OAuth client policy", () => {
   it.each([
     ["http://127.0.0.1:3334/oauth/callback", "loopback"],
     ["http://localhost:49152/oauth/callback", "loopback"],
+    ["http://127.0.0.1:49152/callback", "loopback"],
     ["https://claude.ai/api/mcp/auth_callback", "hosted"],
     ["https://claude.com/api/mcp/auth_callback", "hosted"],
     ["https://chatgpt.com/connector_platform_oauth_redirect", "hosted"],

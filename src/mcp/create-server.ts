@@ -16,7 +16,7 @@ export function createJurisprudenciaIaMcpServer(runner: JurisprudenciaIaRunner):
   const server = new McpServer(
     {
       name: "jurisprudenciaia-mcp",
-      version: "0.1.0"
+      version: "0.2.2"
     },
     {
       instructions: MCP_SERVER_INSTRUCTIONS
